@@ -55,6 +55,35 @@ fn is_outside_board(square: u8) -> bool {
     square == SENTINEL
 }
 
+fn get_piece_character(piece: u8) -> &'static str {
+    if piece == WHITE | PAWN {
+        return "♙";
+    } else if piece == WHITE | KNIGHT {
+        return "♘";
+    } else if piece == WHITE | BISHOP {
+        return "♗";
+    } else if piece == WHITE | ROOK {
+        return "♖";
+    } else if piece == WHITE | QUEEN {
+        return "♕";
+    } else if piece == WHITE | KING {
+        return "♔";
+    } else if piece == BLACK | PAWN {
+        return "♟︎";
+    } else if piece == BLACK | KNIGHT {
+        return "♞";
+    } else if piece == BLACK | BISHOP {
+        return "♝";
+    } else if piece == BLACK | ROOK {
+        return "♜";
+    } else if piece == BLACK | QUEEN {
+        return "♛";
+    } else if piece == BLACK | KING {
+        return "♚";
+    }
+    return " ";
+}
+
 pub struct Board {
     board: [[u8; 10]; 12],
     to_move: u8,
@@ -64,32 +93,7 @@ impl Board {
     pub fn print_board(&self) {
         for i in 2..10 {
             for j in 2..10 {
-                let mut piece = " ";
-                if self.board[i][j] == WHITE | PAWN {
-                    piece = "♙";
-                } else if self.board[i][j] == WHITE | KNIGHT {
-                    piece = "♘";
-                } else if self.board[i][j] == WHITE | BISHOP {
-                    piece = "♗";
-                } else if self.board[i][j] == WHITE | ROOK {
-                    piece = "♖";
-                } else if self.board[i][j] == WHITE | QUEEN {
-                    piece = "♕";
-                } else if self.board[i][j] == WHITE | KING {
-                    piece = "♔";
-                } else if self.board[i][j] == BLACK | PAWN {
-                    piece = "♟︎";
-                } else if self.board[i][j] == BLACK | KNIGHT {
-                    piece = "♞";
-                } else if self.board[i][j] == BLACK | BISHOP {
-                    piece = "♝";
-                } else if self.board[i][j] == BLACK | ROOK {
-                    piece = "♜";
-                } else if self.board[i][j] == BLACK | QUEEN {
-                    piece = "♛";
-                } else if self.board[i][j] == BLACK | KING {
-                    piece = "♚";
-                }
+                let piece = get_piece_character(self.board[i][j]);
                 if (i + j) % 2 == 0 {
                     print!("{}", piece.on_red());
                     print!("{}", " ".on_red());
