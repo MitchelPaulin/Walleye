@@ -1,6 +1,7 @@
 extern crate clap;
 use clap::{Arg, App};
-mod lib;
+mod engine;
+mod board;
 
 // Board position for the start of a new game
 const DEFAULT_FEN_STRING : &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -20,7 +21,7 @@ fn main() {
 
     let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
 
-    let b = lib::board_from_fen(fen);
+    let b = engine::board_from_fen(fen);
     match b {
         Ok(b) => b.print_board(),
         Err(err) => println!("{}", err)

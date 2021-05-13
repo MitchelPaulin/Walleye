@@ -1,19 +1,20 @@
+
 use colored::*;
 
 const COLOR_MASK: u8 = 0b10000000;
-const WHITE: u8 = 0b10000000;
-const BLACK: u8 = 0b00000000;
+pub const WHITE: u8 = 0b10000000;
+pub const BLACK: u8 = 0b00000000;
 
 const PIECE_MASK: u8 = 0b00000111;
-const PAWN: u8 = 0b00000001;
-const KNIGHT: u8 = 0b00000010;
-const BISHOP: u8 = 0b00000011;
-const ROOK: u8 = 0b00000100;
-const QUEEN: u8 = 0b00000110;
-const KING: u8 = 0b00000111;
+pub const PAWN: u8 = 0b00000001;
+pub const KNIGHT: u8 = 0b00000010;
+pub const BISHOP: u8 = 0b00000011;
+pub const ROOK: u8 = 0b00000100;
+pub const QUEEN: u8 = 0b00000110;
+pub const KING: u8 = 0b00000111;
 
-const EMPTY: u8 = 0;
-const SENTINEL: u8 = 0b11111111;
+pub const EMPTY: u8 = 0;
+pub const SENTINEL: u8 = 0b11111111;
 
 fn is_white(square: u8) -> bool {
     square & COLOR_MASK == WHITE
@@ -84,27 +85,9 @@ fn get_piece_character(piece: u8) -> &'static str {
     return " ";
 }
 
-fn get_piece_from_fen_string_char(piece : char) -> Option<u8> {
-    match piece {
-        'r' => Some(BLACK | ROOK),
-        'n' => Some(BLACK | KNIGHT),
-        'b' => Some(BLACK | BISHOP),
-        'q' => Some(BLACK | QUEEN),
-        'k' => Some(BLACK | KING),
-        'p' => Some(BLACK | PAWN),
-        'R' => Some(WHITE | ROOK),
-        'N' => Some(WHITE | KNIGHT),
-        'B' => Some(WHITE | BISHOP),
-        'Q' => Some(WHITE | QUEEN),
-        'K' => Some(WHITE | KING),
-        'P' => Some(WHITE | PAWN),
-        _ => None
-    }
-}
-
 pub struct Board {
-    board: [[u8; 10]; 12],
-    to_move: u8,
+    pub board: [[u8; 10]; 12],
+    pub to_move: u8,
 }
 
 impl Board {
@@ -121,62 +104,6 @@ impl Board {
             println!();
         }
     }
-}
-
-/*
-    Parse the standard fen string notation en.wikipedia.org/wiki/Forsyth–Edwards_Notation
-*/
-pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
-    let mut b = [[SENTINEL; 10]; 12];
-    let fen_config: Vec<&str> = fen.split(' ').collect();
-    if fen_config.len() != 6 {
-        return Err("Could not parse fen string: Invalid fen string");
-    }
-
-    let to_move = if fen_config[1] == "w" { WHITE } else { BLACK };
-    let castling_privileges = fen_config[2];
-    let en_passant = fen_config[3];
-    let halfmove_clock = fen_config[4];
-    let fullmove_clock = fen_config[5];
-
-    let fen_rows: Vec<&str> = fen_config[0].split('/').collect();
-
-    if fen_rows.len() != 8 {
-        return Err("Could not parse fen string: Invalid number of rows provided, 8 expected");
-    }
-
-    let mut row : usize = 2;
-    let mut col : usize = 2;
-    for fen_row in fen_rows {
-        for square in fen_row.chars() {
-            if square.is_digit(10) {
-                let mut square_skip_count = square.to_digit(10).unwrap() as usize;
-                if square_skip_count + col > 10 {
-                    return Err("Could not parse fen string: Index out of bounds");
-                }
-                while square_skip_count > 0 {
-                    b[row][col] = EMPTY;
-                    col += 1;
-                    square_skip_count -= 1;
-                }
-            } else {
-                match get_piece_from_fen_string_char(square) {
-                    Some(piece) => b[row][col] = piece,
-                    None => return Err("Could not parse fen string: Invalid character found")
-                }
-                col += 1;
-            }
-        }
-        if col != 10 {
-            return Err("Could not parse fen string: Complete row was not specified")
-        }
-        row += 1;
-        col = 2;
-    }
-    Ok(Board {
-        board: b,
-        to_move: to_move,
-    })
 }
 
 #[cfg(test)]
