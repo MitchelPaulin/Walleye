@@ -123,9 +123,23 @@ impl Board {
     }
 }
 
+/*
+    Parse the standard fen string notation en.wikipedia.org/wiki/Forsyth–Edwards_Notation
+*/
 pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
     let mut b = [[SENTINEL; 10]; 12];
-    let fen_rows: Vec<&str> = fen.split('/').collect();
+    let fen_config: Vec<&str> = fen.split(' ').collect();
+    if fen_config.len() != 6 {
+        return Err("Could not parse fen string: Invalid fen string");
+    }
+
+    let to_move = if fen_config[1] == "w" { WHITE } else { BLACK };
+    let castling_privileges = fen_config[2];
+    let en_passant = fen_config[3];
+    let halfmove_clock = fen_config[4];
+    let fullmove_clock = fen_config[5];
+
+    let fen_rows: Vec<&str> = fen_config[0].split('/').collect();
 
     if fen_rows.len() != 8 {
         return Err("Could not parse fen string: Invalid number of rows provided, 8 expected");
@@ -161,7 +175,7 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
     }
     Ok(Board {
         board: b,
-        to_move: WHITE,
+        to_move: to_move,
     })
 }
 
