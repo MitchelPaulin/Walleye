@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 colored = "2.0.0"
+clap = "~2.33.3"
