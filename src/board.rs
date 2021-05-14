@@ -1,4 +1,3 @@
-
 use colored::*;
 
 const COLOR_MASK: u8 = 0b10000000;
@@ -57,29 +56,17 @@ fn is_outside_board(square: u8) -> bool {
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
-    if piece == WHITE | PAWN {
-        return "♙";
-    } else if piece == WHITE | KNIGHT {
-        return "♘";
-    } else if piece == WHITE | BISHOP {
-        return "♗";
-    } else if piece == WHITE | ROOK {
-        return "♖";
-    } else if piece == WHITE | QUEEN {
-        return "♕";
-    } else if piece == WHITE | KING {
-        return "♔";
-    } else if piece == BLACK | PAWN {
+    if is_pawn(piece) {
         return "♟︎";
-    } else if piece == BLACK | KNIGHT {
+    } else if is_knight(piece) {
         return "♞";
-    } else if piece == BLACK | BISHOP {
+    } else if is_bishop(piece) {
         return "♝";
-    } else if piece == BLACK | ROOK {
+    } else if is_rook(piece) {
         return "♜";
-    } else if piece == BLACK | QUEEN {
+    } else if is_queen(piece) {
         return "♛";
-    } else if piece == BLACK | KING {
+    } else if is_king(piece) {
         return "♚";
     }
     return " ";
@@ -96,9 +83,17 @@ impl Board {
             for j in 2..10 {
                 let piece = format!("{} ", get_piece_character(self.board[i][j]));
                 if (i + j) % 2 == 0 {
-                    print!("{}", piece.on_red());
+                    if is_white(self.board[i][j]) {
+                        print!("{}", piece.white().on_truecolor(158, 93, 30));
+                    } else {
+                        print!("{}", piece.black().on_truecolor(158, 93, 30));
+                    }
                 } else {
-                    print!("{}", piece);
+                    if is_white(self.board[i][j]) {
+                        print!("{}", piece.white().on_truecolor(205, 170, 125));
+                    } else {
+                        print!("{}", piece.black().on_truecolor(205, 170, 125));
+                    }
                 }
             }
             println!();
