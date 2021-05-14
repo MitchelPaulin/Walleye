@@ -15,6 +15,9 @@ pub const KING: u8 = 0b00000111;
 pub const EMPTY: u8 = 0;
 pub const SENTINEL: u8 = 0b11111111;
 
+pub const BOARD_START : usize = 2;
+pub const BOARD_END : usize = 10;
+
 fn is_white(square: u8) -> bool {
     square & COLOR_MASK == WHITE
 }
@@ -76,8 +79,8 @@ pub struct Board {
 impl Board {
     pub fn print_board(&self) {
         println!("a b c d e f g h");
-        for i in 2..10 {
-            for j in 2..10 {
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
                 let piece = format!("{} ", get_piece_character(self.board[i][j]));
                 if (i + j) % 2 != 0 {
                     if is_white(self.board[i][j]) {

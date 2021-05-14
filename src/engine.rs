@@ -1,5 +1,6 @@
 pub use crate::board::{
-    Board, BISHOP, BLACK, EMPTY, KING, KNIGHT, PAWN, QUEEN, ROOK, SENTINEL, WHITE,
+    Board, BISHOP, BLACK, BOARD_END, BOARD_START, EMPTY, KING, KNIGHT, PAWN, QUEEN, ROOK, SENTINEL,
+    WHITE,
 };
 
 fn get_piece_from_fen_string_char(piece: char) -> Option<u8> {
@@ -42,13 +43,13 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
         return Err("Could not parse fen string: Invalid number of rows provided, 8 expected");
     }
 
-    let mut row: usize = 2;
-    let mut col: usize = 2;
+    let mut row: usize = BOARD_START;
+    let mut col: usize = BOARD_START;
     for fen_row in fen_rows {
         for square in fen_row.chars() {
             if square.is_digit(10) {
                 let mut square_skip_count = square.to_digit(10).unwrap() as usize;
-                if square_skip_count + col > 10 {
+                if square_skip_count + col > BOARD_END {
                     return Err("Could not parse fen string: Index out of bounds");
                 }
                 while square_skip_count > 0 {
@@ -64,11 +65,11 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
                 col += 1;
             }
         }
-        if col != 10 {
+        if col != BOARD_END {
             return Err("Could not parse fen string: Complete row was not specified");
         }
         row += 1;
-        col = 2;
+        col = BOARD_START;
     }
     Ok(Board {
         board: b,
@@ -82,8 +83,8 @@ mod tests {
     #[test]
     fn empty_board() {
         let b = board_from_fen("8/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        for i in 2..10 {
-            for j in 2..10 {
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
                 assert_eq!(b.board[i][j], EMPTY);
             }
         }
@@ -101,12 +102,12 @@ mod tests {
         assert_eq!(b.board[2][8], BLACK | KNIGHT);
         assert_eq!(b.board[2][9], BLACK | ROOK);
 
-        for i in 2..10 {
+        for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[3][i], BLACK | PAWN);
         }
 
         for i in 4..8 {
-            for j in 2..10 {
+            for j in BOARD_START..BOARD_END {
                 assert_eq!(b.board[i][j], EMPTY);
             }
         }
@@ -120,14 +121,15 @@ mod tests {
         assert_eq!(b.board[9][8], WHITE | KNIGHT);
         assert_eq!(b.board[9][9], WHITE | ROOK);
 
-        for i in 2..10 {
+        for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], WHITE | PAWN);
         }
     }
 
     #[test]
     fn correct_starting_player() {
-        let mut b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let mut b =
+            board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         assert_eq!(b.to_move, WHITE);
         b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
         assert_eq!(b.to_move, BLACK);
