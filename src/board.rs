@@ -56,20 +56,16 @@ fn is_outside_board(square: u8) -> bool {
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
-    if is_pawn(piece) {
-        return "♟︎";
-    } else if is_knight(piece) {
-        return "♞";
-    } else if is_bishop(piece) {
-        return "♝";
-    } else if is_rook(piece) {
-        return "♜";
-    } else if is_queen(piece) {
-        return "♛";
-    } else if is_king(piece) {
-        return "♚";
+
+    match piece & PIECE_MASK {
+        PAWN => "♟︎",
+        KNIGHT => "♞",
+        BISHOP => "♝",
+        ROOK => "♜",
+        QUEEN => "♛",
+        KING => "♚",
+        _ => " "
     }
-    return " ";
 }
 
 pub struct Board {
@@ -79,10 +75,11 @@ pub struct Board {
 
 impl Board {
     pub fn print_board(&self) {
+        println!("a b c d e f g h");
         for i in 2..10 {
             for j in 2..10 {
                 let piece = format!("{} ", get_piece_character(self.board[i][j]));
-                if (i + j) % 2 == 0 {
+                if (i + j) % 2 != 0 {
                     if is_white(self.board[i][j]) {
                         print!("{}", piece.white().on_truecolor(158, 93, 30));
                     } else {
@@ -96,7 +93,7 @@ impl Board {
                     }
                 }
             }
-            println!();
+            println!(" {}", 10 - i);
         }
     }
 }
