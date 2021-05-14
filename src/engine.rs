@@ -75,3 +75,100 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
         to_move: to_move,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn empty_board() {
+        let b = board_from_fen("8/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
+        for i in 2..10 {
+            for j in 2..10 {
+                assert_eq!(b.board[i][j], EMPTY);
+            }
+        }
+    }
+
+    #[test]
+    fn starting_pos() {
+        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert_eq!(b.board[2][2], BLACK | ROOK);
+        assert_eq!(b.board[2][3], BLACK | KNIGHT);
+        assert_eq!(b.board[2][4], BLACK | BISHOP);
+        assert_eq!(b.board[2][5], BLACK | QUEEN);
+        assert_eq!(b.board[2][6], BLACK | KING);
+        assert_eq!(b.board[2][7], BLACK | BISHOP);
+        assert_eq!(b.board[2][8], BLACK | KNIGHT);
+        assert_eq!(b.board[2][9], BLACK | ROOK);
+
+        for i in 2..10 {
+            assert_eq!(b.board[3][i], BLACK | PAWN);
+        }
+
+        for i in 4..8 {
+            for j in 2..10 {
+                assert_eq!(b.board[i][j], EMPTY);
+            }
+        }
+
+        assert_eq!(b.board[9][2], WHITE | ROOK);
+        assert_eq!(b.board[9][3], WHITE | KNIGHT);
+        assert_eq!(b.board[9][4], WHITE | BISHOP);
+        assert_eq!(b.board[9][5], WHITE | QUEEN);
+        assert_eq!(b.board[9][6], WHITE | KING);
+        assert_eq!(b.board[9][7], WHITE | BISHOP);
+        assert_eq!(b.board[9][8], WHITE | KNIGHT);
+        assert_eq!(b.board[9][9], WHITE | ROOK);
+
+        for i in 2..10 {
+            assert_eq!(b.board[8][i], WHITE | PAWN);
+        }
+    }
+
+    #[test]
+    fn correct_starting_player() {
+        let mut b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert_eq!(b.to_move, WHITE);
+        b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
+        assert_eq!(b.to_move, BLACK);
+    }
+
+    #[test]
+    fn random_pos() {
+        let b = board_from_fen("4R1B1/1kp5/1B1Q4/1P5p/1p2p1pK/8/3pP3/4N1b1 w - - 0 1").unwrap();
+        assert_eq!(b.board[2][6], WHITE | ROOK);
+        assert_eq!(b.board[2][8], WHITE | BISHOP);
+        assert_eq!(b.board[3][3], BLACK | KING);
+        assert_eq!(b.board[3][4], BLACK | PAWN);
+        assert_eq!(b.board[4][3], WHITE | BISHOP);
+        assert_eq!(b.board[4][5], WHITE | QUEEN);
+        assert_eq!(b.board[5][3], WHITE | PAWN);
+        assert_eq!(b.board[5][9], BLACK | PAWN);
+        assert_eq!(b.board[6][3], BLACK | PAWN);
+        assert_eq!(b.board[6][6], BLACK | PAWN);
+        assert_eq!(b.board[6][8], BLACK | PAWN);
+        assert_eq!(b.board[6][9], WHITE | KING);
+        assert_eq!(b.board[8][5], BLACK | PAWN);
+        assert_eq!(b.board[8][6], WHITE | PAWN);
+        assert_eq!(b.board[9][6], WHITE | KNIGHT);
+        assert_eq!(b.board[9][8], BLACK | BISHOP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_fen_string() {
+        board_from_fen("this isn't a fen string").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_fen_string_bad_char() {
+        board_from_fen("rnbqkbnH/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_fen_string_too_many_chars() {
+        board_from_fen("rnbqkbnrrrrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    }
+}
