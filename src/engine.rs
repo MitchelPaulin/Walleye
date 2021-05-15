@@ -33,6 +33,11 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
         let _row = (row + mods.0) as usize;
         let _col = (col + mods.1) as usize;
         let space = board.board[_row][_col];
+
+        if is_outside_board(board.board[_row][_col]) {
+            continue;
+        }
+
         if is_empty(space) || space & COLOR_MASK != piece & COLOR_MASK {
             moves.push((_row, _col));
         }
@@ -58,15 +63,12 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
         // check a normal push
         if is_empty(board.board[(row - 1) as usize][col as usize]) {
             moves.push(((row - 1) as usize, col as usize));
+            // check double push 
+            if row == 8 && is_empty(board.board[(row - 2) as usize][col as usize]) {
+                moves.push(((row - 2) as usize, col as usize));
+            }
         }
 
-        // check a double push
-        if row == 8
-            && is_empty(board.board[(row - 1) as usize][col as usize])
-            && is_empty(board.board[(row - 2) as usize][col as usize])
-        {
-            moves.push(((row - 2) as usize, col as usize));
-        }
     } else {
         // check capture
         let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
@@ -81,14 +83,27 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
         // check a normal push
         if is_empty(board.board[(row + 1) as usize][col as usize]) {
             moves.push(((row + 1) as usize, col as usize));
+            // check double push 
+            if row == 3 && is_empty(board.board[(row + 2) as usize][col as usize]) {
+                moves.push(((row + 2) as usize, col as usize));
+            }
         }
+    }
+}
 
-        // check a double push
-        if row == 3
-            && is_empty(board.board[(row + 1) as usize][col as usize])
-            && is_empty(board.board[(row + 2) as usize][col as usize])
-        {
-            moves.push(((row + 2) as usize, col as usize));
+pub fn king_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    for i in -1..2 {
+        for j in -1..2 {
+            let r = (row + i) as usize;
+            let c = (col + j) as usize;
+
+            if is_outside_board(board.board[r][c]) {
+                continue;
+            }
+
+            if is_empty(board.board[r][c]) || board.board[r][c] & COLOR_MASK != piece & COLOR_MASK {
+                moves.push((r, c));
+            }
         }
     }
 }
@@ -264,7 +279,7 @@ mod tests {
         let mut ret: Vec<(usize, usize)> = vec![];
         let row = 2;
         let col = 2;
-        knight_moves(row, col, WHITE | KNIGHT, &b, &mut ret);
+        knight_moves(row, col, BLACK | KNIGHT, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
     #[test]
@@ -392,7 +407,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn black_pawn_with_one_capture() {
         let b = board_from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
@@ -400,5 +414,47 @@ mod tests {
         let col = 5;
         pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
+    }
+
+    // Piece test - king
+
+    #[test]
+    fn king_empty_board_center() {
+        let b = board_from_fen("8/8/8/8/3K4/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 6;
+        king_moves(row, col, WHITE | KING, &b, &mut ret);
+        assert_eq!(ret.len(), 8);
+    }
+
+    #[test]
+    fn king_start_pos() {
+        let b = board_from_fen("8/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 9;
+        let col = 6;
+        king_moves(row, col, WHITE | KING, &b, &mut ret);
+        assert_eq!(ret.len(), 5);
+    }
+
+    #[test]
+    fn king_start_pos_other_pieces() {
+        let b = board_from_fen("8/8/8/8/8/8/3Pn3/3QKB2 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 9;
+        let col = 6;
+        king_moves(row, col, WHITE | KING, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn king_black_other_pieces() {
+        let b = board_from_fen("8/8/8/8/8/3Pn3/3QkB2/3R1q2 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 8;
+        let col = 6;
+        king_moves(row, col, BLACK | KING, &b, &mut ret);
+        assert_eq!(ret.len(), 6);
     }
 }
