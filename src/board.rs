@@ -1,6 +1,6 @@
 use colored::*;
 
-const COLOR_MASK: u8 = 0b10000000;
+pub const COLOR_MASK: u8 = 0b10000000;
 pub const WHITE: u8 = 0b10000000;
 pub const BLACK: u8 = 0b00000000;
 
@@ -50,7 +50,7 @@ fn is_king(square: u8) -> bool {
     square & PIECE_MASK == KING
 }
 
-fn is_empty(square: u8) -> bool {
+pub fn is_empty(square: u8) -> bool {
     square == EMPTY
 }
 

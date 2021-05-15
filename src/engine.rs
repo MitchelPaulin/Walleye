@@ -1,6 +1,6 @@
 pub use crate::board::{
-    Board, BISHOP, BLACK, BOARD_END, BOARD_START, EMPTY, KING, KNIGHT, PAWN, QUEEN, ROOK, SENTINEL,
-    WHITE,
+    is_empty, Board, BISHOP, BLACK, BOARD_END, BOARD_START, COLOR_MASK, EMPTY, KING, KNIGHT, PAWN,
+    QUEEN, ROOK, SENTINEL, WHITE,
 };
 
 fn get_piece_from_fen_string_char(piece: char) -> Option<u8> {
@@ -18,6 +18,28 @@ fn get_piece_from_fen_string_char(piece: char) -> Option<u8> {
         'K' => Some(WHITE | KING),
         'P' => Some(WHITE | PAWN),
         _ => None,
+    }
+}
+
+pub fn knight_moves(row: i8, col: i8, color: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    let cords = [
+        (1, 2),
+        (1, -2),
+        (2, 1),
+        (2, -1),
+        (-1, 2),
+        (-1, -2),
+        (-2, -1),
+        (-2, 1),
+    ];
+    for mods in cords.iter() {
+        let _row = (row + mods.0) as usize;
+        let _col = (col + mods.1) as usize;
+        let space = board.board[_row][_col];
+        println!("{}", space);
+        if is_empty(space) || (space & COLOR_MASK) != color {
+            moves.push((_row, _col));
+        }
     }
 }
 
@@ -172,5 +194,36 @@ mod tests {
     #[should_panic]
     fn bad_fen_string_too_many_chars() {
         board_from_fen("rnbqkbnrrrrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    }
+
+    // Knight tests
+
+    #[test]
+    fn knight_moves_empty_board() {
+        let b = board_from_fen("8/8/8/8/3N4/8/8/8 w - - 0 1").unwrap();
+        let mut ret : Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        knight_moves(row, col, WHITE, &b, &mut ret);
+        assert_eq!(ret.len(), 8);
+    }
+
+    #[test]
+    fn knight_moves_corner() {
+        let b = board_from_fen("N7/8/8/8/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret : Vec<(usize, usize)> = vec![];
+        let row = 2;
+        let col = 2;
+        knight_moves(row, col, WHITE, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+    #[test]
+    fn knight_moves_with_other_pieces_with_capture() {
+        let b = board_from_fen("8/8/5n2/3NQ3/2K2P2/8/8/8 w - - 0 1").unwrap();
+        let mut ret : Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 5;
+        knight_moves(row, col, WHITE, &b, &mut ret);
+        assert_eq!(ret.len(), 7);
     }
 }
