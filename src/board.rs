@@ -85,7 +85,7 @@ fn get_piece_character(piece: u8) -> &'static str {
 }
 
 pub struct Board {
-    pub board: [[u8; 10]; 12],
+    pub board: [[u8; 12]; 12],
     pub to_move: u8,
 }
 

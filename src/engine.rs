@@ -45,8 +45,7 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
 }
 
 pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
-
-    // TODO en passant 
+    // TODO en passant
 
     // white pawns move up board
     if is_white(piece) {
@@ -63,12 +62,11 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
         // check a normal push
         if is_empty(board.board[(row - 1) as usize][col as usize]) {
             moves.push(((row - 1) as usize, col as usize));
-            // check double push 
+            // check double push
             if row == 8 && is_empty(board.board[(row - 2) as usize][col as usize]) {
                 moves.push(((row - 2) as usize, col as usize));
             }
         }
-
     } else {
         // check capture
         let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
@@ -83,7 +81,7 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
         // check a normal push
         if is_empty(board.board[(row + 1) as usize][col as usize]) {
             moves.push(((row + 1) as usize, col as usize));
-            // check double push 
+            // check double push
             if row == 3 && is_empty(board.board[(row + 2) as usize][col as usize]) {
                 moves.push(((row + 2) as usize, col as usize));
             }
@@ -108,11 +106,61 @@ pub fn king_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
     }
 }
 
+pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    let mut row_start = row + 1;
+    while is_empty(board.board[row_start as usize][col as usize]) {
+        moves.push((row_start as usize, col as usize));
+        row_start += 1;
+    }
+
+    if !is_outside_board(board.board[row_start as usize][col as usize])
+        && piece & COLOR_MASK != board.board[row_start as usize][col as usize] & COLOR_MASK
+    {
+        moves.push(((row_start + 1) as usize, col as usize));
+    }
+
+    row_start = row - 1;
+    while is_empty(board.board[row_start as usize][col as usize]) {
+        moves.push((row_start as usize, col as usize));
+        row_start -= 1;
+    }
+
+    if !is_outside_board(board.board[row_start as usize][col as usize])
+        && piece & COLOR_MASK != board.board[row_start as usize][col as usize] & COLOR_MASK
+    {
+        moves.push(((row_start - 1) as usize, col as usize));
+    }
+
+    let mut col_start = col + 1;
+    while is_empty(board.board[row as usize][col_start as usize]) {
+        moves.push((row as usize, col_start as usize));
+        col_start += 1;
+    }
+
+    if !is_outside_board(board.board[row as usize][col_start as usize])
+        && piece & COLOR_MASK != board.board[row as usize][col_start as usize] & COLOR_MASK
+    {
+        moves.push((row as usize, (col_start + 1) as usize));
+    }
+
+    col_start = col - 1;
+    while is_empty(board.board[row as usize][col_start as usize]) {
+        moves.push((row as usize, col_start as usize));
+        col_start -= 1;
+    }
+
+    if !is_outside_board(board.board[row as usize][col_start as usize])
+        && piece & COLOR_MASK != board.board[row as usize][col_start as usize] & COLOR_MASK
+    {
+        moves.push((row as usize, (col_start - 1) as usize));
+    }
+}
+
 /*
     Parse the standard fen string notation en.wikipedia.org/wiki/Forsyth–Edwards_Notation
 */
 pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
-    let mut b = [[SENTINEL; 10]; 12];
+    let mut b = [[SENTINEL; 12]; 12];
     let fen_config: Vec<&str> = fen.split(' ').collect();
     if fen_config.len() != 6 {
         return Err("Could not parse fen string: Invalid fen string");
@@ -456,5 +504,56 @@ mod tests {
         let col = 6;
         king_moves(row, col, BLACK | KING, &b, &mut ret);
         assert_eq!(ret.len(), 6);
+    }
+
+    // Piece test - rook
+    #[test]
+    fn rook_center_of_empty_board() {
+        let b = board_from_fen("8/8/8/8/3R4/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        rook_moves(row, col, WHITE | ROOK, &b, &mut ret);
+        assert_eq!(ret.len(), 14);
+    }
+
+    #[test]
+    fn rook_center_of_board() {
+        let b = board_from_fen("8/8/8/3q4/2kRp3/3b4/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        rook_moves(row, col, WHITE | ROOK, &b, &mut ret);
+        assert_eq!(ret.len(), 4);
+    }
+
+    #[test]
+    fn rook_center_of_board_with_white_pieces() {
+        let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        rook_moves(row, col, WHITE | ROOK, &b, &mut ret);
+        assert_eq!(ret.len(), 8);
+    }
+
+    #[test]
+    fn rook_corner() {
+        let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 9;
+        let col = 9;
+        rook_moves(row, col, WHITE | ROOK, &b, &mut ret);
+        assert_eq!(ret.len(), 14);
+    }
+    
+    #[test]
+    fn black_rook_center_of_board_with_white_pieces() {
+        let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        rook_moves(row, col, BLACK | ROOK, &b, &mut ret);
+        assert_eq!(ret.len(), 7);
     }
 }
