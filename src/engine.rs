@@ -1,7 +1,4 @@
-pub use crate::board::{
-    has_moved, is_black, is_empty, is_outside_board, is_white, Board, BISHOP, BLACK, BOARD_END,
-    BOARD_START, COLOR_MASK, EMPTY, KING, KNIGHT, PAWN, QUEEN, ROOK, SENTINEL, WHITE,
-};
+pub use crate::board::*;
 
 fn get_piece_from_fen_string_char(piece: char) -> Option<u8> {
     match piece {
