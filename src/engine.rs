@@ -43,6 +43,9 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
 }
 
 pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+
+    // TODO en passant 
+
     // white pawns move up board
     if is_white(piece) {
         // check capture
@@ -55,17 +58,41 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
             moves.push(((row - 1) as usize, (col + 1) as usize));
         }
 
-        //check a normal push
+        // check a normal push
         if is_empty(board.board[(row - 1) as usize][col as usize]) {
             moves.push(((row - 1) as usize, col as usize));
         }
 
-        //check a double push
-        if row == 8 && is_empty(board.board[(row - 2) as usize][col as usize]) {
+        // check a double push
+        if row == 8
+            && is_empty(board.board[(row - 1) as usize][col as usize])
+            && is_empty(board.board[(row - 2) as usize][col as usize])
+        {
             moves.push(((row - 2) as usize, col as usize));
         }
     } else {
+        // check capture
+        let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
+        let right_cap = board.board[(row + 1) as usize][(col - 1) as usize];
+        if !is_outside_board(left_cap) && is_white(left_cap) {
+            moves.push(((row + 1) as usize, (col + 1) as usize));
+        }
+        if !is_outside_board(right_cap) && is_white(right_cap) {
+            moves.push(((row + 1) as usize, (col - 1) as usize));
+        }
 
+        // check a normal push
+        if is_empty(board.board[(row + 1) as usize][col as usize]) {
+            moves.push(((row + 1) as usize, col as usize));
+        }
+
+        // check a double push
+        if row == 3
+            && is_empty(board.board[(row + 1) as usize][col as usize])
+            && is_empty(board.board[(row + 2) as usize][col as usize])
+        {
+            moves.push(((row + 2) as usize, col as usize));
+        }
     }
 }
 
@@ -253,10 +280,10 @@ mod tests {
         assert_eq!(ret.len(), 7);
     }
 
-    //Pawn tests - white pawn
+    // Pawn tests - white pawn
 
     #[test]
-    fn white_pawn_start() {
+    fn white_pawn_double_push() {
         let b = board_from_fen("8/8/8/8/8/8/P7/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         let row = 8;
@@ -313,5 +340,68 @@ mod tests {
         let col = 3;
         pawn_moves(row, col, WHITE | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn white_pawn_double_push_piece_in_front() {
+        let b = board_from_fen("8/8/8/8/8/b7/P7/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 8;
+        let col = 2;
+        pawn_moves(row, col, WHITE | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 0);
+    }
+
+    // Pawn tests - black pawn
+
+    #[test]
+    fn black_pawn_double_push() {
+        let b = board_from_fen("8/p7/8/8/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 3;
+        let col = 2;
+        pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn black_pawn_has_moved() {
+        let b = board_from_fen("8/8/8/3p4/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 5;
+        pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
+    }
+
+    #[test]
+    fn black_pawn_cant_move_white_piece_block() {
+        let b = board_from_fen("8/3p4/3R4/8/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 3;
+        let col = 5;
+        pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 0);
+    }
+
+    #[test]
+    fn black_pawn_with_two_captures_and_start() {
+        let b = board_from_fen("8/3p4/2R1R3/8/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 3;
+        let col = 5;
+        pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 4);
+    }
+
+    #[test]
+    #[test]
+    fn black_pawn_with_one_capture() {
+        let b = board_from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 3;
+        let col = 5;
+        pawn_moves(row, col, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
     }
 }
