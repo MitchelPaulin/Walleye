@@ -28,16 +28,16 @@ pub const SENTINEL: u8 = 0b11111111;
 pub const BOARD_START: usize = 2;
 pub const BOARD_END: usize = 10;
 
-fn has_moved(square: u8) -> bool {
+pub fn has_moved(square: u8) -> bool {
     square & MOVED_MASK != 0
 }
 
-fn is_white(square: u8) -> bool {
-    square & COLOR_MASK == WHITE
+pub fn is_white(square: u8) -> bool {
+    !is_empty(square) && square & COLOR_MASK == WHITE
 }
 
-fn is_black(square: u8) -> bool {
-    !is_white(square)
+pub fn is_black(square: u8) -> bool {
+    !is_empty(square) && square & COLOR_MASK == BLACK
 }
 
 fn is_pawn(square: u8) -> bool {
@@ -68,7 +68,7 @@ pub fn is_empty(square: u8) -> bool {
     square == EMPTY
 }
 
-fn is_outside_board(square: u8) -> bool {
+pub fn is_outside_board(square: u8) -> bool {
     square == SENTINEL
 }
 
