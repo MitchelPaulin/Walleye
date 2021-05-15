@@ -1,5 +1,15 @@
 use colored::*;
 
+/*
+    Example Piece: 0b11000101
+    1st bit: Color 1 = White, 0 = Black
+    2nd bit: Whether this piece has moved yet, 0=has not moved, 1=has moved
+    3-5 bit: Unused
+    6-8 bit: Piece identifier
+*/
+
+pub const MOVED_MASK: u8 = 0b01000000;
+
 pub const COLOR_MASK: u8 = 0b10000000;
 pub const WHITE: u8 = 0b10000000;
 pub const BLACK: u8 = 0b00000000;
@@ -15,8 +25,12 @@ pub const KING: u8 = 0b00000111;
 pub const EMPTY: u8 = 0;
 pub const SENTINEL: u8 = 0b11111111;
 
-pub const BOARD_START : usize = 2;
-pub const BOARD_END : usize = 10;
+pub const BOARD_START: usize = 2;
+pub const BOARD_END: usize = 10;
+
+fn has_moved(square: u8) -> bool {
+    square & MOVED_MASK != 0
+}
 
 fn is_white(square: u8) -> bool {
     square & COLOR_MASK == WHITE
@@ -59,7 +73,6 @@ fn is_outside_board(square: u8) -> bool {
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
-
     match piece & PIECE_MASK {
         PAWN => "♟︎",
         KNIGHT => "♞",
@@ -67,7 +80,7 @@ fn get_piece_character(piece: u8) -> &'static str {
         ROOK => "♜",
         QUEEN => "♛",
         KING => "♚",
-        _ => " "
+        _ => " ",
     }
 }
 
@@ -142,5 +155,8 @@ mod tests {
         assert!(is_outside_board(SENTINEL));
         assert!(!is_outside_board(EMPTY));
         assert!(!is_outside_board(WHITE | KING));
+
+        assert!(has_moved(WHITE | PAWN | MOVED_MASK));
+        assert!(!has_moved(WHITE | PAWN));
     }
 }
