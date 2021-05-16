@@ -32,13 +32,13 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
     for mods in cords.iter() {
         let _row = (row + mods.0) as usize;
         let _col = (col + mods.1) as usize;
-        let space = board.board[_row][_col];
+        let square = board.board[_row][_col];
 
         if is_outside_board(board.board[_row][_col]) {
             continue;
         }
 
-        if is_empty(space) || space & COLOR_MASK != piece & COLOR_MASK {
+        if is_empty(square) || square & COLOR_MASK != piece & COLOR_MASK {
             moves.push((_row, _col));
         }
     }
@@ -92,67 +92,41 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
 pub fn king_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     for i in -1..2 {
         for j in -1..2 {
-            let r = (row + i) as usize;
-            let c = (col + j) as usize;
+            let _row = (row + i) as usize;
+            let _col = (col + j) as usize;
 
-            if is_outside_board(board.board[r][c]) {
+            if is_outside_board(board.board[_row][_col]) {
                 continue;
             }
 
-            if is_empty(board.board[r][c]) || board.board[r][c] & COLOR_MASK != piece & COLOR_MASK {
-                moves.push((r, c));
+            if is_empty(board.board[_row][_col])
+                || board.board[_row][_col] & COLOR_MASK != piece & COLOR_MASK
+            {
+                moves.push((_row, _col));
             }
         }
     }
 }
 
 pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
-    let mut row_start = row + 1;
-    while is_empty(board.board[row_start as usize][col as usize]) {
-        moves.push((row_start as usize, col as usize));
-        row_start += 1;
-    }
+    let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
-    if !is_outside_board(board.board[row_start as usize][col as usize])
-        && piece & COLOR_MASK != board.board[row_start as usize][col as usize] & COLOR_MASK
-    {
-        moves.push(((row_start + 1) as usize, col as usize));
-    }
+    for m in mods.iter() {
+        let mut multiplier = 1;
+        let mut _row = row + m.0;
+        let mut _col = col + m.1;
+        let mut square = board.board[_row as usize][_col as usize];
+        while is_empty(square) {
+            moves.push((_row as usize, _col as usize));
+            multiplier += 1;
+            _row = row + (m.0 * multiplier);
+            _col = col + (m.1 * multiplier);
+            square = board.board[_row as usize][_col as usize];
+        }
 
-    row_start = row - 1;
-    while is_empty(board.board[row_start as usize][col as usize]) {
-        moves.push((row_start as usize, col as usize));
-        row_start -= 1;
-    }
-
-    if !is_outside_board(board.board[row_start as usize][col as usize])
-        && piece & COLOR_MASK != board.board[row_start as usize][col as usize] & COLOR_MASK
-    {
-        moves.push(((row_start - 1) as usize, col as usize));
-    }
-
-    let mut col_start = col + 1;
-    while is_empty(board.board[row as usize][col_start as usize]) {
-        moves.push((row as usize, col_start as usize));
-        col_start += 1;
-    }
-
-    if !is_outside_board(board.board[row as usize][col_start as usize])
-        && piece & COLOR_MASK != board.board[row as usize][col_start as usize] & COLOR_MASK
-    {
-        moves.push((row as usize, (col_start + 1) as usize));
-    }
-
-    col_start = col - 1;
-    while is_empty(board.board[row as usize][col_start as usize]) {
-        moves.push((row as usize, col_start as usize));
-        col_start -= 1;
-    }
-
-    if !is_outside_board(board.board[row as usize][col_start as usize])
-        && piece & COLOR_MASK != board.board[row as usize][col_start as usize] & COLOR_MASK
-    {
-        moves.push((row as usize, (col_start - 1) as usize));
+        if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
+            moves.push((_row as usize, _col as usize));
+        }
     }
 }
 
