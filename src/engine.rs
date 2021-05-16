@@ -156,6 +156,29 @@ pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
     }
 }
 
+pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    let mods = [1, -1];
+    for i in mods.iter() {
+        for j in mods.iter() {
+            let mut multiplier = 1;
+            let mut _row = row + i;
+            let mut _col = col + j;
+            let mut square = board.board[_row as usize][_col as usize];
+            while is_empty(square) {
+                moves.push((_row as usize, _col as usize));
+                multiplier += 1;
+                _row = row + (i * multiplier);
+                _col = col + (j * multiplier);
+                square = board.board[_row as usize][_col as usize];
+            }
+
+            if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
+                moves.push((_row as usize, _col as usize));
+            }
+        }
+    }
+}
+
 /*
     Parse the standard fen string notation en.wikipedia.org/wiki/Forsyth–Edwards_Notation
 */
@@ -546,7 +569,6 @@ mod tests {
         rook_moves(row, col, WHITE | ROOK, &b, &mut ret);
         assert_eq!(ret.len(), 14);
     }
-    
     #[test]
     fn black_rook_center_of_board_with_white_pieces() {
         let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
@@ -555,5 +577,15 @@ mod tests {
         let col = 5;
         rook_moves(row, col, BLACK | ROOK, &b, &mut ret);
         assert_eq!(ret.len(), 7);
+    }
+
+    #[test]
+    fn black_bishop_center_empty_board() {
+        let b = board_from_fen("8/8/8/3b4/8/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 5;
+        bishop_moves(row, col, BLACK | BISHOP, &b, &mut ret);
+        assert_eq!(ret.len(), 13);
     }
 }
