@@ -135,6 +135,11 @@ pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
     }
 }
 
+pub fn queen_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    rook_moves(row, col, piece, board, moves);
+    bishop_moves(row, col, piece, board, moves);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,6 +391,7 @@ mod tests {
         assert_eq!(ret.len(), 7);
     }
 
+    // Piece test - bishop
     #[test]
     fn black_bishop_center_empty_board() {
         let b = board_from_fen("8/8/8/3b4/8/8/8/8 w - - 0 1").unwrap();
@@ -424,5 +430,37 @@ mod tests {
         let col = 7;
         bishop_moves(row, col, WHITE | BISHOP, &b, &mut ret);
         assert_eq!(ret.len(), 6);
+    }
+
+    // Piece test - queen
+
+    #[test]
+    fn white_queen_empty_board() {
+        let b = board_from_fen("8/8/8/8/3Q4/8/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        queen_moves(row, col, WHITE | QUEEN, &b, &mut ret);
+        assert_eq!(ret.len(), 27);
+    }
+
+    #[test]
+    fn white_queen_cant_move() {
+        let b = board_from_fen("8/8/8/2NBR3/2PQR3/2RRR3/8/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        queen_moves(row, col, WHITE | QUEEN, &b, &mut ret);
+        assert_eq!(ret.len(), 0);
+    }
+
+    #[test]
+    fn white_queen_whit_other_piece() {
+        let b = board_from_fen("8/6r1/8/8/3Q4/5N2/8/6P1 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 5;
+        queen_moves(row, col, WHITE | QUEEN, &b, &mut ret);
+        assert_eq!(ret.len(), 25);
     }
 }
