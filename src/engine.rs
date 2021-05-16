@@ -562,4 +562,34 @@ mod tests {
         bishop_moves(row, col, BLACK | BISHOP, &b, &mut ret);
         assert_eq!(ret.len(), 13);
     }
+
+    #[test]
+    fn black_bishop_center_with_captures() {
+        let b = board_from_fen("6P1/8/8/3b4/8/1R6/8/3Q4 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 5;
+        bishop_moves(row, col, BLACK | BISHOP, &b, &mut ret);
+        assert_eq!(ret.len(), 12);
+    }
+
+    #[test]
+    fn black_bishop_center_with_captures_and_black_pieces() {
+        let b = board_from_fen("6P1/8/2Q5/3b4/2k1n3/1R6/8/b2Q4 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 5;
+        let col = 5;
+        bishop_moves(row, col, BLACK | BISHOP, &b, &mut ret);
+        assert_eq!(ret.len(), 4);
+    }
+
+    #[test]
+    fn white_bishop_center_with_captures_and_white_pieces() {
+        let b = board_from_fen("8/8/8/4r3/5B2/8/3Q4/8 w - - 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        let row = 6;
+        let col = 7;
+        bishop_moves(row, col, WHITE | BISHOP, &b, &mut ret);
+        assert_eq!(ret.len(), 6);
+    }
 }
