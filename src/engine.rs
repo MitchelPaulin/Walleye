@@ -169,8 +169,15 @@ pub fn get_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(us
         KNIGHT => knight_moves(row, col, piece, board, moves),
         KING => king_moves(row, col, piece, board, moves),
         QUEEN => queen_moves(row, col, piece, board, moves),
-        _ => panic!("Unrecognized piece")
+        _ => panic!("Unrecognized piece"),
     }
+}
+
+/*
+    Determine if the current position is check
+*/
+pub fn is_check(board: &Board, color: u8) -> bool {
+    return true;
 }
 
 #[cfg(test)]

@@ -87,6 +87,8 @@ fn get_piece_character(piece: u8) -> &'static str {
 pub struct Board {
     pub board: [[u8; 12]; 12],
     pub to_move: u8,
+    pub white_king_location: (usize, usize),
+    pub black_king_location: (usize, usize),
 }
 
 impl Board {
@@ -115,7 +117,7 @@ impl Board {
 }
 
 /*
-    Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state 
+    Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state
 */
 pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
     let mut board = [[SENTINEL; 12]; 12];
@@ -129,6 +131,9 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
     let en_passant = fen_config[3];
     let halfmove_clock = fen_config[4];
     let fullmove_clock = fen_config[5];
+
+    let mut white_king_location = (0, 0);
+    let mut black_king_location = (0, 0);
 
     let fen_rows: Vec<&str> = fen_config[0].split('/').collect();
 
@@ -155,6 +160,14 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
                     Some(piece) => board[row][col] = piece,
                     None => return Err("Could not parse fen string: Invalid character found"),
                 }
+
+                if is_king(board[row][col]) {
+                    if is_white(board[row][col]) {
+                        white_king_location = (row, col);
+                    } else {
+                        black_king_location = (row, col);
+                    }
+                }
                 col += 1;
             }
         }
@@ -164,9 +177,12 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
         row += 1;
         col = BOARD_START;
     }
+
     Ok(Board {
         board: board,
         to_move: to_move,
+        white_king_location: white_king_location,
+        black_king_location: black_king_location,
     })
 }
 
@@ -280,6 +296,20 @@ mod tests {
         for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], WHITE | PAWN);
         }
+    }
+
+    #[test]
+    fn correct_king_location() {
+        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert_eq!(b.black_king_location, (2, 6));
+        assert_eq!(b.white_king_location, (9, 6));
+    }
+
+    #[test]
+    fn correct_king_location_two() {
+        let b = board_from_fen("6rk/1b4np/5pp1/1p6/8/1P3NP1/1B3P1P/5RK1 w KQkq - 0 1").unwrap();
+        assert_eq!(b.black_king_location, (2, 9));
+        assert_eq!(b.white_king_location, (9, 8));
     }
 
     #[test]
