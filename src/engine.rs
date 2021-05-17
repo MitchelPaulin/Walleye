@@ -1,5 +1,8 @@
 pub use crate::board::*;
 
+/*
+    Generate pseudo-legal moves for a knight
+*/
 pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     let cords = [
         (1, 2),
@@ -26,6 +29,9 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
     }
 }
 
+/*
+    Generate pseudo-legal moves for a pawn
+*/
 pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     // TODO en passant
 
@@ -71,6 +77,9 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
     }
 }
 
+/*
+    Generate pseudo-legal moves for a king
+*/
 pub fn king_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     for i in -1..2 {
         for j in -1..2 {
@@ -90,6 +99,9 @@ pub fn king_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
     }
 }
 
+/*
+    Generate pseudo-legal moves for a rook
+*/
 pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
@@ -101,8 +113,8 @@ pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
         while is_empty(square) {
             moves.push((_row as usize, _col as usize));
             multiplier += 1;
-            _row = row + (m.0 * multiplier);
-            _col = col + (m.1 * multiplier);
+            _row = row + m.0 * multiplier;
+            _col = col + m.1 * multiplier;
             square = board.board[_row as usize][_col as usize];
         }
 
@@ -112,6 +124,9 @@ pub fn rook_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(u
     }
 }
 
+/*
+    Generate pseudo-legal moves for a bishop
+*/
 pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     let mods = [1, -1];
     for i in mods.iter() {
@@ -123,8 +138,8 @@ pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
             while is_empty(square) {
                 moves.push((_row as usize, _col as usize));
                 multiplier += 1;
-                _row = row + (i * multiplier);
-                _col = col + (j * multiplier);
+                _row = row + i * multiplier;
+                _col = col + j * multiplier;
                 square = board.board[_row as usize][_col as usize];
             }
 
@@ -135,9 +150,27 @@ pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<
     }
 }
 
+/*
+    Generate pseudo-legal moves for a queen
+*/
 pub fn queen_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
     rook_moves(row, col, piece, board, moves);
     bishop_moves(row, col, piece, board, moves);
+}
+
+/*
+    Generate pseudo-legal moves for a piece
+*/
+pub fn get_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
+    match piece & PIECE_MASK {
+        PAWN => pawn_moves(row, col, piece, board, moves),
+        ROOK => rook_moves(row, col, piece, board, moves),
+        BISHOP => bishop_moves(row, col, piece, board, moves),
+        KNIGHT => knight_moves(row, col, piece, board, moves),
+        KING => king_moves(row, col, piece, board, moves),
+        QUEEN => queen_moves(row, col, piece, board, moves),
+        _ => panic!("Unrecognized piece")
+    }
 }
 
 #[cfg(test)]
@@ -462,5 +495,20 @@ mod tests {
         let col = 5;
         queen_moves(row, col, WHITE | QUEEN, &b, &mut ret);
         assert_eq!(ret.len(), 25);
+    }
+
+    // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
+    #[test]
+    fn perft_test_depth_one() {
+        let mut moves: Vec<(usize, usize)> = vec![];
+        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
+                if is_white(b.board[i][j]) {
+                    get_moves(i as i8, j as i8, b.board[i][j], &b, &mut moves);
+                }
+            }
+        }
+        assert_eq!(moves.len(), 20);
     }
 }

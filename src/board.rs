@@ -14,7 +14,7 @@ pub const COLOR_MASK: u8 = 0b10000000;
 pub const WHITE: u8 = 0b10000000;
 pub const BLACK: u8 = 0b00000000;
 
-const PIECE_MASK: u8 = 0b00000111;
+pub const PIECE_MASK: u8 = 0b00000111;
 pub const PAWN: u8 = 0b00000001;
 pub const KNIGHT: u8 = 0b00000010;
 pub const BISHOP: u8 = 0b00000011;
@@ -40,27 +40,27 @@ pub fn is_black(square: u8) -> bool {
     !is_empty(square) && square & COLOR_MASK == BLACK
 }
 
-fn is_pawn(square: u8) -> bool {
+pub fn is_pawn(square: u8) -> bool {
     square & PIECE_MASK == PAWN
 }
 
-fn is_knight(square: u8) -> bool {
+pub fn is_knight(square: u8) -> bool {
     square & PIECE_MASK == KNIGHT
 }
 
-fn is_bishop(square: u8) -> bool {
+pub fn is_bishop(square: u8) -> bool {
     square & PIECE_MASK == BISHOP
 }
 
-fn is_rook(square: u8) -> bool {
+pub fn is_rook(square: u8) -> bool {
     square & PIECE_MASK == ROOK
 }
 
-fn is_queen(square: u8) -> bool {
+pub fn is_queen(square: u8) -> bool {
     square & PIECE_MASK == QUEEN
 }
 
-fn is_king(square: u8) -> bool {
+pub fn is_king(square: u8) -> bool {
     square & PIECE_MASK == KING
 }
 
@@ -115,10 +115,10 @@ impl Board {
 }
 
 /*
-    Parse the standard fen string notation en.wikipedia.org/wiki/Forsyth–Edwards_Notation
+    Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state 
 */
 pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
-    let mut b = [[SENTINEL; 12]; 12];
+    let mut board = [[SENTINEL; 12]; 12];
     let fen_config: Vec<&str> = fen.split(' ').collect();
     if fen_config.len() != 6 {
         return Err("Could not parse fen string: Invalid fen string");
@@ -146,13 +146,13 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
                     return Err("Could not parse fen string: Index out of bounds");
                 }
                 while square_skip_count > 0 {
-                    b[row][col] = EMPTY;
+                    board[row][col] = EMPTY;
                     col += 1;
                     square_skip_count -= 1;
                 }
             } else {
                 match get_piece_from_fen_string_char(square) {
-                    Some(piece) => b[row][col] = piece,
+                    Some(piece) => board[row][col] = piece,
                     None => return Err("Could not parse fen string: Invalid character found"),
                 }
                 col += 1;
@@ -165,7 +165,7 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
         col = BOARD_START;
     }
     Ok(Board {
-        board: b,
+        board: board,
         to_move: to_move,
     })
 }
