@@ -3,12 +3,9 @@ use colored::*;
 /*
     Example Piece: 0b11000101
     1st bit: Color 1 = White, 0 = Black
-    2nd bit: Whether this piece has moved yet, 0=has not moved, 1=has moved
-    3-5 bit: Unused
+    2-5 bit: Unused
     6-8 bit: Piece identifier
 */
-
-pub const MOVED_MASK: u8 = 0b01000000;
 
 pub const COLOR_MASK: u8 = 0b10000000;
 pub const WHITE: u8 = 0b10000000;
@@ -27,10 +24,6 @@ pub const SENTINEL: u8 = 0b11111111;
 
 pub const BOARD_START: usize = 2;
 pub const BOARD_END: usize = 10;
-
-pub fn has_moved(square: u8) -> bool {
-    square & MOVED_MASK != 0
-}
 
 pub fn is_white(square: u8) -> bool {
     !is_empty(square) && square & COLOR_MASK == WHITE
@@ -84,14 +77,18 @@ fn get_piece_character(piece: u8) -> &'static str {
     }
 }
 
-pub struct Board {
+pub struct BoardState {
     pub board: [[u8; 12]; 12],
     pub to_move: u8,
     pub white_king_location: (usize, usize),
     pub black_king_location: (usize, usize),
+    pub white_king_side_castle: bool,
+    pub white_queen_side_castle: bool,
+    pub black_king_side_castle: bool,
+    pub black_queen_side_castle: bool
 }
 
-impl Board {
+impl BoardState {
     pub fn print_board(&self) {
         println!("a b c d e f g h");
         for i in BOARD_START..BOARD_END {
@@ -119,7 +116,7 @@ impl Board {
 /*
     Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state
 */
-pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
+pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     let mut board = [[SENTINEL; 12]; 12];
     let fen_config: Vec<&str> = fen.split(' ').collect();
     if fen_config.len() != 6 {
@@ -178,11 +175,15 @@ pub fn board_from_fen(fen: &str) -> Result<Board, &str> {
         col = BOARD_START;
     }
 
-    Ok(Board {
+    Ok(BoardState {
         board: board,
         to_move: to_move,
         white_king_location: white_king_location,
         black_king_location: black_king_location,
+        white_king_side_castle: castling_privileges.find('K') != None,
+        white_queen_side_castle: castling_privileges.find('Q') != None,
+        black_king_side_castle: castling_privileges.find('k') != None,
+        black_queen_side_castle: castling_privileges.find('q') != None
     })
 }
 
@@ -245,9 +246,6 @@ mod tests {
         assert!(is_outside_board(SENTINEL));
         assert!(!is_outside_board(EMPTY));
         assert!(!is_outside_board(WHITE | KING));
-
-        assert!(has_moved(WHITE | PAWN | MOVED_MASK));
-        assert!(!has_moved(WHITE | PAWN));
     }
 
     // fen string tests
@@ -319,6 +317,27 @@ mod tests {
         assert_eq!(b.to_move, WHITE);
         b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
         assert_eq!(b.to_move, BLACK);
+    }
+
+    #[test]
+    fn correct_castling_privileges() {
+        let mut b = board_from_fen("6rk/1b4np/5pp1/1p6/8/1P3NP1/1B3P1P/5RK1 w KQkq - 0 1").unwrap();
+        assert!(b.black_king_side_castle);
+        assert!(b.black_queen_side_castle);
+        assert!(b.white_king_side_castle);
+        assert!(b.white_queen_side_castle);
+
+        b = board_from_fen("6rk/1b4np/5pp1/1p6/8/1P3NP1/1B3P1P/5RK1 w - - 0 1").unwrap();
+        assert!(!b.black_king_side_castle);
+        assert!(!b.black_queen_side_castle);
+        assert!(!b.white_king_side_castle);
+        assert!(!b.white_queen_side_castle);
+
+        b = board_from_fen("6rk/1b4np/5pp1/1p6/8/1P3NP1/1B3P1P/5RK1 w Kq - 0 1").unwrap();
+        assert!(!b.black_king_side_castle);
+        assert!(b.black_queen_side_castle);
+        assert!(b.white_king_side_castle);
+        assert!(!b.white_queen_side_castle);
     }
 
     #[test]
