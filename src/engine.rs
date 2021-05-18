@@ -211,6 +211,26 @@ pub fn is_check(board: &Board, color: u8) -> bool {
         return true;
     }
 
+    // Check from rook or queen
+    let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+
+    for m in mods.iter() {
+        let mut multiplier = 1;
+        let mut _row = king_location.0 as i8 + m.0;
+        let mut _col = king_location.1 as i8 + m.1;
+        let mut square = board.board[_row as usize][_col as usize];
+        while is_empty(square) {
+            multiplier += 1;
+            _row = king_location.0 as i8 + m.0 * multiplier;
+            _col = king_location.1 as i8 + m.1 * multiplier;
+            square = board.board[_row as usize][_col as usize];
+        }
+
+        if square == attacking_color | ROOK || square == attacking_color | QUEEN {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -268,6 +288,37 @@ mod tests {
         assert!(!is_check(&b, WHITE));
 
         b = board_from_fen("8/8/8/8/8/6K1/5ppp/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+    }
+
+    // Rook checks
+    #[test]
+    fn rook_checks() {
+        let mut b = board_from_fen("8/8/8/R3k3/8/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/R1r1k3/8/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/R1r1k3/8/8/8/4R3 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("4R3/8/8/R1r5/8/8/8/4k3 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/R1r5/8/8/7R/4k3 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("4R3/8/8/8/8/3r4/R3K2R/2r1Rr2 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("4R3/8/8/8/4K3/3r4/R6R/2r1rr2 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("4R3/8/8/8/4K2r/3r4/R6R/2r2r2 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("4r3/8/8/4B3/r2QKP1r/3rR3/R6R/2r1rr2 w - - 0 1").unwrap();
         assert!(!is_check(&b, WHITE));
     }
 
