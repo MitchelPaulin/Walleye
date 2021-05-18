@@ -1,20 +1,21 @@
 pub use crate::board::*;
 
+const KNIGHT_CORDS: [(i8, i8); 8] = [
+    (1, 2),
+    (1, -2),
+    (2, 1),
+    (2, -1),
+    (-1, 2),
+    (-1, -2),
+    (-2, -1),
+    (-2, 1),
+];
+
 /*
     Generate pseudo-legal moves for a knight
 */
 pub fn knight_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(usize, usize)>) {
-    let cords = [
-        (1, 2),
-        (1, -2),
-        (2, 1),
-        (2, -1),
-        (-1, 2),
-        (-1, -2),
-        (-2, -1),
-        (-2, 1),
-    ];
-    for mods in cords.iter() {
+    for mods in KNIGHT_CORDS.iter() {
         let _row = (row + mods.0) as usize;
         let _col = (col + mods.1) as usize;
         let square = board.board[_row][_col];
@@ -177,12 +178,98 @@ pub fn get_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(us
     Determine if the current position is check
 */
 pub fn is_check(board: &Board, color: u8) -> bool {
-    return true;
+    let king_location;
+    let attacking_color = !color & COLOR_MASK;
+    if color == WHITE {
+        king_location = board.white_king_location;
+    } else {
+        king_location = board.black_king_location;
+    }
+
+    // Check from knight
+
+    for mods in KNIGHT_CORDS.iter() {
+        let _row = (king_location.0 as i8 + mods.0) as usize;
+        let _col = (king_location.1 as i8 + mods.1) as usize;
+        let square = board.board[_row][_col];
+
+        if square == KNIGHT | attacking_color {
+            return true;
+        }
+    }
+    // Check from pawn
+    let _row;
+    if color == WHITE {
+        _row = (king_location.0 as i8 - 1) as usize;
+    } else {
+        _row = (king_location.0 as i8 + 1) as usize;
+    }
+
+    if board.board[_row][(king_location.1 as i8 - 1) as usize] == attacking_color | PAWN
+        || board.board[_row][(king_location.1 as i8 + 1) as usize] == attacking_color | PAWN
+    {
+        return true;
+    }
+
+    return false;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn check_sanity_test() {
+        let b = board_from_fen("8/8/8/8/3K4/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+    }
+
+    // Knight checks
+    #[test]
+    fn knight_checks() {
+        let mut b = board_from_fen("8/8/4n3/8/3K4/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/8/8/1RK5/nRB5 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/3k4/5N2/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/8/3k4/5n2/8/7N w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/2N5/8/3k4/5n2/8/7N w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+    }
+
+    // Pawn checks
+    #[test]
+    fn pawn_checks() {
+        let mut b = board_from_fen("8/8/8/4k3/3P4/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/4k3/5P2/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/4k3/4P3/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/3PPP2/4k3/8/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/8/8/5p2/6K1/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/8/7p/6K1/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/8/6p1/6K1/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/8/6K1/5ppp/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+    }
 
     // Knight tests
 
