@@ -1,7 +1,7 @@
 use colored::*;
 
 /*
-    Example Piece: 0b11000101
+    Example Piece: 0b10000101
     1st bit: Color 1 = White, 0 = Black
     2-5 bit: Unused
     6-8 bit: Piece identifier
@@ -85,7 +85,7 @@ pub struct BoardState {
     pub white_king_side_castle: bool,
     pub white_queen_side_castle: bool,
     pub black_king_side_castle: bool,
-    pub black_queen_side_castle: bool
+    pub black_queen_side_castle: bool,
 }
 
 impl BoardState {
@@ -183,7 +183,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         white_king_side_castle: castling_privileges.find('K') != None,
         white_queen_side_castle: castling_privileges.find('Q') != None,
         black_king_side_castle: castling_privileges.find('k') != None,
-        black_queen_side_castle: castling_privileges.find('q') != None
+        black_queen_side_castle: castling_privileges.find('q') != None,
     })
 }
 

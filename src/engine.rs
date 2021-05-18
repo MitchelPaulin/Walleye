@@ -14,7 +14,13 @@ const KNIGHT_CORDS: [(i8, i8); 8] = [
 /*
     Generate pseudo-legal moves for a knight
 */
-pub fn knight_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn knight_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     for mods in KNIGHT_CORDS.iter() {
         let _row = (row + mods.0) as usize;
         let _col = (col + mods.1) as usize;
@@ -33,7 +39,13 @@ pub fn knight_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut
 /*
     Generate pseudo-legal moves for a pawn
 */
-pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn pawn_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     // TODO en passant
 
     // white pawns move up board
@@ -81,7 +93,13 @@ pub fn pawn_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut V
 /*
     Generate pseudo-legal moves for a king
 */
-pub fn king_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn king_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     for i in -1..2 {
         for j in -1..2 {
             let _row = (row + i) as usize;
@@ -103,7 +121,13 @@ pub fn king_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut V
 /*
     Generate pseudo-legal moves for a rook
 */
-pub fn rook_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn rook_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
     for m in mods.iter() {
@@ -128,7 +152,13 @@ pub fn rook_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut V
 /*
     Generate pseudo-legal moves for a bishop
 */
-pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn bishop_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     let mods = [1, -1];
     for i in mods.iter() {
         for j in mods.iter() {
@@ -154,7 +184,13 @@ pub fn bishop_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut
 /*
     Generate pseudo-legal moves for a queen
 */
-pub fn queen_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn queen_moves(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
     rook_moves(row, col, piece, board, moves);
     bishop_moves(row, col, piece, board, moves);
 }
