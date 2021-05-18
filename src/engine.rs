@@ -179,11 +179,13 @@ pub fn get_moves(row: i8, col: i8, piece: u8, board: &Board, moves: &mut Vec<(us
 */
 pub fn is_check(board: &Board, color: u8) -> bool {
     let king_location;
-    let attacking_color = !color & COLOR_MASK;
+    let attacking_color;
     if color == WHITE {
         king_location = board.white_king_location;
+        attacking_color = BLACK;
     } else {
         king_location = board.black_king_location;
+        attacking_color = WHITE;
     }
 
     // Check from knight
