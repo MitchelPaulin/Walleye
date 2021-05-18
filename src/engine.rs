@@ -213,7 +213,6 @@ pub fn is_check(board: &Board, color: u8) -> bool {
 
     // Check from rook or queen
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-
     for m in mods.iter() {
         let mut multiplier = 1;
         let mut _row = king_location.0 as i8 + m.0;
@@ -231,6 +230,27 @@ pub fn is_check(board: &Board, color: u8) -> bool {
         }
     }
 
+    // Check from bishop or queen
+    let mods = [1, -1];
+    for i in mods.iter() {
+        for j in mods.iter() {
+            let mut multiplier = 1;
+            let mut _row = king_location.0 as i8 + i;
+            let mut _col = king_location.1 as i8 + j;
+            let mut square = board.board[_row as usize][_col as usize];
+            while is_empty(square) {
+                multiplier += 1;
+                _row = king_location.0 as i8 + i * multiplier;
+                _col = king_location.1 as i8 + j * multiplier;
+                square = board.board[_row as usize][_col as usize];
+            }
+
+            if square == attacking_color | BISHOP || square == attacking_color | QUEEN {
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -244,7 +264,6 @@ mod tests {
         assert!(!is_check(&b, WHITE));
     }
 
-    // Knight checks
     #[test]
     fn knight_checks() {
         let mut b = board_from_fen("8/8/4n3/8/3K4/8/8/8 w - - 0 1").unwrap();
@@ -263,7 +282,6 @@ mod tests {
         assert!(is_check(&b, BLACK));
     }
 
-    // Pawn checks
     #[test]
     fn pawn_checks() {
         let mut b = board_from_fen("8/8/8/4k3/3P4/8/8/8 w - - 0 1").unwrap();
@@ -291,7 +309,6 @@ mod tests {
         assert!(!is_check(&b, WHITE));
     }
 
-    // Rook checks
     #[test]
     fn rook_checks() {
         let mut b = board_from_fen("8/8/8/R3k3/8/8/8/8 w - - 0 1").unwrap();
@@ -320,6 +337,57 @@ mod tests {
 
         b = board_from_fen("4r3/8/8/4B3/r2QKP1r/3rR3/R6R/2r1rr2 w - - 0 1").unwrap();
         assert!(!is_check(&b, WHITE));
+    }
+
+    #[test]
+    fn bishop_checks() {
+        let mut b = board_from_fen("8/8/8/1B6/8/8/8/5k2 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/2B1B3/1B3B2/1B1k1B2/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/8/5k2/8/8/2B5 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/8/5k2/4n3/8/2B5 w - - 0 1").unwrap();
+        assert!(!is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/8/8/3K4/8/8/6b1 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/3K4/4r3/8/6b1 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/3K4/4r3/8/b5b1 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/8/8/3K4/2P1r3/8/b5b1 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+    }
+
+    #[test]
+    fn queen_checks() {
+        let mut b = board_from_fen("8/8/8/8/3k1Q2/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/2k5/8/8/8/6Q1/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, BLACK));
+
+        b = board_from_fen("8/8/2K5/8/3q4/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("8/8/1K6/2Q5/3q4/8/8/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("8/5Q2/1K6/8/3q4/8/8/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
+
+        b = board_from_fen("8/5Q2/1K6/1P6/8/8/1q6/8 w - - 0 1").unwrap();
+        assert!(!is_check(&b, WHITE));
+
+        b = board_from_fen("8/2P2Q2/1K6/8/8/8/1q6/8 w - - 0 1").unwrap();
+        assert!(is_check(&b, WHITE));
     }
 
     // Knight tests
