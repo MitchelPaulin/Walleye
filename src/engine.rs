@@ -11,6 +11,7 @@ const KNIGHT_CORDS: [(i8, i8); 8] = [
     (-2, 1),
 ];
 
+#[derive(PartialEq, Eq)]
 pub enum CastlingType {
     WHITE_KING_SIDE,
     WHITE_QUEEN_SIDE,
@@ -218,23 +219,31 @@ pub fn get_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Ve
 }
 
 /*
-    Determine if the current position is check
+    Determine if a color is currently in check
 */
 pub fn is_check(board: &BoardState, color: u8) -> bool {
-    let king_location;
+    if color == WHITE {
+        is_check_cords(board, color, board.white_king_location)
+    } else {
+        is_check_cords(board, color, board.black_king_location)
+    }
+}
+
+/*
+    Determine if the given position is check
+*/
+fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -> bool {
     let attacking_color;
     if color == WHITE {
-        king_location = board.white_king_location;
         attacking_color = BLACK;
     } else {
-        king_location = board.black_king_location;
         attacking_color = WHITE;
     }
 
     // Check from knight
     for mods in KNIGHT_CORDS.iter() {
-        let _row = (king_location.0 as i8 + mods.0) as usize;
-        let _col = (king_location.1 as i8 + mods.1) as usize;
+        let _row = (square_cords.0 as i8 + mods.0) as usize;
+        let _col = (square_cords.1 as i8 + mods.1) as usize;
         let square = board.board[_row][_col];
 
         if square == KNIGHT | attacking_color {
@@ -245,13 +254,13 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     // Check from pawn
     let _row;
     if color == WHITE {
-        _row = (king_location.0 as i8 - 1) as usize;
+        _row = (square_cords.0 as i8 - 1) as usize;
     } else {
-        _row = (king_location.0 as i8 + 1) as usize;
+        _row = (square_cords.0 as i8 + 1) as usize;
     }
 
-    if board.board[_row][(king_location.1 as i8 - 1) as usize] == attacking_color | PAWN
-        || board.board[_row][(king_location.1 as i8 + 1) as usize] == attacking_color | PAWN
+    if board.board[_row][(square_cords.1 as i8 - 1) as usize] == attacking_color | PAWN
+        || board.board[_row][(square_cords.1 as i8 + 1) as usize] == attacking_color | PAWN
     {
         return true;
     }
@@ -260,13 +269,13 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
     for m in mods.iter() {
         let mut multiplier = 1;
-        let mut _row = king_location.0 as i8 + m.0;
-        let mut _col = king_location.1 as i8 + m.1;
+        let mut _row = square_cords.0 as i8 + m.0;
+        let mut _col = square_cords.1 as i8 + m.1;
         let mut square = board.board[_row as usize][_col as usize];
         while is_empty(square) {
             multiplier += 1;
-            _row = king_location.0 as i8 + m.0 * multiplier;
-            _col = king_location.1 as i8 + m.1 * multiplier;
+            _row = square_cords.0 as i8 + m.0 * multiplier;
+            _col = square_cords.1 as i8 + m.1 * multiplier;
             square = board.board[_row as usize][_col as usize];
         }
 
@@ -280,13 +289,13 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     for i in mods.iter() {
         for j in mods.iter() {
             let mut multiplier = 1;
-            let mut _row = king_location.0 as i8 + i;
-            let mut _col = king_location.1 as i8 + j;
+            let mut _row = square_cords.0 as i8 + i;
+            let mut _col = square_cords.1 as i8 + j;
             let mut square = board.board[_row as usize][_col as usize];
             while is_empty(square) {
                 multiplier += 1;
-                _row = king_location.0 as i8 + i * multiplier;
-                _col = king_location.1 as i8 + j * multiplier;
+                _row = square_cords.0 as i8 + i * multiplier;
+                _col = square_cords.1 as i8 + j * multiplier;
                 square = board.board[_row as usize][_col as usize];
             }
 
@@ -302,16 +311,111 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
 /*
     Determine if castling is a legal move
 
-    1. The castling must be kingside or queenside.
+    Rules
+    1. The castling must be kingside or queen side.
     2. Neither the king nor the chosen rook has previously moved.
     3. There are no pieces between the king and the chosen rook.
     4. The king is not currently in check.
     5. The king does not pass through a square that is attacked by an enemy piece.
     6. The king does not end up in check. (True of any legal move.)
 
+    This method will check all but rule 2
+
+    This method will check the board state to determine if is should go ahead with the castling check
+    If the associated castling privilege variable is set to true, the following will be assumed by this function
+    1. The king and associated rook have not moved yet this game
+    2. The king and associated rook are in the correct castling positions
+
+    Thus its the responsibility of other functions to update the castling privilege variables when the king or associated rook moves (including castling)
+
 */
 pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
-    return true;
+    if castling_type == CastlingType::WHITE_KING_SIDE {
+        if !board.white_king_side_castle {
+            return false;
+        }
+        // check that squares required for castling are empty
+        if !is_empty(board.board[9][7]) || !is_empty(board.board[9][8]) {
+            return false;
+        }
+        // check that the king currently isn't in check
+        if is_check(board, WHITE) {
+            return false;
+        }
+        //check that the square required for castling are not threatened
+        if is_check_cords(board, WHITE, (9, 7)) || is_check_cords(board, WHITE, (9, 8)) {
+            return false;
+        }
+        return true;
+    }
+
+    if castling_type == CastlingType::WHITE_QUEEN_SIDE {
+        if !board.white_queen_side_castle {
+            return false;
+        }
+        // check that squares required for castling are empty
+        if !is_empty(board.board[9][3])
+            || !is_empty(board.board[9][4])
+            || !is_empty(board.board[9][5])
+        {
+            return false;
+        }
+        // check that the king currently isn't in check
+        if is_check(board, WHITE) {
+            return false;
+        }
+        //check that the square required for castling are not threatened
+        if is_check_cords(board, WHITE, (9, 5)) || is_check_cords(board, WHITE, (9, 4)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if castling_type == CastlingType::BLACK_KING_SIDE {
+        if !board.black_king_side_castle {
+            return false;
+        }
+        // check that squares required for castling are empty
+        if !is_empty(board.board[2][7]) || !is_empty(board.board[2][8]) {
+            return false;
+        }
+        // check that the king currently isn't in check
+        if is_check(board, BLACK) {
+            return false;
+        }
+        //check that the square required for castling are not threatened
+        if is_check_cords(board, BLACK, (2, 7)) || is_check_cords(board, BLACK, (2, 8)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if castling_type == CastlingType::BLACK_QUEEN_SIDE {
+        if !board.black_king_side_castle {
+            return false;
+        }
+        // check that squares required for castling are empty
+        if !is_empty(board.board[2][3])
+            || !is_empty(board.board[2][4])
+            || !is_empty(board.board[2][5])
+        {
+            return false;
+        }
+        // check that the king currently isn't in check
+        if is_check(board, BLACK) {
+            return false;
+        }
+        //check that the square required for castling are not threatened
+        if is_check_cords(board, BLACK, (2, 4)) || is_check_cords(board, BLACK, (2, 5)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    panic!("Shouldn't be here");
 }
 
 #[cfg(test)]
@@ -706,6 +810,115 @@ mod tests {
         let mut ret: Vec<(usize, usize)> = vec![];
         queen_moves(6, 5, WHITE | QUEEN, &b, &mut ret);
         assert_eq!(ret.len(), 25);
+    }
+
+    // Castling tests
+    #[test]
+    fn white_king_side_castle() {
+        let mut b = board_from_fen("8/8/8/8/8/8/8/4K2R w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::WHITE_KING_SIDE));
+
+        b = board_from_fen("8/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::WHITE_KING_SIDE));
+
+        // Can't castle out of check
+        b = board_from_fen("4r3/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+
+        // Can't castle through check
+        b = board_from_fen("8/8/8/8/8/6Pb/5P1P/4K2R w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+
+        // Can't castle with pieces in way
+        b = board_from_fen("8/8/8/8/8/6PN/5P1P/4KP1R w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+
+        // Can't castle with pieces in way 2
+        b = board_from_fen("8/8/8/8/8/6PN/5P1P/4K1PR w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+    }
+
+    #[test]
+    fn white_queen_side_castle() {
+        let mut b = board_from_fen("8/8/8/8/8/8/8/R3K3 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        // Can't castle out of check
+        b = board_from_fen("8/8/8/8/8/2P2n2/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        // Can't castle through check
+        b = board_from_fen("8/8/8/8/8/2n5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        // Can't castle with pieces in way
+        b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R2QK1N1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        // Can't castle with pieces in way 2
+        b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R1Q1K1N1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+
+        // Can't castle with pieces in way 3
+        b = board_from_fen("8/8/8/8/8/2P5/PP1P4/RQ2K1N1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+    }
+
+    #[test]
+    fn black_king_side_castle() {
+        let mut b = board_from_fen("1p2k2r/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::BLACK_KING_SIDE));
+
+        b = board_from_fen("1p2k2r/4bp1p/6p1/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::BLACK_KING_SIDE));
+
+        // Can't castle out of check
+        b = board_from_fen("1p2k2r/4bp1p/6p1/8/B7/8/8/1P4P1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+
+        // Can't castle through check
+        b = board_from_fen("1p2k2r/4bp1p/6pB/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+
+        // Can't castle with pieces in way
+        b = board_from_fen("1p2k1nr/4bp1p/6pn/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+
+        // Can't castle with pieces in way 2
+        b = board_from_fen("1p2kN1r/4bp1p/6pn/3n4/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+    }
+
+    #[test]
+    fn black_queen_side_castle() {
+        let mut b = board_from_fen("r3k3/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        b = board_from_fen("r3k3/qpb5/3n4/8/8/8/8/8 w KQkq - 0 1").unwrap();
+        assert!(can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        // Can't castle out of check
+        b = board_from_fen("r3k3/qpb5/3n4/8/8/8/8/4Q3 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        // Can't castle through check
+        b = board_from_fen("r3k3/qpb5/3n4/8/7Q/8/8/8 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        // Can't castle with pieces in way
+        b = board_from_fen("r2Pk3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        // Can't castle with pieces in way 2
+        b = board_from_fen("r1p1k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+
+        // Can't castle with pieces in way 3
+        b = board_from_fen("rn2k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
+        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
     }
 
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
