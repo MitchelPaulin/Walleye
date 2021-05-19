@@ -11,6 +11,13 @@ const KNIGHT_CORDS: [(i8, i8); 8] = [
     (-2, 1),
 ];
 
+pub enum CastlingType {
+    WHITE_KING_SIDE,
+    WHITE_QUEEN_SIDE,
+    BLACK_KING_SIDE,
+    BLACK_QUEEN_SIDE,
+}
+
 /*
     Generate pseudo-legal moves for a knight
 */
@@ -225,7 +232,6 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     }
 
     // Check from knight
-
     for mods in KNIGHT_CORDS.iter() {
         let _row = (king_location.0 as i8 + mods.0) as usize;
         let _col = (king_location.1 as i8 + mods.1) as usize;
@@ -235,6 +241,7 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
             return true;
         }
     }
+
     // Check from pawn
     let _row;
     if color == WHITE {
@@ -290,6 +297,21 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     }
 
     return false;
+}
+
+/*
+    Determine if castling is a legal move
+
+    1. The castling must be kingside or queenside.
+    2. Neither the king nor the chosen rook has previously moved.
+    3. There are no pieces between the king and the chosen rook.
+    4. The king is not currently in check.
+    5. The king does not pass through a square that is attacked by an enemy piece.
+    6. The king does not end up in check. (True of any legal move.)
+
+*/
+pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
+    return true;
 }
 
 #[cfg(test)]

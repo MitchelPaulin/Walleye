@@ -1,7 +1,7 @@
 use colored::*;
 
 /*
-    Example Piece: 0b10000101
+    Example Piece: 0b10000101 = WHITE | QUEEN
     1st bit: Color 1 = White, 0 = Black
     2-5 bit: Unused
     6-8 bit: Piece identifier
@@ -16,8 +16,8 @@ pub const PAWN: u8 = 0b00000001;
 pub const KNIGHT: u8 = 0b00000010;
 pub const BISHOP: u8 = 0b00000011;
 pub const ROOK: u8 = 0b00000100;
-pub const QUEEN: u8 = 0b00000110;
-pub const KING: u8 = 0b00000111;
+pub const QUEEN: u8 = 0b00000101;
+pub const KING: u8 = 0b00000110;
 
 pub const EMPTY: u8 = 0;
 pub const SENTINEL: u8 = 0b11111111;
