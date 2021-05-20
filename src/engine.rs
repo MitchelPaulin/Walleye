@@ -335,15 +335,19 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that squares required for castling are empty
-        if !is_empty(board.board[9][7]) || !is_empty(board.board[9][8]) {
+        if !is_empty(board.board[BOARD_END - 1][BOARD_END - 3])
+            || !is_empty(board.board[BOARD_END - 1][BOARD_END - 2])
+        {
             return false;
         }
         // check that the king currently isn't in check
         if is_check(board, WHITE) {
             return false;
         }
-        //check that the square required for castling are not threatened
-        if is_check_cords(board, WHITE, (9, 7)) || is_check_cords(board, WHITE, (9, 8)) {
+        //check that the squares required for castling are not threatened
+        if is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_END - 3))
+            || is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_END - 2))
+        {
             return false;
         }
         return true;
@@ -354,9 +358,9 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that squares required for castling are empty
-        if !is_empty(board.board[9][3])
-            || !is_empty(board.board[9][4])
-            || !is_empty(board.board[9][5])
+        if !is_empty(board.board[BOARD_END - 1][BOARD_START + 1])
+            || !is_empty(board.board[BOARD_END - 1][BOARD_START + 2])
+            || !is_empty(board.board[BOARD_END - 1][BOARD_START + 3])
         {
             return false;
         }
@@ -364,8 +368,10 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
         if is_check(board, WHITE) {
             return false;
         }
-        //check that the square required for castling are not threatened
-        if is_check_cords(board, WHITE, (9, 5)) || is_check_cords(board, WHITE, (9, 4)) {
+        //check that the squares required for castling are not threatened
+        if is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_START + 3))
+            || is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_START + 2))
+        {
             return false;
         }
 
@@ -377,15 +383,19 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that squares required for castling are empty
-        if !is_empty(board.board[2][7]) || !is_empty(board.board[2][8]) {
+        if !is_empty(board.board[BOARD_START][BOARD_END - 3])
+            || !is_empty(board.board[BOARD_START][BOARD_END - 2])
+        {
             return false;
         }
         // check that the king currently isn't in check
         if is_check(board, BLACK) {
             return false;
         }
-        //check that the square required for castling are not threatened
-        if is_check_cords(board, BLACK, (2, 7)) || is_check_cords(board, BLACK, (2, 8)) {
+        //check that the squares required for castling are not threatened
+        if is_check_cords(board, BLACK, (BOARD_START, BOARD_END - 3))
+            || is_check_cords(board, BLACK, (BOARD_START, BOARD_END - 2))
+        {
             return false;
         }
 
@@ -397,9 +407,9 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that squares required for castling are empty
-        if !is_empty(board.board[2][3])
-            || !is_empty(board.board[2][4])
-            || !is_empty(board.board[2][5])
+        if !is_empty(board.board[BOARD_START][BOARD_START + 1])
+            || !is_empty(board.board[BOARD_START][BOARD_START + 2])
+            || !is_empty(board.board[BOARD_START][BOARD_START + 3])
         {
             return false;
         }
@@ -407,8 +417,10 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
         if is_check(board, BLACK) {
             return false;
         }
-        //check that the square required for castling are not threatened
-        if is_check_cords(board, BLACK, (2, 4)) || is_check_cords(board, BLACK, (2, 5)) {
+        //check that the squares required for castling are not threatened
+        if is_check_cords(board, BLACK, (BOARD_START, BOARD_START + 2))
+            || is_check_cords(board, BLACK, (BOARD_START, BOARD_START + 3))
+        {
             return false;
         }
 
