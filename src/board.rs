@@ -72,6 +72,40 @@ pub fn pawn_did_double_move(pawn: u8) -> bool {
     pawn & EN_PASSANT != 0
 }
 
+/*
+    Returns the row, col on the board when given the algebraic coordinates
+*/
+pub fn algebraic_pairs_to_board_position(pair: &str) -> Result<(usize, usize), &str> {
+    
+    if pair.len() != 2 {
+        return Err("Algebraic position it not correct length");
+    }
+
+    let c = pair.chars().nth(0).unwrap();
+    let r = pair.chars().nth(1).unwrap();
+    let col = match c {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => return Err("Could not parse column of algebraic position"),
+    };
+
+    let row = BOARD_END - (r.to_digit(10).unwrap() as usize);
+    if row < BOARD_START || row >= BOARD_END {
+        return Err("Could not parse row of algebraic position");
+    }
+
+    Ok((
+        row,
+        col + BOARD_START,
+    ))
+}
+
 fn get_piece_character(piece: u8) -> &'static str {
     match piece & PIECE_MASK {
         PAWN => "♟︎",
@@ -258,6 +292,39 @@ mod tests {
         assert!(pawn_did_double_move(BLACK | PAWN | EN_PASSANT));
         assert!(!pawn_did_double_move(WHITE | PAWN));
         assert!(!pawn_did_double_move(BLACK | PAWN));
+    }
+
+    // algebraic translation
+
+    #[test]
+    fn algebraic_translation_correct() {
+        let res = algebraic_pairs_to_board_position("a8").unwrap();
+        assert_eq!(res.0, BOARD_START);
+        assert_eq!(res.1, BOARD_START);
+
+        let res = algebraic_pairs_to_board_position("h1").unwrap();
+        assert_eq!(res.0, BOARD_END - 1);
+        assert_eq!(res.1, BOARD_END - 1);
+
+        let res = algebraic_pairs_to_board_position("a6").unwrap();
+        assert_eq!(res.0, BOARD_START + 2);
+        assert_eq!(res.1, BOARD_START);
+
+        let res = algebraic_pairs_to_board_position("c5").unwrap();
+        assert_eq!(res.0, BOARD_START + 3);
+        assert_eq!(res.1, BOARD_START + 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn algebraic_translation_panic_col() {
+        algebraic_pairs_to_board_position("z1").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn algebraic_translation_panic_long() {
+        algebraic_pairs_to_board_position("a11").unwrap();
     }
 
     // fen string tests
