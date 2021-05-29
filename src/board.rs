@@ -76,7 +76,6 @@ pub fn pawn_did_double_move(pawn: u8) -> bool {
     Returns the row, col on the board when given the algebraic coordinates
 */
 pub fn algebraic_pairs_to_board_position(pair: &str) -> Result<(usize, usize), &str> {
-    
     if pair.len() != 2 {
         return Err("Algebraic position it not correct length");
     }
@@ -100,10 +99,7 @@ pub fn algebraic_pairs_to_board_position(pair: &str) -> Result<(usize, usize), &
         return Err("Could not parse row of algebraic position");
     }
 
-    Ok((
-        row,
-        col + BOARD_START,
-    ))
+    Ok((row, col + BOARD_START))
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
