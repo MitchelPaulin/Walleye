@@ -54,7 +54,7 @@ pub fn pawn_moves(
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
-    // TODO en passant
+    // en passant
 
     // white pawns move up board
     if is_white(piece) {

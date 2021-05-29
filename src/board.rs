@@ -3,7 +3,8 @@ use colored::*;
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
     1st bit: Color 1 = White, 0 = Black
-    2-5 bit: Unused
+    2nd bit: en passant bit, only used for pawns. Set when a pawn moves 2 squares
+    3-5 bit: Unused
     6-8 bit: Piece identifier
 */
 
@@ -12,6 +13,7 @@ pub const WHITE: u8 = 0b10000000;
 pub const BLACK: u8 = 0b00000000;
 
 pub const PIECE_MASK: u8 = 0b00000111;
+pub const EN_PASSANT: u8 = 0b01000000;
 pub const PAWN: u8 = 0b00000001;
 pub const KNIGHT: u8 = 0b00000010;
 pub const BISHOP: u8 = 0b00000011;
@@ -63,6 +65,11 @@ pub fn is_empty(square: u8) -> bool {
 
 pub fn is_outside_board(square: u8) -> bool {
     square == SENTINEL
+}
+
+pub fn pawn_did_double_move(pawn: u8) -> bool {
+    assert!(is_pawn(pawn));
+    pawn & EN_PASSANT != 0
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
@@ -246,6 +253,11 @@ mod tests {
         assert!(is_outside_board(SENTINEL));
         assert!(!is_outside_board(EMPTY));
         assert!(!is_outside_board(WHITE | KING));
+
+        assert!(pawn_did_double_move(WHITE | PAWN | EN_PASSANT));
+        assert!(pawn_did_double_move(BLACK | PAWN | EN_PASSANT));
+        assert!(!pawn_did_double_move(WHITE | PAWN));
+        assert!(!pawn_did_double_move(BLACK | PAWN));
     }
 
     // fen string tests
