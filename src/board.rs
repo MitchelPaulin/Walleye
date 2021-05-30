@@ -403,6 +403,19 @@ mod tests {
     }
 
     #[test]
+    fn correct_en_passant_privileges_black() {
+        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/8/8/PPPPPPPP/RNBQKBNR w KQkq h5 0 1").unwrap();
+        assert_eq!(b.board[BOARD_START + 3][BOARD_START + 7], BLACK | PAWN | EN_PASSANT);
+    }
+
+    #[test]
+    fn correct_en_passant_privileges_two_pawns() {
+        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/4P3/8/PPPP1PPP/RNBQKBNR w KQkq h5e4 0 1").unwrap();
+        assert_eq!(b.board[BOARD_START + 3][BOARD_START + 7], BLACK | PAWN | EN_PASSANT);
+        assert_eq!(b.board[BOARD_START + 4][BOARD_START + 4], WHITE | PAWN | EN_PASSANT);
+    }
+
+    #[test]
     fn correct_king_location() {
         let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         assert_eq!(b.black_king_location, (2, 6));
