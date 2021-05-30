@@ -3,7 +3,7 @@ use colored::*;
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
     1st bit: Color 1 = White, 0 = Black
-    2nd bit: en passant bit, only used for pawns. Set when a pawn moves 2 squares
+    2nd bit: en passant bit, only used for pawns. Set when a pawn moves 2 squares. This bit will not be unset
     3-5 bit: Unused
     6-8 bit: Piece identifier
 */
@@ -75,9 +75,9 @@ pub fn pawn_did_double_move(pawn: u8) -> bool {
 /*
     Returns the row, col on the board when given the algebraic coordinates
 */
-pub fn algebraic_pairs_to_board_position(pair: &str) -> Result<(usize, usize), &str> {
+pub fn algebraic_pairs_to_board_position(pair: &str) -> Option<(usize, usize)> {
     if pair.len() != 2 {
-        return Err("Algebraic position it not correct length");
+        return None;
     }
 
     let c = pair.chars().nth(0).unwrap();
@@ -91,15 +91,15 @@ pub fn algebraic_pairs_to_board_position(pair: &str) -> Result<(usize, usize), &
         'f' => 5,
         'g' => 6,
         'h' => 7,
-        _ => return Err("Could not parse column of algebraic position"),
+        _ => return None,
     };
 
     let row = BOARD_END - (r.to_digit(10).unwrap() as usize);
     if row < BOARD_START || row >= BOARD_END {
-        return Err("Could not parse row of algebraic position");
+        return None;
     }
 
-    Ok((row, col + BOARD_START))
+    Some((row, col + BOARD_START))
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
@@ -210,6 +210,31 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         }
         row += 1;
         col = BOARD_START;
+    }
+
+    /*
+        Deal with en passant
+    */
+
+    if en_passant.len() % 2 != 0 {
+        if en_passant != "-" {
+            return Err("Could not parse fen string: En passant string not valid");
+        }
+    } else {
+        let en_passant_chars: Vec<_> = en_passant.chars().collect();
+        let mut i = 0;
+        while i < en_passant_chars.len() {
+            let mut chars = String::from(en_passant_chars[i]);
+            chars.push(en_passant_chars[i + 1]);
+            i += 2;
+
+            match algebraic_pairs_to_board_position(&chars) {
+                Some(x) => {
+                    board[x.0][x.1] = board[x.0][x.1] | EN_PASSANT; // set en_passant bit
+                }
+                None => return Err("Could not parse fen string: Could not parse en passant string"),
+            };
+        }
     }
 
     Ok(BoardState {
@@ -369,6 +394,12 @@ mod tests {
         for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], WHITE | PAWN);
         }
+    }
+
+    #[test]
+    fn correct_en_passant_privileges() {
+        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e4 0 1").unwrap();
+        assert_eq!(b.board[BOARD_START + 4][BOARD_START + 4], WHITE | PAWN | EN_PASSANT);
     }
 
     #[test]
