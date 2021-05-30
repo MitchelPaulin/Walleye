@@ -108,7 +108,7 @@ pub fn pawn_moves(
         }
 
         //check en passant
-        if row as usize == BOARD_END - 3 {
+        if row as usize == BOARD_START + 4 {
             if board.board[row as usize][(col - 1) as usize] == WHITE | PAWN | EN_PASSANT && is_empty(board.board[(row + 1) as usize][(col - 1) as usize]) {
                 moves.push(((row + 1) as usize, (col - 1) as usize));
             }
@@ -750,9 +750,9 @@ mod tests {
 
     #[test]
     fn black_pawn_en_passant_left() {
-        let b = board_from_fen("8/8/8/8/2Pp4/8/8/8 w - c4 0 1").unwrap();
+        let b = board_from_fen("8/8/8/8/1Pp5/8/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(6, 5, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(6, 4, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -760,23 +760,23 @@ mod tests {
     fn black_pawn_en_passant_right() {
         let b = board_from_fen("8/8/8/8/pP6/8/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(5, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(6, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
     #[test]
     fn black_pawn_en_passant_wrong_row() {
-        let b = board_from_fen("8/8/8/1pP5/8/8/8/8 w - c5 0 1").unwrap();
+        let b = board_from_fen("8/8/8/pP6/8/8/8/8 w - b5 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(5, 3, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(5, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
     #[test]
     fn black_en_passant_piece_in_way() {
-        let b = board_from_fen("8/8/3Q4/3pP3/8/8/8/8 w - d5 0 1").unwrap();
+        let b = board_from_fen("8/8/8/8/pP6/1q6/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(5, 6, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(6, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
