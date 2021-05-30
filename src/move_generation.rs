@@ -55,7 +55,6 @@ pub fn pawn_moves(
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
-    // en passant
 
     // white pawns move up board
     if is_white(piece) {
@@ -77,6 +76,17 @@ pub fn pawn_moves(
                 moves.push(((row - 2) as usize, col as usize));
             }
         }
+
+        //check en passant
+        if row as usize == BOARD_START + 3 {
+            if board.board[row as usize][(col - 1) as usize] == BLACK | PAWN | EN_PASSANT && is_empty(board.board[(row - 1) as usize][(col - 1) as usize]) {
+                moves.push(((row - 1) as usize, (col - 1) as usize));
+            }
+            if board.board[row as usize][(col + 1) as usize] == BLACK | PAWN | EN_PASSANT && is_empty(board.board[(row - 1) as usize][(col + 1) as usize]) {
+                moves.push(((row - 1) as usize, (col + 1) as usize));
+            }
+        }
+
     } else {
         // check capture
         let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
@@ -94,6 +104,16 @@ pub fn pawn_moves(
             // check double push
             if row == 3 && is_empty(board.board[(row + 2) as usize][col as usize]) {
                 moves.push(((row + 2) as usize, col as usize));
+            }
+        }
+
+        //check en passant
+        if row as usize == BOARD_END - 3 {
+            if board.board[row as usize][(col - 1) as usize] == WHITE | PAWN | EN_PASSANT && is_empty(board.board[(row + 1) as usize][(col - 1) as usize]) {
+                moves.push(((row + 1) as usize, (col - 1) as usize));
+            }
+            if board.board[row as usize][(col + 1) as usize] == WHITE | PAWN | EN_PASSANT && is_empty(board.board[(row + 1) as usize][(col + 1) as usize]) {
+                moves.push(((row + 1) as usize, (col + 1) as usize));
             }
         }
     }
@@ -232,6 +252,10 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
 
 /*
     Determine if the given position is check
+
+    Rather than checking each piece to see if it attacks the king
+    this function checks all possible attack squares to the king and 
+    sees if the piece is there
 */
 fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -> bool {
     let attacking_color;
@@ -650,6 +674,38 @@ mod tests {
         assert_eq!(ret.len(), 0);
     }
 
+    #[test]
+    fn white_pawn_en_passant_left() {
+        let b = board_from_fen("8/8/8/3pP3/8/8/8/8 w - d5 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn white_pawn_en_passant_right() {
+        let b = board_from_fen("8/8/8/4Pp2/8/8/8/8 w - f5 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn white_pawn_en_passant_wrong_row() {
+        let b = board_from_fen("8/8/8/8/4Pp2/8/8/8 w - f4 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(6, 6, WHITE | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
+    }
+
+    #[test]
+    fn white_en_passant_piece_in_way() {
+        let b = board_from_fen("8/8/3Q4/3pP3/8/8/8/8 w - d5 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
+    }
+
     // Pawn tests - black pawn
 
     #[test]
@@ -689,6 +745,38 @@ mod tests {
         let b = board_from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(3, 5, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
+    }
+
+    #[test]
+    fn black_pawn_en_passant_left() {
+        let b = board_from_fen("8/8/8/8/2Pp4/8/8/8 w - c4 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(6, 5, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn black_pawn_en_passant_right() {
+        let b = board_from_fen("8/8/8/8/pP6/8/8/8 w - b4 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 2, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 2);
+    }
+
+    #[test]
+    fn black_pawn_en_passant_wrong_row() {
+        let b = board_from_fen("8/8/8/1pP5/8/8/8/8 w - c5 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 3, BLACK | PAWN, &b, &mut ret);
+        assert_eq!(ret.len(), 1);
+    }
+
+    #[test]
+    fn black_en_passant_piece_in_way() {
+        let b = board_from_fen("8/8/3Q4/3pP3/8/8/8/8 w - d5 0 1").unwrap();
+        let mut ret: Vec<(usize, usize)> = vec![];
+        pawn_moves(5, 6, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
