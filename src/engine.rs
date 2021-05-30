@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub use crate::board::*;
 
 const KNIGHT_CORDS: [(i8, i8); 8] = [
@@ -13,10 +14,10 @@ const KNIGHT_CORDS: [(i8, i8); 8] = [
 
 #[derive(PartialEq, Eq)]
 pub enum CastlingType {
-    WHITE_KING_SIDE,
-    WHITE_QUEEN_SIDE,
-    BLACK_KING_SIDE,
-    BLACK_QUEEN_SIDE,
+    WhiteKingSide,
+    WhiteQueenSide,
+    BlackKingSide,
+    BlackQueenSide,
 }
 
 /*
@@ -330,7 +331,7 @@ fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -
 
 */
 pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
-    if castling_type == CastlingType::WHITE_KING_SIDE {
+    if castling_type == CastlingType::WhiteKingSide {
         if !board.white_king_side_castle {
             return false;
         }
@@ -353,7 +354,7 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
         return true;
     }
 
-    if castling_type == CastlingType::WHITE_QUEEN_SIDE {
+    if castling_type == CastlingType::WhiteQueenSide {
         if !board.white_queen_side_castle {
             return false;
         }
@@ -378,7 +379,7 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
         return true;
     }
 
-    if castling_type == CastlingType::BLACK_KING_SIDE {
+    if castling_type == CastlingType::BlackKingSide {
         if !board.black_king_side_castle {
             return false;
         }
@@ -402,7 +403,7 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
         return true;
     }
 
-    if castling_type == CastlingType::BLACK_QUEEN_SIDE {
+    if castling_type == CastlingType::BlackQueenSide {
         if !board.black_king_side_castle {
             return false;
         }
@@ -828,109 +829,109 @@ mod tests {
     #[test]
     fn white_king_side_castle() {
         let mut b = board_from_fen("8/8/8/8/8/8/8/4K2R w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(can_castle(&b, CastlingType::WhiteKingSide));
 
         b = board_from_fen("8/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(can_castle(&b, CastlingType::WhiteKingSide));
 
         // Can't castle out of check
         b = board_from_fen("4r3/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
 
         // Can't castle through check
         b = board_from_fen("8/8/8/8/8/6Pb/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
 
         // Can't castle with pieces in way
         b = board_from_fen("8/8/8/8/8/6PN/5P1P/4KP1R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
 
         // Can't castle with pieces in way 2
         b = board_from_fen("8/8/8/8/8/6PN/5P1P/4K1PR w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
     }
 
     #[test]
     fn white_queen_side_castle() {
         let mut b = board_from_fen("8/8/8/8/8/8/8/R3K3 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(can_castle(&b, CastlingType::WhiteQueenSide));
 
         b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(can_castle(&b, CastlingType::WhiteQueenSide));
 
         // Can't castle out of check
         b = board_from_fen("8/8/8/8/8/2P2n2/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
 
         // Can't castle through check
         b = board_from_fen("8/8/8/8/8/2n5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way
         b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R2QK1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way 2
         b = board_from_fen("8/8/8/8/8/2P5/PP1P4/R1Q1K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way 3
         b = board_from_fen("8/8/8/8/8/2P5/PP1P4/RQ2K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WHITE_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
     }
 
     #[test]
     fn black_king_side_castle() {
         let mut b = board_from_fen("1p2k2r/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(can_castle(&b, CastlingType::BlackKingSide));
 
         b = board_from_fen("1p2k2r/4bp1p/6p1/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(can_castle(&b, CastlingType::BlackKingSide));
 
         // Can't castle out of check
         b = board_from_fen("1p2k2r/4bp1p/6p1/8/B7/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackKingSide));
 
         // Can't castle through check
         b = board_from_fen("1p2k2r/4bp1p/6pB/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackKingSide));
 
         // Can't castle with pieces in way
         b = board_from_fen("1p2k1nr/4bp1p/6pn/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackKingSide));
 
         // Can't castle with pieces in way 2
         b = board_from_fen("1p2kN1r/4bp1p/6pn/3n4/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_KING_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackKingSide));
     }
 
     #[test]
     fn black_queen_side_castle() {
         let mut b = board_from_fen("r3k3/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(can_castle(&b, CastlingType::BlackQueenSide));
 
         b = board_from_fen("r3k3/qpb5/3n4/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(can_castle(&b, CastlingType::BlackQueenSide));
 
         // Can't castle out of check
         b = board_from_fen("r3k3/qpb5/3n4/8/8/8/8/4Q3 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
 
         // Can't castle through check
         b = board_from_fen("r3k3/qpb5/3n4/8/7Q/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way
         b = board_from_fen("r2Pk3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way 2
         b = board_from_fen("r1p1k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way 3
         b = board_from_fen("rn2k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BLACK_QUEEN_SIDE));
+        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
     }
 
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results

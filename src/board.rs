@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use colored::*;
 
 /*
@@ -163,8 +164,9 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     let to_move = if fen_config[1] == "w" { WHITE } else { BLACK };
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
-    let halfmove_clock = fen_config[4];
-    let fullmove_clock = fen_config[5];
+    // TODO 
+    let _halfmove_clock = fen_config[4];
+    let _fullmove_clock = fen_config[5];
 
     let mut white_king_location = (0, 0);
     let mut black_king_location = (0, 0);
