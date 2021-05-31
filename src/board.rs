@@ -4,8 +4,7 @@ use colored::*;
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
     1st bit: Color 1 = White, 0 = Black
-    2nd bit: en passant bit, only used for pawns. Set when a pawn moves 2 squares. This bit will not be unset
-    3-5 bit: Unused
+    2-5 bit: Unused
     6-8 bit: Piece identifier
 */
 
@@ -14,7 +13,6 @@ pub const WHITE: u8 = 0b10000000;
 pub const BLACK: u8 = 0b00000000;
 
 pub const PIECE_MASK: u8 = 0b00000111;
-pub const EN_PASSANT: u8 = 0b01000000;
 pub const PAWN: u8 = 0b00000001;
 pub const KNIGHT: u8 = 0b00000010;
 pub const BISHOP: u8 = 0b00000011;
@@ -76,11 +74,6 @@ pub fn is_empty(square: u8) -> bool {
 
 pub fn is_outside_board(square: u8) -> bool {
     square == SENTINEL
-}
-
-pub fn pawn_did_double_move(pawn: u8) -> bool {
-    assert!(is_pawn(pawn));
-    pawn & EN_PASSANT != 0
 }
 
 /*
@@ -153,6 +146,8 @@ fn get_piece_character_simple(piece: u8) -> &'static str {
 pub struct BoardState {
     pub board: [[u8; 12]; 12],
     pub to_move: u8,
+    // if a pawn, on the last move, made a double move, this is set, otherwise this is None
+    pub pawn_double_move: Option<(usize, usize)>,
     pub white_king_location: (usize, usize),
     pub black_king_location: (usize, usize),
     pub white_king_side_castle: bool,
@@ -263,28 +258,13 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     /*
         Deal with en passant
     */
-
-    if en_passant.len() % 2 != 0 {
+    let mut en_passant_pos: Option<(usize, usize)> = None;
+    if en_passant.len() != 2 {
         if en_passant != "-" {
             return Err("Could not parse fen string: En passant string not valid");
         }
     } else {
-        let en_passant_chars: Vec<_> = en_passant.chars().collect();
-        let mut i = 0;
-        while i < en_passant_chars.len() {
-            let mut chars = String::from(en_passant_chars[i]);
-            chars.push(en_passant_chars[i + 1]);
-            i += 2;
-
-            match algebraic_pairs_to_board_position(&chars) {
-                Some(x) => {
-                    board[x.0][x.1] = board[x.0][x.1] | EN_PASSANT; // set en_passant bit
-                }
-                None => {
-                    return Err("Could not parse fen string: Could not parse en passant string")
-                }
-            };
-        }
+        en_passant_pos = algebraic_pairs_to_board_position(en_passant);
     }
 
     Ok(BoardState {
@@ -292,6 +272,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         to_move: to_move,
         white_king_location: white_king_location,
         black_king_location: black_king_location,
+        pawn_double_move: en_passant_pos,
         white_king_side_castle: castling_privileges.find('K') != None,
         white_queen_side_castle: castling_privileges.find('Q') != None,
         black_king_side_castle: castling_privileges.find('k') != None,
@@ -358,11 +339,6 @@ mod tests {
         assert!(is_outside_board(SENTINEL));
         assert!(!is_outside_board(EMPTY));
         assert!(!is_outside_board(WHITE | KING));
-
-        assert!(pawn_did_double_move(WHITE | PAWN | EN_PASSANT));
-        assert!(pawn_did_double_move(BLACK | PAWN | EN_PASSANT));
-        assert!(!pawn_did_double_move(WHITE | PAWN));
-        assert!(!pawn_did_double_move(BLACK | PAWN));
     }
 
     // algebraic translation
@@ -450,34 +426,16 @@ mod tests {
     fn correct_en_passant_privileges() {
         let b =
             board_from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e4 0 1").unwrap();
-        assert_eq!(
-            b.board[BOARD_START + 4][BOARD_START + 4],
-            WHITE | PAWN | EN_PASSANT
-        );
+        assert_eq!(b.pawn_double_move.unwrap().0, BOARD_START + 4);
+        assert_eq!(b.pawn_double_move.unwrap().1, BOARD_START + 4);
     }
 
     #[test]
     fn correct_en_passant_privileges_black() {
         let b =
             board_from_fen("rnbqkbnr/ppppppp1/8/7p/8/8/PPPPPPPP/RNBQKBNR w KQkq h5 0 1").unwrap();
-        assert_eq!(
-            b.board[BOARD_START + 3][BOARD_START + 7],
-            BLACK | PAWN | EN_PASSANT
-        );
-    }
-
-    #[test]
-    fn correct_en_passant_privileges_two_pawns() {
-        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/4P3/8/PPPP1PPP/RNBQKBNR w KQkq h5e4 0 1")
-            .unwrap();
-        assert_eq!(
-            b.board[BOARD_START + 3][BOARD_START + 7],
-            BLACK | PAWN | EN_PASSANT
-        );
-        assert_eq!(
-            b.board[BOARD_START + 4][BOARD_START + 4],
-            WHITE | PAWN | EN_PASSANT
-        );
+        assert_eq!(b.pawn_double_move.unwrap().0, BOARD_START + 3);
+        assert_eq!(b.pawn_double_move.unwrap().1, BOARD_START + 7);
     }
 
     #[test]
