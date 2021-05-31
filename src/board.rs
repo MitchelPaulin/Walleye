@@ -28,6 +28,16 @@ pub const SENTINEL: u8 = 0b11111111;
 pub const BOARD_START: usize = 2;
 pub const BOARD_END: usize = 10;
 
+pub fn get_color(square: u8) -> Option<u8> {
+    if is_empty(square) || is_outside_board(square) {
+        return None;
+    }
+    if square & COLOR_MASK == WHITE {
+        return Some(WHITE);
+    }
+    return Some(BLACK);
+}
+
 pub fn is_white(square: u8) -> bool {
     !is_empty(square) && square & COLOR_MASK == WHITE
 }
@@ -115,6 +125,31 @@ fn get_piece_character(piece: u8) -> &'static str {
     }
 }
 
+fn get_piece_character_simple(piece: u8) -> &'static str {
+    if is_white(piece) {
+        return match piece & PIECE_MASK {
+            PAWN => "♟︎",
+            KNIGHT => "♞",
+            BISHOP => "♝",
+            ROOK => "♜",
+            QUEEN => "♛",
+            KING => "♚",
+            _ => " ",
+        };
+    } else {
+        return match piece & PIECE_MASK {
+            PAWN => "♙",
+            KNIGHT => "♘",
+            BISHOP => "♗",
+            ROOK => "♖",
+            QUEEN => "♕",
+            KING => "♔",
+            _ => " ",
+        };
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct BoardState {
     pub board: [[u8; 12]; 12],
     pub to_move: u8,
@@ -149,6 +184,17 @@ impl BoardState {
             println!(" {}", 10 - i);
         }
     }
+
+    pub fn simple_print(&self) {
+        println!("a b c d e f g h");
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
+                let piece = format!("{} ", get_piece_character_simple(self.board[i][j]));
+                print!("{}", piece);
+            }
+            println!(" {}", 10 - i);
+        }
+    }
 }
 
 /*
@@ -164,7 +210,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     let to_move = if fen_config[1] == "w" { WHITE } else { BLACK };
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
-    // TODO 
+    // TODO
     let _halfmove_clock = fen_config[4];
     let _fullmove_clock = fen_config[5];
 
@@ -234,7 +280,9 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
                 Some(x) => {
                     board[x.0][x.1] = board[x.0][x.1] | EN_PASSANT; // set en_passant bit
                 }
-                None => return Err("Could not parse fen string: Could not parse en passant string"),
+                None => {
+                    return Err("Could not parse fen string: Could not parse en passant string")
+                }
             };
         }
     }
@@ -400,21 +448,36 @@ mod tests {
 
     #[test]
     fn correct_en_passant_privileges() {
-        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e4 0 1").unwrap();
-        assert_eq!(b.board[BOARD_START + 4][BOARD_START + 4], WHITE | PAWN | EN_PASSANT);
+        let b =
+            board_from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e4 0 1").unwrap();
+        assert_eq!(
+            b.board[BOARD_START + 4][BOARD_START + 4],
+            WHITE | PAWN | EN_PASSANT
+        );
     }
 
     #[test]
     fn correct_en_passant_privileges_black() {
-        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/8/8/PPPPPPPP/RNBQKBNR w KQkq h5 0 1").unwrap();
-        assert_eq!(b.board[BOARD_START + 3][BOARD_START + 7], BLACK | PAWN | EN_PASSANT);
+        let b =
+            board_from_fen("rnbqkbnr/ppppppp1/8/7p/8/8/PPPPPPPP/RNBQKBNR w KQkq h5 0 1").unwrap();
+        assert_eq!(
+            b.board[BOARD_START + 3][BOARD_START + 7],
+            BLACK | PAWN | EN_PASSANT
+        );
     }
 
     #[test]
     fn correct_en_passant_privileges_two_pawns() {
-        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/4P3/8/PPPP1PPP/RNBQKBNR w KQkq h5e4 0 1").unwrap();
-        assert_eq!(b.board[BOARD_START + 3][BOARD_START + 7], BLACK | PAWN | EN_PASSANT);
-        assert_eq!(b.board[BOARD_START + 4][BOARD_START + 4], WHITE | PAWN | EN_PASSANT);
+        let b = board_from_fen("rnbqkbnr/ppppppp1/8/7p/4P3/8/PPPP1PPP/RNBQKBNR w KQkq h5e4 0 1")
+            .unwrap();
+        assert_eq!(
+            b.board[BOARD_START + 3][BOARD_START + 7],
+            BLACK | PAWN | EN_PASSANT
+        );
+        assert_eq!(
+            b.board[BOARD_START + 4][BOARD_START + 4],
+            WHITE | PAWN | EN_PASSANT
+        );
     }
 
     #[test]

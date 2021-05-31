@@ -55,7 +55,6 @@ pub fn pawn_moves(
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
-
     // white pawns move up board
     if is_white(piece) {
         // check capture
@@ -76,17 +75,6 @@ pub fn pawn_moves(
                 moves.push(((row - 2) as usize, col as usize));
             }
         }
-
-        //check en passant
-        if row as usize == BOARD_START + 3 {
-            if board.board[row as usize][(col - 1) as usize] == BLACK | PAWN | EN_PASSANT && is_empty(board.board[(row - 1) as usize][(col - 1) as usize]) {
-                moves.push(((row - 1) as usize, (col - 1) as usize));
-            }
-            if board.board[row as usize][(col + 1) as usize] == BLACK | PAWN | EN_PASSANT && is_empty(board.board[(row - 1) as usize][(col + 1) as usize]) {
-                moves.push(((row - 1) as usize, (col + 1) as usize));
-            }
-        }
-
     } else {
         // check capture
         let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
@@ -106,13 +94,44 @@ pub fn pawn_moves(
                 moves.push(((row + 2) as usize, col as usize));
             }
         }
+    }
+}
 
+/*
+    Generate pusedo legal en passant moves
+*/
+
+pub fn pawn_moves_en_passant(
+    row: i8,
+    col: i8,
+    piece: u8,
+    board: &BoardState,
+    moves: &mut Vec<(usize, usize)>,
+) {
+    if is_white(piece) {
+        if row as usize == BOARD_START + 3 {
+            if board.board[row as usize][(col - 1) as usize] == BLACK | PAWN | EN_PASSANT
+                && is_empty(board.board[(row - 1) as usize][(col - 1) as usize])
+            {
+                moves.push(((row - 1) as usize, (col - 1) as usize));
+            }
+            if board.board[row as usize][(col + 1) as usize] == BLACK | PAWN | EN_PASSANT
+                && is_empty(board.board[(row - 1) as usize][(col + 1) as usize])
+            {
+                moves.push(((row - 1) as usize, (col + 1) as usize));
+            }
+        }
+    } else {
         //check en passant
         if row as usize == BOARD_START + 4 {
-            if board.board[row as usize][(col - 1) as usize] == WHITE | PAWN | EN_PASSANT && is_empty(board.board[(row + 1) as usize][(col - 1) as usize]) {
+            if board.board[row as usize][(col - 1) as usize] == WHITE | PAWN | EN_PASSANT
+                && is_empty(board.board[(row + 1) as usize][(col - 1) as usize])
+            {
                 moves.push(((row + 1) as usize, (col - 1) as usize));
             }
-            if board.board[row as usize][(col + 1) as usize] == WHITE | PAWN | EN_PASSANT && is_empty(board.board[(row + 1) as usize][(col + 1) as usize]) {
+            if board.board[row as usize][(col + 1) as usize] == WHITE | PAWN | EN_PASSANT
+                && is_empty(board.board[(row + 1) as usize][(col + 1) as usize])
+            {
                 moves.push(((row + 1) as usize, (col + 1) as usize));
             }
         }
@@ -226,6 +245,7 @@ pub fn queen_moves(
 
 /*
     Generate pseudo-legal moves for a piece
+    This will not generate en passants and castling, these cases are handled separately
 */
 pub fn get_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
     match piece & PIECE_MASK {
@@ -254,7 +274,7 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     Determine if the given position is check
 
     Rather than checking each piece to see if it attacks the king
-    this function checks all possible attack squares to the king and 
+    this function checks all possible attack squares to the king and
     sees if the piece is there
 */
 fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -> bool {
@@ -679,6 +699,7 @@ mod tests {
         let b = board_from_fen("8/8/8/3pP3/8/8/8/8 w - d5 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -687,6 +708,7 @@ mod tests {
         let b = board_from_fen("8/8/8/4Pp2/8/8/8/8 w - f5 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -695,6 +717,7 @@ mod tests {
         let b = board_from_fen("8/8/8/8/4Pp2/8/8/8 w - f4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(6, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 6, WHITE | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -703,6 +726,7 @@ mod tests {
         let b = board_from_fen("8/8/3Q4/3pP3/8/8/8/8 w - d5 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -753,6 +777,7 @@ mod tests {
         let b = board_from_fen("8/8/8/8/1Pp5/8/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(6, 4, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 4, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -761,6 +786,7 @@ mod tests {
         let b = board_from_fen("8/8/8/8/pP6/8/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(6, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -769,6 +795,7 @@ mod tests {
         let b = board_from_fen("8/8/8/pP6/8/8/8/8 w - b5 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(5, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -777,6 +804,7 @@ mod tests {
         let b = board_from_fen("8/8/8/8/pP6/1q6/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
         pawn_moves(6, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 2, BLACK | PAWN, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1022,18 +1050,124 @@ mod tests {
         assert!(!can_castle(&b, CastlingType::BlackQueenSide));
     }
 
-    // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
-    #[test]
-    fn perft_test_depth_one() {
-        let mut moves: Vec<(usize, usize)> = vec![];
-        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    fn generate_moves(board: &BoardState, cur_depth: usize, depth: usize, move_states: &mut [u32]) {
+        if cur_depth == depth {
+            return;
+        }
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
-                if is_white(b.board[i][j]) {
-                    get_moves(i as i8, j as i8, b.board[i][j], &b, &mut moves);
+                let color = get_color(board.board[i][j]);
+                if color.is_some() && color.unwrap() == board.to_move {
+                    //generate moves
+                    let mut moves: Vec<(usize, usize)> = vec![];
+                    get_moves(i as i8, j as i8, board.board[i][j], &board, &mut moves);
+                    // make the moves
+                    for _move in moves {
+                        let mut new_board = board.clone();
+                        if board.to_move == BLACK {
+                            new_board.to_move = WHITE;
+                        } else {
+                            new_board.to_move = BLACK;
+                        }
+
+                        // this will take care of any captures, except for en passant captures
+                        new_board.board[_move.0][_move.1] = board.board[i][j];
+                        new_board.board[i][j] = EMPTY;
+
+                        // update king location
+                        if board.board[i][j] == WHITE | KING {
+                            new_board.white_king_location = (_move.0, _move.1);
+                        } else if board.board[i][j] == BLACK | KING {
+                            new_board.black_king_location = (_move.0, _move.1);
+                        }
+
+                        // if you make your move, and you are in check, this move is not valid
+                        if is_check(&new_board, board.to_move) {
+                            continue;
+                        }
+
+                        // deal with setting castling privileges and updating king location
+                        if board.board[i][j] == WHITE | KING {
+                            new_board.white_king_side_castle = false;
+                            new_board.white_queen_side_castle = false;
+                        } else if board.board[i][j] == BLACK | KING {
+                            new_board.black_queen_side_castle = false;
+                            new_board.black_king_side_castle = false;
+                        } else if board.board[i][j] == WHITE | ROOK && j == 9 && i == 9 {
+                            new_board.white_king_side_castle = false;
+                        } else if board.board[i][j] == WHITE | ROOK && j == 2 && i == 9 {
+                            new_board.white_queen_side_castle = false;
+                        } else if board.board[i][j] == BLACK | ROOK && j == 2 && i == 2 {
+                            new_board.black_queen_side_castle = false;
+                        } else if board.board[i][j] == BLACK | ROOK && j == 9 && i == 2 {
+                            new_board.black_king_side_castle = false;
+                        }
+
+                        // deal with setting en passant bit
+                        if is_pawn(board.board[i][j]) {
+                            if (i as i8 - _move.0 as i8).abs() == 2 {
+                                // checks if the pawn has moved two spaces, if it has it can be captured en passant
+                                new_board.board[_move.0][_move.1] =
+                                    new_board.board[_move.0][_move.1] | EN_PASSANT;
+                            }
+                        }
+
+                        // recursively generate the next board state
+                        move_states[cur_depth] += 1;
+                        generate_moves(&new_board, cur_depth + 1, depth, move_states);
+                    }
+
+                    // take care of en passant captures
+                    moves = vec![];
+                    if is_pawn(board.board[i][j]) {
+                        pawn_moves_en_passant(
+                            i as i8,
+                            j as i8,
+                            board.board[i][j],
+                            &board,
+                            &mut moves,
+                        );
+                        for _move in moves {
+                            let mut new_board = board.clone();
+                            if board.to_move == BLACK {
+                                new_board.to_move = WHITE;
+                            } else {
+                                new_board.to_move = BLACK;
+                            }
+
+                            new_board.board[_move.0][_move.1] = board.board[i][j];
+                            new_board.board[i][j] = EMPTY;
+                            if is_white(board.board[i][j]) {
+                                new_board.board[_move.0 + 1][_move.1] = EMPTY;
+                            } else {
+                                new_board.board[_move.0 - 1][_move.1] = EMPTY;
+                            }
+
+                            if is_check(&new_board, board.to_move) {
+                                continue;
+                            }
+
+                            // recursively generate the next board state
+                            move_states[cur_depth] += 1;
+                            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+                        }
+                    }
                 }
             }
         }
-        assert_eq!(moves.len(), 20);
+    }
+
+    // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
+
+    #[test]
+    fn perft_test_position_1() {
+        let mut moves_states = [0; 5];
+        let b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        generate_moves(&b, 0, 5, &mut moves_states);
+        assert_eq!(moves_states[0], 20);
+        assert_eq!(moves_states[1], 400);
+        assert_eq!(moves_states[2], 8902);
+        assert_eq!(moves_states[3], 197281);
+        // assert_eq!(moves_states[4], 4865609); -- broken
     }
 }
