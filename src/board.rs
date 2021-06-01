@@ -157,7 +157,7 @@ pub struct BoardState {
 }
 
 impl BoardState {
-    pub fn print_board(&self) {
+    pub fn pretty_print_board(&self) {
         println!("a b c d e f g h");
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
@@ -180,7 +180,7 @@ impl BoardState {
         }
     }
 
-    pub fn simple_print(&self) {
+    pub fn simple_print_board(&self) {
         println!("a b c d e f g h");
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
@@ -255,9 +255,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         col = BOARD_START;
     }
 
-    /*
-        Deal with en passant
-    */
+    // Deal with the en passant string
     let mut en_passant_pos: Option<(usize, usize)> = None;
     if en_passant.len() != 2 {
         if en_passant != "-" {
@@ -341,7 +339,7 @@ mod tests {
         assert!(!is_outside_board(WHITE | KING));
     }
 
-    // algebraic translation
+    // Algebraic translation tests
 
     #[test]
     fn algebraic_translation_correct() {
@@ -374,7 +372,7 @@ mod tests {
         algebraic_pairs_to_board_position("a11").unwrap();
     }
 
-    // fen string tests
+    // Fen string tests
 
     #[test]
     fn empty_board() {

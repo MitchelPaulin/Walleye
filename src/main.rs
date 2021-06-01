@@ -25,7 +25,7 @@ fn main() {
 
     let b = move_generation::board_from_fen(fen);
     match b {
-        Ok(b) => b.print_board(),
+        Ok(b) => b.pretty_print_board(),
         Err(err) => println!("{}", err),
     }
 }

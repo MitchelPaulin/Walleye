@@ -26,11 +26,11 @@ pub enum CastlingType {
 pub fn knight_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
     for mods in KNIGHT_CORDS.iter() {
+        let piece = board.board[row as usize][col as usize];
         let _row = (row + mods.0) as usize;
         let _col = (col + mods.1) as usize;
         let square = board.board[_row][_col];
@@ -51,10 +51,12 @@ pub fn knight_moves(
 pub fn pawn_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
+
+    let piece = board.board[row as usize][col as usize];
+
     // white pawns move up board
     if is_white(piece) {
         // check capture
@@ -104,13 +106,14 @@ pub fn pawn_moves(
 pub fn pawn_moves_en_passant(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
     if board.pawn_double_move.is_none() {
         return;
     }
+
+    let piece = board.board[row as usize][col as usize];
 
     if is_white(piece) {
         if row as usize == BOARD_START + 3 {
@@ -141,10 +144,10 @@ pub fn pawn_moves_en_passant(
 pub fn king_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
+    let piece = board.board[row as usize][col as usize];
     for i in -1..2 {
         for j in -1..2 {
             let _row = (row + i) as usize;
@@ -169,12 +172,11 @@ pub fn king_moves(
 pub fn rook_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-
+    let piece = board.board[row as usize][col as usize];
     for m in mods.iter() {
         let mut multiplier = 1;
         let mut _row = row + m.0;
@@ -200,11 +202,11 @@ pub fn rook_moves(
 pub fn bishop_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
     let mods = [1, -1];
+    let piece = board.board[row as usize][col as usize];
     for i in mods.iter() {
         for j in mods.iter() {
             let mut multiplier = 1;
@@ -232,12 +234,11 @@ pub fn bishop_moves(
 pub fn queen_moves(
     row: i8,
     col: i8,
-    piece: u8,
     board: &BoardState,
     moves: &mut Vec<(usize, usize)>,
 ) {
-    rook_moves(row, col, piece, board, moves);
-    bishop_moves(row, col, piece, board, moves);
+    rook_moves(row, col, board, moves);
+    bishop_moves(row, col, board, moves);
 }
 
 /*
@@ -246,12 +247,12 @@ pub fn queen_moves(
 */
 pub fn get_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
     match piece & PIECE_MASK {
-        PAWN => pawn_moves(row, col, piece, board, moves),
-        ROOK => rook_moves(row, col, piece, board, moves),
-        BISHOP => bishop_moves(row, col, piece, board, moves),
-        KNIGHT => knight_moves(row, col, piece, board, moves),
-        KING => king_moves(row, col, piece, board, moves),
-        QUEEN => queen_moves(row, col, piece, board, moves),
+        PAWN => pawn_moves(row, col, board, moves),
+        ROOK => rook_moves(row, col, board, moves),
+        BISHOP => bishop_moves(row, col, board, moves),
+        KNIGHT => knight_moves(row, col, board, moves),
+        KING => king_moves(row, col, board, moves),
+        QUEEN => queen_moves(row, col, board, moves),
         _ => panic!("Unrecognized piece"),
     }
 }
@@ -630,7 +631,7 @@ mod tests {
     fn knight_moves_empty_board() {
         let b = board_from_fen("8/8/8/8/3N4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        knight_moves(6, 5, WHITE | KNIGHT, &b, &mut ret);
+        knight_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
 
@@ -638,14 +639,14 @@ mod tests {
     fn knight_moves_corner() {
         let b = board_from_fen("N7/8/8/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        knight_moves(2, 2, BLACK | KNIGHT, &b, &mut ret);
+        knight_moves(2, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
     #[test]
     fn knight_moves_with_other_pieces_with_capture() {
         let b = board_from_fen("8/8/5n2/3NQ3/2K2P2/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        knight_moves(5, 5, WHITE | KNIGHT, &b, &mut ret);
+        knight_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 7);
     }
 
@@ -655,7 +656,7 @@ mod tests {
     fn white_pawn_double_push() {
         let b = board_from_fen("8/8/8/8/8/8/P7/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(8, 2, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(8, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -663,7 +664,7 @@ mod tests {
     fn white_pawn_has_moved() {
         let b = board_from_fen("8/8/8/8/8/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(7, 5, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -671,7 +672,7 @@ mod tests {
     fn white_pawn_cant_move_black_piece_block() {
         let b = board_from_fen("8/8/8/8/3r4/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(7, 5, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -679,7 +680,7 @@ mod tests {
     fn white_pawn_cant_move_white_piece_block() {
         let b = board_from_fen("8/8/8/8/3K4/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(7, 5, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -687,7 +688,7 @@ mod tests {
     fn white_pawn_with_two_captures_and_start() {
         let b = board_from_fen("8/8/8/8/8/n1q5/1P6/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(8, 3, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(8, 3, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
 
@@ -695,7 +696,7 @@ mod tests {
     fn white_pawn_with_one_capture() {
         let b = board_from_fen("8/8/Q1b5/1P6/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(5, 3, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(5, 3, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -703,7 +704,7 @@ mod tests {
     fn white_pawn_double_push_piece_in_front() {
         let b = board_from_fen("8/8/8/8/8/b7/P7/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(8, 2, WHITE | PAWN, &b, &mut ret);
+        pawn_moves(8, 2, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -711,7 +712,7 @@ mod tests {
     fn white_pawn_en_passant_left() {
         let b = board_from_fen("8/8/8/3pP3/8/8/8/8 w - d6 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -719,7 +720,7 @@ mod tests {
     fn white_pawn_en_passant_right() {
         let b = board_from_fen("8/8/8/4Pp2/8/8/8/8 w - f6 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -727,7 +728,7 @@ mod tests {
     fn white_pawn_en_passant_right_2() {
         let b = board_from_fen("7K/8/7k/1Pp5/8/8/8/8 w - c6 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(5, 3, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 3, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -735,7 +736,7 @@ mod tests {
     fn white_pawn_en_passant_wrong_row() {
         let b = board_from_fen("8/8/8/8/4Pp2/8/8/8 w - f4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(6, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 6, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -743,7 +744,7 @@ mod tests {
     fn white_en_passant_capture_not_available() {
         let b = board_from_fen("8/8/8/4Pp2/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(5, 6, WHITE | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 6, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -753,7 +754,7 @@ mod tests {
     fn black_pawn_double_push() {
         let b = board_from_fen("8/p7/8/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(3, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(3, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -761,7 +762,7 @@ mod tests {
     fn black_pawn_has_moved() {
         let b = board_from_fen("8/8/8/3p4/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(5, 5, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -769,7 +770,7 @@ mod tests {
     fn black_pawn_cant_move_white_piece_block() {
         let b = board_from_fen("8/3p4/3R4/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(3, 5, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -777,7 +778,7 @@ mod tests {
     fn black_pawn_with_two_captures_and_start() {
         let b = board_from_fen("8/3p4/2R1R3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(3, 5, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
 
@@ -785,7 +786,7 @@ mod tests {
     fn black_pawn_with_one_capture() {
         let b = board_from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves(3, 5, BLACK | PAWN, &b, &mut ret);
+        pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -793,7 +794,7 @@ mod tests {
     fn black_pawn_en_passant_left() {
         let b = board_from_fen("8/8/8/8/1Pp5/8/8/8 w - b3 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(6, 4, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 4, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -801,7 +802,7 @@ mod tests {
     fn black_pawn_en_passant_right() {
         let b = board_from_fen("8/8/8/8/pP6/8/8/8 w - b3 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(6, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 2, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
 
@@ -809,7 +810,7 @@ mod tests {
     fn black_pawn_en_passant_wrong_row() {
         let b = board_from_fen("8/8/8/pP6/8/8/8/8 w - b4 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(5, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(5, 2, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -817,7 +818,7 @@ mod tests {
     fn black_en_passant_capture_not_available() {
         let b = board_from_fen("8/8/8/8/pP6/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        pawn_moves_en_passant(6, 2, BLACK | PAWN, &b, &mut ret);
+        pawn_moves_en_passant(6, 2, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -825,9 +826,9 @@ mod tests {
 
     #[test]
     fn king_empty_board_center() {
-        let b = board_from_fen("8/8/8/8/3K4/8/8/8 w - - 0 1").unwrap();
+        let b = board_from_fen("8/8/8/8/3K4/8/8/k7 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        king_moves(5, 6, WHITE | KING, &b, &mut ret);
+        king_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
 
@@ -835,7 +836,7 @@ mod tests {
     fn king_start_pos() {
         let b = board_from_fen("8/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        king_moves(9, 6, WHITE | KING, &b, &mut ret);
+        king_moves(9, 6, &b, &mut ret);
         assert_eq!(ret.len(), 5);
     }
 
@@ -843,7 +844,7 @@ mod tests {
     fn king_start_pos_other_pieces() {
         let b = board_from_fen("8/8/8/8/8/8/3Pn3/3QKB2 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        king_moves(9, 6, WHITE | KING, &b, &mut ret);
+        king_moves(9, 6, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
 
@@ -851,7 +852,7 @@ mod tests {
     fn king_black_other_pieces() {
         let b = board_from_fen("8/8/8/8/8/3Pn3/3QkB2/3R1q2 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        king_moves(8, 6, BLACK | KING, &b, &mut ret);
+        king_moves(8, 6, &b, &mut ret);
         assert_eq!(ret.len(), 6);
     }
 
@@ -860,7 +861,7 @@ mod tests {
     fn rook_center_of_empty_board() {
         let b = board_from_fen("8/8/8/8/3R4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        rook_moves(6, 5, WHITE | ROOK, &b, &mut ret);
+        rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 14);
     }
 
@@ -868,7 +869,7 @@ mod tests {
     fn rook_center_of_board() {
         let b = board_from_fen("8/8/8/3q4/2kRp3/3b4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        rook_moves(6, 5, WHITE | ROOK, &b, &mut ret);
+        rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
 
@@ -876,22 +877,22 @@ mod tests {
     fn rook_center_of_board_with_white_pieces() {
         let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        rook_moves(6, 5, WHITE | ROOK, &b, &mut ret);
+        rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
 
     #[test]
     fn rook_corner() {
-        let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
+        let b = board_from_fen("7p/3N4/K7/4n3/2kR4/3b4/8/7R w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        rook_moves(9, 9, WHITE | ROOK, &b, &mut ret);
+        rook_moves(9, 9, &b, &mut ret);
         assert_eq!(ret.len(), 14);
     }
     #[test]
     fn black_rook_center_of_board_with_white_pieces() {
-        let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
+        let b = board_from_fen("7p/3N4/8/4n3/2kr4/3b4/8/K7 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        rook_moves(6, 5, BLACK | ROOK, &b, &mut ret);
+        rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 7);
     }
 
@@ -900,7 +901,7 @@ mod tests {
     fn black_bishop_center_empty_board() {
         let b = board_from_fen("8/8/8/3b4/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        bishop_moves(5, 5, BLACK | BISHOP, &b, &mut ret);
+        bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 13);
     }
 
@@ -908,7 +909,7 @@ mod tests {
     fn black_bishop_center_with_captures() {
         let b = board_from_fen("6P1/8/8/3b4/8/1R6/8/3Q4 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        bishop_moves(5, 5, BLACK | BISHOP, &b, &mut ret);
+        bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 12);
     }
 
@@ -916,7 +917,7 @@ mod tests {
     fn black_bishop_center_with_captures_and_black_pieces() {
         let b = board_from_fen("6P1/8/2Q5/3b4/2k1n3/1R6/8/b2Q4 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        bishop_moves(5, 5, BLACK | BISHOP, &b, &mut ret);
+        bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
 
@@ -924,7 +925,7 @@ mod tests {
     fn white_bishop_center_with_captures_and_white_pieces() {
         let b = board_from_fen("8/8/8/4r3/5B2/8/3Q4/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        bishop_moves(6, 7, WHITE | BISHOP, &b, &mut ret);
+        bishop_moves(6, 7, &b, &mut ret);
         assert_eq!(ret.len(), 6);
     }
 
@@ -934,7 +935,7 @@ mod tests {
     fn white_queen_empty_board() {
         let b = board_from_fen("8/8/8/8/3Q4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        queen_moves(6, 5, WHITE | QUEEN, &b, &mut ret);
+        queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 27);
     }
 
@@ -942,7 +943,7 @@ mod tests {
     fn white_queen_cant_move() {
         let b = board_from_fen("8/8/8/2NBR3/2PQR3/2RRR3/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        queen_moves(6, 5, WHITE | QUEEN, &b, &mut ret);
+        queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
 
@@ -950,7 +951,7 @@ mod tests {
     fn white_queen_with_other_piece() {
         let b = board_from_fen("8/6r1/8/8/3Q4/5N2/8/6P1 w - - 0 1").unwrap();
         let mut ret: Vec<(usize, usize)> = vec![];
-        queen_moves(6, 5, WHITE | QUEEN, &b, &mut ret);
+        queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 25);
     }
 
@@ -1139,7 +1140,6 @@ mod tests {
                         pawn_moves_en_passant(
                             i as i8,
                             j as i8,
-                            board.board[i][j],
                             &board,
                             &mut moves,
                         );
