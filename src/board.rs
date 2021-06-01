@@ -26,6 +26,8 @@ pub const SENTINEL: u8 = 0b11111111;
 pub const BOARD_START: usize = 2;
 pub const BOARD_END: usize = 10;
 
+type Point = (usize, usize);
+
 pub fn get_color(square: u8) -> Option<PieceColor> {
     if is_empty(square) || is_outside_board(square) {
         return None;
@@ -79,7 +81,7 @@ pub fn is_outside_board(square: u8) -> bool {
 /*
     Returns the row, col on the board when given the algebraic coordinates
 */
-pub fn algebraic_pairs_to_board_position(pair: &str) -> Option<(usize, usize)> {
+pub fn algebraic_pairs_to_board_position(pair: &str) -> Option<Point> {
     if pair.len() != 2 {
         return None;
     }
@@ -162,9 +164,9 @@ pub struct BoardState {
     pub board: [[u8; 12]; 12],
     pub to_move: PieceColor,
     // if a pawn, on the last move, made a double move, this is set, otherwise this is None
-    pub pawn_double_move: Option<(usize, usize)>,
-    pub white_king_location: (usize, usize),
-    pub black_king_location: (usize, usize),
+    pub pawn_double_move: Option<Point>,
+    pub white_king_location: Point,
+    pub black_king_location: Point,
     pub white_king_side_castle: bool,
     pub white_queen_side_castle: bool,
     pub black_king_side_castle: bool,
@@ -224,7 +226,11 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         return Err("Could not parse fen string: Invalid fen string");
     }
 
-    let to_move = if fen_config[1] == "w" { PieceColor::White } else { PieceColor::Black };
+    let to_move = match fen_config[1] {
+        "w" => PieceColor::White,
+        _ => PieceColor::Black,
+    };
+    
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
     // TODO
@@ -278,7 +284,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     }
 
     // Deal with the en passant string
-    let mut en_passant_pos: Option<(usize, usize)> = None;
+    let mut en_passant_pos: Option<Point> = None;
     if en_passant.len() != 2 {
         if en_passant != "-" {
             return Err("Could not parse fen string: En passant string not valid");

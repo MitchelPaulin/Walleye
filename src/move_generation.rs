@@ -2,6 +2,8 @@
 pub use crate::board::PieceColor;
 pub use crate::board::*;
 
+type Point = (usize, usize);
+
 const KNIGHT_CORDS: [(i8, i8); 8] = [
     (1, 2),
     (1, -2),
@@ -24,11 +26,11 @@ pub enum CastlingType {
 /*
     Generate pseudo-legal moves for a knight
 */
-pub fn knight_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     for mods in KNIGHT_CORDS.iter() {
         let piece = board.board[row as usize][col as usize];
-        let _row = (row + mods.0) as usize;
-        let _col = (col + mods.1) as usize;
+        let _row = (row as i8 + mods.0) as usize;
+        let _col = (col as i8 + mods.1) as usize;
         let square = board.board[_row][_col];
 
         if is_outside_board(board.board[_row][_col]) {
@@ -44,46 +46,46 @@ pub fn knight_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize
 /*
     Generate pseudo-legal moves for a pawn
 */
-pub fn pawn_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row as usize][col as usize];
 
     // white pawns move up board
     if is_white(piece) {
         // check capture
-        let left_cap = board.board[(row - 1) as usize][(col - 1) as usize];
-        let right_cap = board.board[(row - 1) as usize][(col + 1) as usize];
+        let left_cap = board.board[row - 1][col - 1];
+        let right_cap = board.board[row - 1][col + 1];
         if !is_outside_board(left_cap) && is_black(left_cap) {
-            moves.push(((row - 1) as usize, (col - 1) as usize));
+            moves.push((row - 1, col - 1));
         }
         if !is_outside_board(right_cap) && is_black(right_cap) {
-            moves.push(((row - 1) as usize, (col + 1) as usize));
+            moves.push((row - 1, col + 1));
         }
 
         // check a normal push
-        if is_empty(board.board[(row - 1) as usize][col as usize]) {
-            moves.push(((row - 1) as usize, col as usize));
+        if is_empty(board.board[row - 1][col]) {
+            moves.push((row - 1, col));
             // check double push
-            if row == 8 && is_empty(board.board[(row - 2) as usize][col as usize]) {
-                moves.push(((row - 2) as usize, col as usize));
+            if row == 8 && is_empty(board.board[row - 2][col]) {
+                moves.push((row - 2, col));
             }
         }
     } else {
         // check capture
-        let left_cap = board.board[(row + 1) as usize][(col + 1) as usize];
-        let right_cap = board.board[(row + 1) as usize][(col - 1) as usize];
+        let left_cap = board.board[row + 1][col + 1];
+        let right_cap = board.board[row + 1][col - 1];
         if !is_outside_board(left_cap) && is_white(left_cap) {
-            moves.push(((row + 1) as usize, (col + 1) as usize));
+            moves.push((row + 1, col + 1));
         }
         if !is_outside_board(right_cap) && is_white(right_cap) {
-            moves.push(((row + 1) as usize, (col - 1) as usize));
+            moves.push((row + 1, col - 1));
         }
 
         // check a normal push
-        if is_empty(board.board[(row + 1) as usize][col as usize]) {
-            moves.push(((row + 1) as usize, col as usize));
+        if is_empty(board.board[row + 1][col]) {
+            moves.push((row + 1, col));
             // check double push
-            if row == 3 && is_empty(board.board[(row + 2) as usize][col as usize]) {
-                moves.push(((row + 2) as usize, col as usize));
+            if row == 3 && is_empty(board.board[row + 2][col]) {
+                moves.push((row + 2, col));
             }
         }
     }
@@ -97,25 +99,25 @@ pub fn pawn_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, 
     Returns None if no legal move is available, otherwise return the coordinates of the capture
 */
 
-pub fn pawn_moves_en_passant(row: i8, col: i8, board: &BoardState) -> Option<(usize, usize)> {
+pub fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Option<Point> {
     if board.pawn_double_move.is_none() {
         return None;
     }
 
-    let piece = board.board[row as usize][col as usize];
+    let piece = board.board[row][col];
 
-    if is_white(piece) && row as usize == BOARD_START + 3 {
-        let left_cap = ((row - 1) as usize, (col - 1) as usize);
-        let right_cap = ((row - 1) as usize, (col + 1) as usize);
+    if is_white(piece) && row == BOARD_START + 3 {
+        let left_cap = (row - 1, col - 1);
+        let right_cap = (row - 1, col + 1);
 
         if left_cap == board.pawn_double_move.unwrap() {
             return Some(left_cap);
         } else if right_cap == board.pawn_double_move.unwrap() {
             return Some(right_cap);
         }
-    } else if is_black(piece) && row as usize == BOARD_START + 4 {
-        let left_cap = ((row + 1) as usize, (col + 1) as usize);
-        let right_cap = ((row + 1) as usize, (col - 1) as usize);
+    } else if is_black(piece) && row == BOARD_START + 4 {
+        let left_cap = (row + 1, col + 1);
+        let right_cap = (row + 1, col - 1);
 
         if left_cap == board.pawn_double_move.unwrap() {
             return Some(left_cap);
@@ -129,12 +131,12 @@ pub fn pawn_moves_en_passant(row: i8, col: i8, board: &BoardState) -> Option<(us
 /*
     Generate pseudo-legal moves for a king
 */
-pub fn king_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
-    let piece = board.board[row as usize][col as usize];
-    for i in -1..2 {
-        for j in -1..2 {
-            let _row = (row + i) as usize;
-            let _col = (col + j) as usize;
+pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+    let piece = board.board[row][col];
+    for i in 0..3 {
+        for j in 0..3 {
+            let _row = row + i - 1;
+            let _col = col + j - 1;
 
             if is_outside_board(board.board[_row][_col]) {
                 continue;
@@ -152,24 +154,24 @@ pub fn king_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, 
 /*
     Generate pseudo-legal moves for a rook
 */
-pub fn rook_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
     let piece = board.board[row as usize][col as usize];
     for m in mods.iter() {
         let mut multiplier = 1;
-        let mut _row = row + m.0;
-        let mut _col = col + m.1;
-        let mut square = board.board[_row as usize][_col as usize];
+        let mut _row = ((row as i8) + m.0) as usize;
+        let mut _col = ((col as i8) + m.1) as usize;
+        let mut square = board.board[_row][_col];
         while is_empty(square) {
-            moves.push((_row as usize, _col as usize));
+            moves.push((_row, _col));
             multiplier += 1;
-            _row = row + m.0 * multiplier;
-            _col = col + m.1 * multiplier;
-            square = board.board[_row as usize][_col as usize];
+            _row = ((row as i8) + m.0 * multiplier) as usize;
+            _col = ((col as i8) + m.1 * multiplier) as usize;
+            square = board.board[_row][_col];
         }
 
         if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
-            moves.push((_row as usize, _col as usize));
+            moves.push((_row, _col));
         }
     }
 }
@@ -177,25 +179,25 @@ pub fn rook_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, 
 /*
     Generate pseudo-legal moves for a bishop
 */
-pub fn bishop_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let mods = [1, -1];
     let piece = board.board[row as usize][col as usize];
     for i in mods.iter() {
         for j in mods.iter() {
             let mut multiplier = 1;
-            let mut _row = row + i;
-            let mut _col = col + j;
-            let mut square = board.board[_row as usize][_col as usize];
+            let mut _row = (row as i8 + i) as usize;
+            let mut _col = (col as i8 + j) as usize;
+            let mut square = board.board[_row][_col];
             while is_empty(square) {
-                moves.push((_row as usize, _col as usize));
+                moves.push((_row, _col));
                 multiplier += 1;
-                _row = row + i * multiplier;
-                _col = col + j * multiplier;
-                square = board.board[_row as usize][_col as usize];
+                _row = ((row as i8) + i * multiplier) as usize;
+                _col = ((col as i8) + j * multiplier) as usize;
+                square = board.board[_row][_col];
             }
 
             if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
-                moves.push((_row as usize, _col as usize));
+                moves.push((_row, _col));
             }
         }
     }
@@ -204,7 +206,7 @@ pub fn bishop_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize
 /*
     Generate pseudo-legal moves for a queen
 */
-pub fn queen_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     rook_moves(row, col, board, moves);
     bishop_moves(row, col, board, moves);
 }
@@ -213,9 +215,9 @@ pub fn queen_moves(row: i8, col: i8, board: &BoardState, moves: &mut Vec<(usize,
     Generate pseudo-legal moves for a piece
     This will not generate en passants and castling, these cases are handled separately
 */
-pub fn get_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Vec<(usize, usize)>) {
+pub fn get_moves(row: usize, col: usize, piece: u8, board: &BoardState, moves: &mut Vec<Point>) {
     match piece & PIECE_MASK {
-        PAWN => pawn_moves(row, col, board, moves),
+        PAWN => pawn_moves(row as usize, col as usize, board, moves),
         ROOK => rook_moves(row, col, board, moves),
         BISHOP => bishop_moves(row, col, board, moves),
         KNIGHT => knight_moves(row, col, board, moves),
@@ -242,7 +244,7 @@ pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
     this function checks all possible attack squares to the king and
     sees if the piece is there, thus it is important the king_location is set
 */
-fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: (usize, usize)) -> bool {
+fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) -> bool {
     let attacking_color: PieceColor;
     if color == PieceColor::White {
         attacking_color = PieceColor::Black;
@@ -601,7 +603,7 @@ mod tests {
     #[test]
     fn knight_moves_empty_board() {
         let b = board_from_fen("8/8/8/8/3N4/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         knight_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
@@ -609,14 +611,14 @@ mod tests {
     #[test]
     fn knight_moves_corner() {
         let b = board_from_fen("N7/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         knight_moves(2, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
     #[test]
     fn knight_moves_with_other_pieces_with_capture() {
         let b = board_from_fen("8/8/5n2/3NQ3/2K2P2/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         knight_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 7);
     }
@@ -626,7 +628,7 @@ mod tests {
     #[test]
     fn white_pawn_double_push() {
         let b = board_from_fen("8/8/8/8/8/8/P7/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(8, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
@@ -634,7 +636,7 @@ mod tests {
     #[test]
     fn white_pawn_has_moved() {
         let b = board_from_fen("8/8/8/8/8/3P4/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
@@ -642,7 +644,7 @@ mod tests {
     #[test]
     fn white_pawn_cant_move_black_piece_block() {
         let b = board_from_fen("8/8/8/8/3r4/3P4/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
@@ -650,7 +652,7 @@ mod tests {
     #[test]
     fn white_pawn_cant_move_white_piece_block() {
         let b = board_from_fen("8/8/8/8/3K4/3P4/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(7, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
@@ -658,7 +660,7 @@ mod tests {
     #[test]
     fn white_pawn_with_two_captures_and_start() {
         let b = board_from_fen("8/8/8/8/8/n1q5/1P6/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(8, 3, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
@@ -666,7 +668,7 @@ mod tests {
     #[test]
     fn white_pawn_with_one_capture() {
         let b = board_from_fen("8/8/Q1b5/1P6/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(5, 3, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
@@ -674,7 +676,7 @@ mod tests {
     #[test]
     fn white_pawn_double_push_piece_in_front() {
         let b = board_from_fen("8/8/8/8/8/b7/P7/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(8, 2, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
@@ -714,7 +716,7 @@ mod tests {
     #[test]
     fn black_pawn_double_push() {
         let b = board_from_fen("8/p7/8/8/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(3, 2, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
@@ -722,7 +724,7 @@ mod tests {
     #[test]
     fn black_pawn_has_moved() {
         let b = board_from_fen("8/8/8/3p4/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
@@ -730,7 +732,7 @@ mod tests {
     #[test]
     fn black_pawn_cant_move_white_piece_block() {
         let b = board_from_fen("8/3p4/3R4/8/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
@@ -738,7 +740,7 @@ mod tests {
     #[test]
     fn black_pawn_with_two_captures_and_start() {
         let b = board_from_fen("8/3p4/2R1R3/8/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
@@ -746,7 +748,7 @@ mod tests {
     #[test]
     fn black_pawn_with_one_capture() {
         let b = board_from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         pawn_moves(3, 5, &b, &mut ret);
         assert_eq!(ret.len(), 1);
     }
@@ -780,7 +782,7 @@ mod tests {
     #[test]
     fn king_empty_board_center() {
         let b = board_from_fen("8/8/8/8/3K4/8/8/k7 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         king_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
@@ -788,7 +790,7 @@ mod tests {
     #[test]
     fn king_start_pos() {
         let b = board_from_fen("8/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         king_moves(9, 6, &b, &mut ret);
         assert_eq!(ret.len(), 5);
     }
@@ -796,7 +798,7 @@ mod tests {
     #[test]
     fn king_start_pos_other_pieces() {
         let b = board_from_fen("8/8/8/8/8/8/3Pn3/3QKB2 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         king_moves(9, 6, &b, &mut ret);
         assert_eq!(ret.len(), 2);
     }
@@ -804,7 +806,7 @@ mod tests {
     #[test]
     fn king_black_other_pieces() {
         let b = board_from_fen("8/8/8/8/8/3Pn3/3QkB2/3R1q2 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         king_moves(8, 6, &b, &mut ret);
         assert_eq!(ret.len(), 6);
     }
@@ -814,7 +816,7 @@ mod tests {
     #[test]
     fn rook_center_of_empty_board() {
         let b = board_from_fen("8/8/8/8/3R4/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 14);
     }
@@ -822,7 +824,7 @@ mod tests {
     #[test]
     fn rook_center_of_board() {
         let b = board_from_fen("8/8/8/3q4/2kRp3/3b4/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
@@ -830,7 +832,7 @@ mod tests {
     #[test]
     fn rook_center_of_board_with_white_pieces() {
         let b = board_from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 8);
     }
@@ -838,14 +840,14 @@ mod tests {
     #[test]
     fn rook_corner() {
         let b = board_from_fen("7p/3N4/K7/4n3/2kR4/3b4/8/7R w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         rook_moves(9, 9, &b, &mut ret);
         assert_eq!(ret.len(), 14);
     }
     #[test]
     fn black_rook_center_of_board_with_white_pieces() {
         let b = board_from_fen("7p/3N4/8/4n3/2kr4/3b4/8/K7 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         rook_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 7);
     }
@@ -855,7 +857,7 @@ mod tests {
     #[test]
     fn black_bishop_center_empty_board() {
         let b = board_from_fen("8/8/8/3b4/8/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 13);
     }
@@ -863,7 +865,7 @@ mod tests {
     #[test]
     fn black_bishop_center_with_captures() {
         let b = board_from_fen("6P1/8/8/3b4/8/1R6/8/3Q4 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 12);
     }
@@ -871,7 +873,7 @@ mod tests {
     #[test]
     fn black_bishop_center_with_captures_and_black_pieces() {
         let b = board_from_fen("6P1/8/2Q5/3b4/2k1n3/1R6/8/b2Q4 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         bishop_moves(5, 5, &b, &mut ret);
         assert_eq!(ret.len(), 4);
     }
@@ -879,7 +881,7 @@ mod tests {
     #[test]
     fn white_bishop_center_with_captures_and_white_pieces() {
         let b = board_from_fen("8/8/8/4r3/5B2/8/3Q4/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         bishop_moves(6, 7, &b, &mut ret);
         assert_eq!(ret.len(), 6);
     }
@@ -889,7 +891,7 @@ mod tests {
     #[test]
     fn white_queen_empty_board() {
         let b = board_from_fen("8/8/8/8/3Q4/8/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 27);
     }
@@ -897,7 +899,7 @@ mod tests {
     #[test]
     fn white_queen_cant_move() {
         let b = board_from_fen("8/8/8/2NBR3/2PQR3/2RRR3/8/8 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 0);
     }
@@ -905,7 +907,7 @@ mod tests {
     #[test]
     fn white_queen_with_other_piece() {
         let b = board_from_fen("8/6r1/8/8/3Q4/5N2/8/6P1 w - - 0 1").unwrap();
-        let mut ret: Vec<(usize, usize)> = vec![];
+        let mut ret: Vec<Point> = vec![];
         queen_moves(6, 5, &b, &mut ret);
         assert_eq!(ret.len(), 25);
     }
@@ -1034,8 +1036,8 @@ mod tests {
                 let color = get_color(board.board[i][j]);
                 if color.is_some() && color.unwrap() == board.to_move {
                     //generate moves
-                    let mut moves: Vec<(usize, usize)> = vec![];
-                    get_moves(i as i8, j as i8, board.board[i][j], &board, &mut moves);
+                    let mut moves: Vec<Point> = vec![];
+                    get_moves(i, j, board.board[i][j], &board, &mut moves);
 
                     // make all the valid moves of this piece
                     for _move in moves {
@@ -1098,7 +1100,7 @@ mod tests {
 
                     // take care of en passant captures
                     if is_pawn(board.board[i][j]) {
-                        let en_passant = pawn_moves_en_passant(i as i8, j as i8, &board);
+                        let en_passant = pawn_moves_en_passant(i, j, &board);
                         if en_passant.is_some() {
                             let _move = en_passant.unwrap();
                             let mut new_board = board.clone();
