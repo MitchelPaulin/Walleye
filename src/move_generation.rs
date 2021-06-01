@@ -28,7 +28,7 @@ pub enum CastlingType {
 */
 pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     for mods in KNIGHT_CORDS.iter() {
-        let piece = board.board[row as usize][col as usize];
+        let piece = board.board[row][col];
         let _row = (row as i8 + mods.0) as usize;
         let _col = (col as i8 + mods.1) as usize;
         let square = board.board[_row][_col];
@@ -47,7 +47,7 @@ pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<
     Generate pseudo-legal moves for a pawn
 */
 pub fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
-    let piece = board.board[row as usize][col as usize];
+    let piece = board.board[row][col];
 
     // white pawns move up board
     if is_white(piece) {
@@ -156,7 +156,7 @@ pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
 */
 pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    let piece = board.board[row as usize][col as usize];
+    let piece = board.board[row][col];
     for m in mods.iter() {
         let mut multiplier = 1;
         let mut _row = ((row as i8) + m.0) as usize;
@@ -181,7 +181,7 @@ pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
 */
 pub fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let mods = [1, -1];
-    let piece = board.board[row as usize][col as usize];
+    let piece = board.board[row][col];
     for i in mods.iter() {
         for j in mods.iter() {
             let mut multiplier = 1;
@@ -217,7 +217,7 @@ pub fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<P
 */
 pub fn get_moves(row: usize, col: usize, piece: u8, board: &BoardState, moves: &mut Vec<Point>) {
     match piece & PIECE_MASK {
-        PAWN => pawn_moves(row as usize, col as usize, board, moves),
+        PAWN => pawn_moves(row, col, board, moves),
         ROOK => rook_moves(row, col, board, moves),
         BISHOP => bishop_moves(row, col, board, moves),
         KNIGHT => knight_moves(row, col, board, moves),
@@ -266,14 +266,13 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     // Check from pawn
     let _row;
     if color == PieceColor::White {
-        _row = (square_cords.0 as i8 - 1) as usize;
+        _row = square_cords.0 - 1;
     } else {
-        _row = (square_cords.0 as i8 + 1) as usize;
+        _row = square_cords.0 + 1;
     }
 
-    if board.board[_row][(square_cords.1 as i8 - 1) as usize] == attacking_color.as_mask() | PAWN
-        || board.board[_row][(square_cords.1 as i8 + 1) as usize]
-            == attacking_color.as_mask() | PAWN
+    if board.board[_row][square_cords.1 - 1] == attacking_color.as_mask() | PAWN
+        || board.board[_row][square_cords.1 + 1] == attacking_color.as_mask() | PAWN
     {
         return true;
     }
@@ -322,10 +321,10 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from king
-    for i in -1..2 {
-        for j in -1..2 {
-            let _row = (square_cords.0 as i8 + i) as usize;
-            let _col = (square_cords.1 as i8 + j) as usize;
+    for i in 0..3 {
+        for j in 0..3 {
+            let _row = square_cords.0 + i - 1;
+            let _col = square_cords.1 + j - 1;
             let square = board.board[_row][_col];
             if is_outside_board(square) {
                 continue;
