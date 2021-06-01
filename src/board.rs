@@ -26,14 +26,14 @@ pub const SENTINEL: u8 = 0b11111111;
 pub const BOARD_START: usize = 2;
 pub const BOARD_END: usize = 10;
 
-pub fn get_color(square: u8) -> Option<u8> {
+pub fn get_color(square: u8) -> Option<PieceColor> {
     if is_empty(square) || is_outside_board(square) {
         return None;
     }
     if square & COLOR_MASK == WHITE {
-        return Some(WHITE);
+        return Some(PieceColor::White);
     }
-    return Some(BLACK);
+    return Some(PieceColor::Black);
 }
 
 pub fn is_white(square: u8) -> bool {
@@ -142,10 +142,25 @@ fn get_piece_character_simple(piece: u8) -> &'static str {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum PieceColor {
+    Black,
+    White,
+}
+
+impl PieceColor {
+    pub fn as_mask(&self) -> u8 {
+        match *self {
+            PieceColor::White => WHITE,
+            PieceColor::Black => BLACK,
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct BoardState {
     pub board: [[u8; 12]; 12],
-    pub to_move: u8,
+    pub to_move: PieceColor,
     // if a pawn, on the last move, made a double move, this is set, otherwise this is None
     pub pawn_double_move: Option<(usize, usize)>,
     pub white_king_location: (usize, usize),
@@ -190,6 +205,13 @@ impl BoardState {
             println!(" {}", 10 - i);
         }
     }
+
+    pub fn swap_color(&mut self) {
+        match self.to_move {
+            PieceColor::White => self.to_move = PieceColor::Black,
+            PieceColor::Black => self.to_move = PieceColor::White,
+        }
+    }
 }
 
 /*
@@ -202,7 +224,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         return Err("Could not parse fen string: Invalid fen string");
     }
 
-    let to_move = if fen_config[1] == "w" { WHITE } else { BLACK };
+    let to_move = if fen_config[1] == "w" { PieceColor::White } else { PieceColor::Black };
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
     // TODO
@@ -454,9 +476,9 @@ mod tests {
     fn correct_starting_player() {
         let mut b =
             board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        assert_eq!(b.to_move, WHITE);
+        assert_eq!(b.to_move, PieceColor::White);
         b = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
-        assert_eq!(b.to_move, BLACK);
+        assert_eq!(b.to_move, PieceColor::Black);
     }
 
     #[test]

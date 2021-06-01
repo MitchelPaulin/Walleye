@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+pub use crate::board::PieceColor;
 pub use crate::board::*;
 
 const KNIGHT_CORDS: [(i8, i8); 8] = [
@@ -227,11 +228,10 @@ pub fn get_moves(row: i8, col: i8, piece: u8, board: &BoardState, moves: &mut Ve
 /*
     Determine if a color is currently in check
 */
-pub fn is_check(board: &BoardState, color: u8) -> bool {
-    if color == WHITE {
-        is_check_cords(board, color, board.white_king_location)
-    } else {
-        is_check_cords(board, color, board.black_king_location)
+pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
+    match color {
+        PieceColor::Black => is_check_cords(board, PieceColor::Black, board.black_king_location),
+        PieceColor::White => is_check_cords(board, PieceColor::White, board.white_king_location),
     }
 }
 
@@ -242,12 +242,12 @@ pub fn is_check(board: &BoardState, color: u8) -> bool {
     this function checks all possible attack squares to the king and
     sees if the piece is there, thus it is important the king_location is set
 */
-fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -> bool {
-    let attacking_color;
-    if color == WHITE {
-        attacking_color = BLACK;
+fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: (usize, usize)) -> bool {
+    let attacking_color: PieceColor;
+    if color == PieceColor::White {
+        attacking_color = PieceColor::Black;
     } else {
-        attacking_color = WHITE;
+        attacking_color = PieceColor::White;
     }
 
     // Check from knight
@@ -256,21 +256,22 @@ fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -
         let _col = (square_cords.1 as i8 + mods.1) as usize;
         let square = board.board[_row][_col];
 
-        if square == KNIGHT | attacking_color {
+        if square == KNIGHT | attacking_color.as_mask() {
             return true;
         }
     }
 
     // Check from pawn
     let _row;
-    if color == WHITE {
+    if color == PieceColor::White {
         _row = (square_cords.0 as i8 - 1) as usize;
     } else {
         _row = (square_cords.0 as i8 + 1) as usize;
     }
 
-    if board.board[_row][(square_cords.1 as i8 - 1) as usize] == attacking_color | PAWN
-        || board.board[_row][(square_cords.1 as i8 + 1) as usize] == attacking_color | PAWN
+    if board.board[_row][(square_cords.1 as i8 - 1) as usize] == attacking_color.as_mask() | PAWN
+        || board.board[_row][(square_cords.1 as i8 + 1) as usize]
+            == attacking_color.as_mask() | PAWN
     {
         return true;
     }
@@ -289,7 +290,8 @@ fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -
             square = board.board[_row as usize][_col as usize];
         }
 
-        if square == attacking_color | ROOK || square == attacking_color | QUEEN {
+        if square == attacking_color.as_mask() | ROOK || square == attacking_color.as_mask() | QUEEN
+        {
             return true;
         }
     }
@@ -309,7 +311,9 @@ fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -
                 square = board.board[_row as usize][_col as usize];
             }
 
-            if square == attacking_color | BISHOP || square == attacking_color | QUEEN {
+            if square == attacking_color.as_mask() | BISHOP
+                || square == attacking_color.as_mask() | QUEEN
+            {
                 return true;
             }
         }
@@ -325,7 +329,7 @@ fn is_check_cords(board: &BoardState, color: u8, square_cords: (usize, usize)) -
                 continue;
             }
 
-            if is_king(square) && square & COLOR_MASK == attacking_color {
+            if is_king(square) && square & COLOR_MASK == attacking_color.as_mask() {
                 return true;
             }
         }
@@ -367,12 +371,12 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that the king currently isn't in check
-        if is_check(board, WHITE) {
+        if is_check(board, PieceColor::White) {
             return false;
         }
         //check that the squares required for castling are not threatened
-        if is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_END - 3))
-            || is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_END - 2))
+        if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 3))
+            || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 2))
         {
             return false;
         }
@@ -391,12 +395,12 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that the king currently isn't in check
-        if is_check(board, WHITE) {
+        if is_check(board, PieceColor::White) {
             return false;
         }
         //check that the squares required for castling are not threatened
-        if is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_START + 3))
-            || is_check_cords(board, WHITE, (BOARD_END - 1, BOARD_START + 2))
+        if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 3))
+            || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 2))
         {
             return false;
         }
@@ -415,12 +419,12 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that the king currently isn't in check
-        if is_check(board, BLACK) {
+        if is_check(board, PieceColor::Black) {
             return false;
         }
         //check that the squares required for castling are not threatened
-        if is_check_cords(board, BLACK, (BOARD_START, BOARD_END - 3))
-            || is_check_cords(board, BLACK, (BOARD_START, BOARD_END - 2))
+        if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 3))
+            || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 2))
         {
             return false;
         }
@@ -440,12 +444,12 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
             return false;
         }
         // check that the king currently isn't in check
-        if is_check(board, BLACK) {
+        if is_check(board, PieceColor::Black) {
             return false;
         }
         //check that the squares required for castling are not threatened
-        if is_check_cords(board, BLACK, (BOARD_START, BOARD_START + 2))
-            || is_check_cords(board, BLACK, (BOARD_START, BOARD_START + 3))
+        if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 2))
+            || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 3))
         {
             return false;
         }
@@ -463,133 +467,133 @@ mod tests {
     #[test]
     fn check_sanity_test() {
         let b = board_from_fen("8/8/8/8/3K4/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
     }
 
     #[test]
     fn knight_checks() {
         let mut b = board_from_fen("8/8/4n3/8/3K4/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/8/8/1RK5/nRB5 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/3k4/5N2/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/8/3k4/5n2/8/7N w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/2N5/8/3k4/5n2/8/7N w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
     }
 
     #[test]
     fn pawn_checks() {
         let mut b = board_from_fen("8/8/8/4k3/3P4/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/4k3/5P2/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/4k3/4P3/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/3PPP2/4k3/8/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/8/8/5p2/6K1/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/8/7p/6K1/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/8/6p1/6K1/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/8/6K1/5ppp/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
     }
 
     #[test]
     fn rook_checks() {
         let mut b = board_from_fen("8/8/8/R3k3/8/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/R1r1k3/8/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/R1r1k3/8/8/8/4R3 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("4R3/8/8/R1r5/8/8/8/4k3 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/R1r5/8/8/7R/4k3 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("4R3/8/8/8/8/3r4/R3K2R/2r1Rr2 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("4R3/8/8/8/4K3/3r4/R6R/2r1rr2 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("4R3/8/8/8/4K2r/3r4/R6R/2r2r2 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("4r3/8/8/4B3/r2QKP1r/3rR3/R6R/2r1rr2 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
     }
 
     #[test]
     fn bishop_checks() {
         let mut b = board_from_fen("8/8/8/1B6/8/8/8/5k2 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/2B1B3/1B3B2/1B1k1B2/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/8/5k2/8/8/2B5 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/8/5k2/4n3/8/2B5 w - - 0 1").unwrap();
-        assert!(!is_check(&b, BLACK));
+        assert!(!is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/8/8/3K4/8/8/6b1 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/3K4/4r3/8/6b1 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/3K4/4r3/8/b5b1 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/8/8/3K4/2P1r3/8/b5b1 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
     }
 
     #[test]
     fn queen_checks() {
         let mut b = board_from_fen("8/8/8/8/3k1Q2/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/2k5/8/8/8/6Q1/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, BLACK));
+        assert!(is_check(&b, PieceColor::Black));
 
         b = board_from_fen("8/8/2K5/8/3q4/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/8/1K6/2Q5/3q4/8/8/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/5Q2/1K6/8/3q4/8/8/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/5Q2/1K6/1P6/8/8/1q6/8 w - - 0 1").unwrap();
-        assert!(!is_check(&b, WHITE));
+        assert!(!is_check(&b, PieceColor::White));
 
         b = board_from_fen("8/2P2Q2/1K6/8/8/8/1q6/8 w - - 0 1").unwrap();
-        assert!(is_check(&b, WHITE));
+        assert!(is_check(&b, PieceColor::White));
     }
 
     // Knight tests
@@ -1056,11 +1060,7 @@ mod tests {
                         // this is a valid board state, update the variables
 
                         // set the turn for the next player
-                        if board.to_move == BLACK {
-                            new_board.to_move = WHITE;
-                        } else {
-                            new_board.to_move = BLACK;
-                        }
+                        new_board.swap_color();
 
                         // deal with setting castling privileges
                         if board.board[i][j] == WHITE | KING {
@@ -1114,12 +1114,7 @@ mod tests {
 
                             // if you make a move, and you do not end up in check, then this move is valid
                             if !is_check(&new_board, board.to_move) {
-                                if board.to_move == BLACK {
-                                    new_board.to_move = WHITE;
-                                } else {
-                                    new_board.to_move = BLACK;
-                                }
-
+                                new_board.swap_color();
                                 move_states[cur_depth] += 1;
                                 generate_moves(&new_board, cur_depth + 1, depth, move_states);
                             }
