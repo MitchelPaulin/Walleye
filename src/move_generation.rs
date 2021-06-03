@@ -1064,19 +1064,44 @@ mod tests {
                         new_board.swap_color();
 
                         // deal with setting castling privileges
+
+                        // if the rook or king move, take away castling privileges
                         if board.board[i][j] == WHITE | KING {
                             new_board.white_king_side_castle = false;
                             new_board.white_queen_side_castle = false;
                         } else if board.board[i][j] == BLACK | KING {
                             new_board.black_queen_side_castle = false;
                             new_board.black_king_side_castle = false;
-                        } else if board.board[i][j] == WHITE | ROOK && j == 9 && i == 9 {
+                        } else if board.board[i][j] == WHITE | ROOK
+                            && i == BOARD_END - 1
+                            && j == BOARD_END - 1
+                        {
                             new_board.white_king_side_castle = false;
-                        } else if board.board[i][j] == WHITE | ROOK && j == 2 && i == 9 {
+                        } else if board.board[i][j] == WHITE | ROOK
+                            && i == BOARD_END - 1
+                            && j == BOARD_START
+                        {
                             new_board.white_queen_side_castle = false;
-                        } else if board.board[i][j] == BLACK | ROOK && j == 2 && i == 2 {
+                        } else if board.board[i][j] == BLACK | ROOK
+                            && i == BOARD_START
+                            && j == BOARD_START
+                        {
                             new_board.black_queen_side_castle = false;
-                        } else if board.board[i][j] == BLACK | ROOK && j == 9 && i == 2 {
+                        } else if board.board[i][j] == BLACK | ROOK
+                            && i == BOARD_START
+                            && j == BOARD_END - 1
+                        {
+                            new_board.black_king_side_castle = false;
+                        }
+
+                        // if the rook is captured, take away castling privileges
+                        if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+                            new_board.white_king_side_castle = false;
+                        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+                            new_board.white_queen_side_castle = false;
+                        } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
+                            new_board.black_queen_side_castle = false;
+                        } else if _move.0 == BOARD_START && _move.1 == BOARD_END - 1 {
                             new_board.black_king_side_castle = false;
                         }
 
@@ -1124,6 +1149,63 @@ mod tests {
                 }
             }
         }
+
+        // take care of castling
+        if board.to_move == PieceColor::White && can_castle(&board, CastlingType::WhiteKingSide) {
+            let mut new_board = board.clone();
+            new_board.swap_color();
+            new_board.white_king_side_castle = false;
+            new_board.white_queen_side_castle = false;
+            new_board.white_king_location = (BOARD_END - 1, BOARD_END - 2);
+            new_board.board[BOARD_END - 1][BOARD_START + 4] = EMPTY;
+            new_board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
+            new_board.board[BOARD_END - 1][BOARD_END - 2] = WHITE | KING;
+            new_board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
+            move_states[cur_depth] += 1;
+            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+        }
+
+        if board.to_move == PieceColor::White && can_castle(&board, CastlingType::WhiteQueenSide) {
+            let mut new_board = board.clone();
+            new_board.swap_color();
+            new_board.white_king_side_castle = false;
+            new_board.white_queen_side_castle = false;
+            new_board.white_king_location = (BOARD_END - 1, BOARD_START + 2);
+            new_board.board[BOARD_END - 1][BOARD_START + 4] = EMPTY;
+            new_board.board[BOARD_END - 1][BOARD_START] = EMPTY;
+            new_board.board[BOARD_END - 1][BOARD_START + 2] = WHITE | KING;
+            new_board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
+            move_states[cur_depth] += 1;
+            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+        }
+
+        if board.to_move == PieceColor::Black && can_castle(&board, CastlingType::BlackKingSide) {
+            let mut new_board = board.clone();
+            new_board.swap_color();
+            new_board.black_king_side_castle = false;
+            new_board.black_queen_side_castle = false;
+            new_board.black_king_location = (BOARD_START, BOARD_END - 2);
+            new_board.board[BOARD_START][BOARD_START + 4] = EMPTY;
+            new_board.board[BOARD_START][BOARD_END - 1] = EMPTY;
+            new_board.board[BOARD_START][BOARD_END - 2] = BLACK | KING;
+            new_board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
+            move_states[cur_depth] += 1;
+            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+        }
+
+        if board.to_move == PieceColor::Black && can_castle(&board, CastlingType::BlackQueenSide) {
+            let mut new_board = board.clone();
+            new_board.swap_color();
+            new_board.black_king_side_castle = false;
+            new_board.black_queen_side_castle = false;
+            new_board.black_king_location = (BOARD_START, BOARD_START + 2);
+            new_board.board[BOARD_START][BOARD_START + 4] = EMPTY;
+            new_board.board[BOARD_START][BOARD_START] = EMPTY;
+            new_board.board[BOARD_START][BOARD_START + 2] = BLACK | KING;
+            new_board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
+            move_states[cur_depth] += 1;
+            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+        }
     }
 
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
@@ -1141,6 +1223,18 @@ mod tests {
     }
 
     #[test]
+    fn perft_test_position_2() {
+        let mut moves_states = [0; 3];
+        let b =
+            board_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+                .unwrap();
+        generate_moves(&b, 0, 3, &mut moves_states);
+        assert_eq!(moves_states[0], 48);
+        assert_eq!(moves_states[1], 2039);
+        assert_eq!(moves_states[2], 97862);
+    }
+
+    #[test]
     fn perft_test_position_3() {
         let mut moves_states = [0; 5];
         let b = board_from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
@@ -1150,6 +1244,16 @@ mod tests {
         assert_eq!(moves_states[2], 2812);
         assert_eq!(moves_states[3], 43238);
         assert_eq!(moves_states[4], 674624);
+    }
+
+    #[test]
+    fn perft_test_position_4() {
+        let mut moves_states = [0; 2];
+        let b = board_from_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1")
+            .unwrap();
+        generate_moves(&b, 0, 2, &mut moves_states);
+        assert_eq!(moves_states[0], 6);
+        //assert_eq!(moves_states[1], 264); -- requires pawn promotion implementation 
     }
 
     #[test]
