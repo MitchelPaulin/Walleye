@@ -215,8 +215,8 @@ pub fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<P
     Generate pseudo-legal moves for a piece
     This will not generate en passants and castling, these cases are handled separately
 */
-pub fn get_moves(row: usize, col: usize, piece: u8, board: &BoardState, moves: &mut Vec<Point>) {
-    match piece & PIECE_MASK {
+pub fn get_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+    match board.board[row][col] & PIECE_MASK {
         PAWN => pawn_moves(row, col, board, moves),
         ROOK => rook_moves(row, col, board, moves),
         BISHOP => bishop_moves(row, col, board, moves),
@@ -1030,74 +1030,60 @@ mod tests {
         if cur_depth == depth {
             return;
         }
+
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
                 let color = get_color(board.board[i][j]);
                 if color.is_some() && color.unwrap() == board.to_move {
                     //generate moves
                     let mut moves: Vec<Point> = vec![];
-                    get_moves(i, j, board.board[i][j], &board, &mut moves);
+                    let piece = board.board[i][j];
+                    get_moves(i, j, &board, &mut moves);
 
                     // make all the valid moves of this piece
                     for _move in moves {
                         let mut new_board = board.clone();
-
                         // update king location if we are moving the king
-                        if board.board[i][j] == WHITE | KING {
+                        if piece == WHITE | KING {
                             new_board.white_king_location = (_move.0, _move.1);
-                        } else if board.board[i][j] == BLACK | KING {
+                        } else if piece == BLACK | KING {
                             new_board.black_king_location = (_move.0, _move.1);
                         }
 
                         // move the piece, this will take care of any captures as well, excluding en passant
-                        new_board.board[_move.0][_move.1] = board.board[i][j];
+                        new_board.board[_move.0][_move.1] = piece;
                         new_board.board[i][j] = EMPTY;
 
                         // if you make your move, and you are in check, this move is not valid
-                        if is_check(&new_board, board.to_move) {
+                        if is_check(&new_board, color.unwrap()) {
                             continue;
                         }
 
                         // this is a valid board state, update the variables
 
-                        // set the turn for the next player
-                        new_board.swap_color();
-
                         // deal with setting castling privileges
 
                         // if the rook or king move, take away castling privileges
-                        if board.board[i][j] == WHITE | KING {
+                        if piece == WHITE | KING {
                             new_board.white_king_side_castle = false;
                             new_board.white_queen_side_castle = false;
-                        } else if board.board[i][j] == BLACK | KING {
+                        } else if piece == BLACK | KING {
                             new_board.black_queen_side_castle = false;
                             new_board.black_king_side_castle = false;
-                        } else if board.board[i][j] == WHITE | ROOK
-                            && i == BOARD_END - 1
-                            && j == BOARD_END - 1
-                        {
+                        } else if i == BOARD_END - 1 && j == BOARD_END - 1 {
                             new_board.white_king_side_castle = false;
-                        } else if board.board[i][j] == WHITE | ROOK
-                            && i == BOARD_END - 1
-                            && j == BOARD_START
-                        {
+                        } else if i == BOARD_END - 1 && j == BOARD_START {
                             new_board.white_queen_side_castle = false;
-                        } else if board.board[i][j] == BLACK | ROOK
-                            && i == BOARD_START
-                            && j == BOARD_START
-                        {
+                        } else if i == BOARD_START && j == BOARD_START {
                             new_board.black_queen_side_castle = false;
-                        } else if board.board[i][j] == BLACK | ROOK
-                            && i == BOARD_START
-                            && j == BOARD_END - 1
-                        {
+                        } else if i == BOARD_START && j == BOARD_END - 1 {
                             new_board.black_king_side_castle = false;
                         }
 
                         // if the rook is captured, take away castling privileges
                         if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
                             new_board.white_king_side_castle = false;
-                        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+                        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_START {
                             new_board.white_queen_side_castle = false;
                         } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
                             new_board.black_queen_side_castle = false;
@@ -1106,8 +1092,8 @@ mod tests {
                         }
 
                         // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
-                        if is_pawn(board.board[i][j]) && (i as i8 - _move.0 as i8).abs() == 2 {
-                            if is_white(board.board[i][j]) {
+                        if is_pawn(piece) && (i as i8 - _move.0 as i8).abs() == 2 {
+                            if is_white(piece) {
                                 new_board.pawn_double_move = Some((_move.0 + 1, _move.1));
                             } else {
                                 new_board.pawn_double_move = Some((_move.0 - 1, _move.1));
@@ -1117,22 +1103,43 @@ mod tests {
                             new_board.pawn_double_move = None;
                         }
 
-                        // recursively generate the next board state
-                        move_states[cur_depth] += 1;
-                        generate_moves(&new_board, cur_depth + 1, depth, move_states);
+                        new_board.swap_color();
+
+                        // deal with pawn promotions
+                        if piece == WHITE | PAWN && _move.0 == BOARD_START {
+                            for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
+                                let mut _new_board = new_board.clone();
+                                _new_board.pawn_double_move = None;
+                                _new_board.board[_move.0][_move.1] = WHITE | piece;
+                                move_states[cur_depth] += 1;
+                                generate_moves(&_new_board, cur_depth + 1, depth, move_states);
+                            }
+                        } else if piece == BLACK | PAWN && _move.0 == BOARD_END - 1 {
+                            for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
+                                let mut _new_board = new_board.clone();
+                                _new_board.pawn_double_move = None;
+                                _new_board.board[_move.0][_move.1] = BLACK | piece;
+                                move_states[cur_depth] += 1;
+                                generate_moves(&_new_board, cur_depth + 1, depth, move_states);
+                            }
+                        } else {
+                            // recursively generate the next board state
+                            move_states[cur_depth] += 1;
+                            generate_moves(&new_board, cur_depth + 1, depth, move_states);
+                        }
                     }
 
                     // take care of en passant captures
-                    if is_pawn(board.board[i][j]) {
+                    if is_pawn(piece) {
                         let en_passant = pawn_moves_en_passant(i, j, &board);
                         if en_passant.is_some() {
                             let _move = en_passant.unwrap();
                             let mut new_board = board.clone();
+                            new_board.swap_color();
                             new_board.pawn_double_move = None;
-
-                            new_board.board[_move.0][_move.1] = board.board[i][j];
+                            new_board.board[_move.0][_move.1] = piece;
                             new_board.board[i][j] = EMPTY;
-                            if is_white(board.board[i][j]) {
+                            if is_white(piece) {
                                 new_board.board[_move.0 + 1][_move.1] = EMPTY;
                             } else {
                                 new_board.board[_move.0 - 1][_move.1] = EMPTY;
@@ -1140,7 +1147,6 @@ mod tests {
 
                             // if you make a move, and you do not end up in check, then this move is valid
                             if !is_check(&new_board, board.to_move) {
-                                new_board.swap_color();
                                 move_states[cur_depth] += 1;
                                 generate_moves(&new_board, cur_depth + 1, depth, move_states);
                             }
@@ -1154,6 +1160,7 @@ mod tests {
         if board.to_move == PieceColor::White && can_castle(&board, CastlingType::WhiteKingSide) {
             let mut new_board = board.clone();
             new_board.swap_color();
+            new_board.pawn_double_move = None;
             new_board.white_king_side_castle = false;
             new_board.white_queen_side_castle = false;
             new_board.white_king_location = (BOARD_END - 1, BOARD_END - 2);
@@ -1168,6 +1175,7 @@ mod tests {
         if board.to_move == PieceColor::White && can_castle(&board, CastlingType::WhiteQueenSide) {
             let mut new_board = board.clone();
             new_board.swap_color();
+            new_board.pawn_double_move = None;
             new_board.white_king_side_castle = false;
             new_board.white_queen_side_castle = false;
             new_board.white_king_location = (BOARD_END - 1, BOARD_START + 2);
@@ -1182,6 +1190,7 @@ mod tests {
         if board.to_move == PieceColor::Black && can_castle(&board, CastlingType::BlackKingSide) {
             let mut new_board = board.clone();
             new_board.swap_color();
+            new_board.pawn_double_move = None;
             new_board.black_king_side_castle = false;
             new_board.black_queen_side_castle = false;
             new_board.black_king_location = (BOARD_START, BOARD_END - 2);
@@ -1196,6 +1205,7 @@ mod tests {
         if board.to_move == PieceColor::Black && can_castle(&board, CastlingType::BlackQueenSide) {
             let mut new_board = board.clone();
             new_board.swap_color();
+            new_board.pawn_double_move = None;
             new_board.black_king_side_castle = false;
             new_board.black_queen_side_castle = false;
             new_board.black_king_location = (BOARD_START, BOARD_START + 2);
@@ -1224,14 +1234,15 @@ mod tests {
 
     #[test]
     fn perft_test_position_2() {
-        let mut moves_states = [0; 3];
+        let mut moves_states = [0; 4];
         let b =
             board_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
                 .unwrap();
-        generate_moves(&b, 0, 3, &mut moves_states);
+        generate_moves(&b, 0, 4, &mut moves_states);
         assert_eq!(moves_states[0], 48);
         assert_eq!(moves_states[1], 2039);
         assert_eq!(moves_states[2], 97862);
+        assert_eq!(moves_states[3], 4085603);
     }
 
     #[test]
@@ -1248,12 +1259,38 @@ mod tests {
 
     #[test]
     fn perft_test_position_4() {
-        let mut moves_states = [0; 2];
+        let mut moves_states = [0; 4];
+        let b = board_from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
+            .unwrap();
+        generate_moves(&b, 0, 4, &mut moves_states);
+        assert_eq!(moves_states[0], 6);
+        assert_eq!(moves_states[1], 264);
+        assert_eq!(moves_states[2], 9467);
+        assert_eq!(moves_states[3], 422333);
+    }
+
+    #[test]
+    fn perft_test_position_4_mirrored() {
+        let mut moves_states = [0; 4];
         let b = board_from_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1")
             .unwrap();
-        generate_moves(&b, 0, 2, &mut moves_states);
+        generate_moves(&b, 0, 4, &mut moves_states);
         assert_eq!(moves_states[0], 6);
-        //assert_eq!(moves_states[1], 264); -- requires pawn promotion implementation 
+        assert_eq!(moves_states[1], 264);
+        assert_eq!(moves_states[2], 9467);
+        assert_eq!(moves_states[3], 422333);
+    }
+
+    #[test]
+    fn perft_test_position_5() {
+        let mut moves_states = [0; 4];
+        let b =
+            board_from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap();
+        generate_moves(&b, 0, 4, &mut moves_states);
+        assert_eq!(moves_states[0], 44);
+        assert_eq!(moves_states[1], 1486);
+        assert_eq!(moves_states[2], 62379);
+        assert_eq!(moves_states[3], 2103487);
     }
 
     #[test]
