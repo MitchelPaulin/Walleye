@@ -434,7 +434,7 @@ pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
     }
 
     if castling_type == CastlingType::BlackQueenSide {
-        if !board.black_king_side_castle {
+        if !board.black_queen_side_castle {
             return false;
         }
         // check that squares required for castling are empty
