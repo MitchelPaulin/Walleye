@@ -33,7 +33,7 @@ pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<
         let _col = (col as i8 + mods.1) as usize;
         let square = board.board[_row][_col];
 
-        if is_outside_board(board.board[_row][_col]) {
+        if is_outside_board(square) {
             continue;
         }
 
@@ -105,26 +105,25 @@ pub fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Opti
     }
 
     let piece = board.board[row][col];
+    let left_cap;
+    let right_cap;
 
     if is_white(piece) && row == BOARD_START + 3 {
-        let left_cap = (row - 1, col - 1);
-        let right_cap = (row - 1, col + 1);
-
-        if left_cap == board.pawn_double_move.unwrap() {
-            return Some(left_cap);
-        } else if right_cap == board.pawn_double_move.unwrap() {
-            return Some(right_cap);
-        }
+        left_cap = (row - 1, col - 1);
+        right_cap = (row - 1, col + 1);
     } else if is_black(piece) && row == BOARD_START + 4 {
-        let left_cap = (row + 1, col + 1);
-        let right_cap = (row + 1, col - 1);
-
-        if left_cap == board.pawn_double_move.unwrap() {
-            return Some(left_cap);
-        } else if right_cap == board.pawn_double_move.unwrap() {
-            return Some(right_cap);
-        }
+        left_cap = (row + 1, col + 1);
+        right_cap = (row + 1, col - 1);
+    } else {
+        return None;
     }
+
+    if left_cap == board.pawn_double_move.unwrap() {
+        return Some(left_cap);
+    } else if right_cap == board.pawn_double_move.unwrap() {
+        return Some(right_cap);
+    }
+
     return None;
 }
 
@@ -137,14 +136,12 @@ pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
         for j in 0..3 {
             let _row = row + i - 1;
             let _col = col + j - 1;
-
-            if is_outside_board(board.board[_row][_col]) {
+            let square = board.board[_row][_col];
+            if is_outside_board(square) {
                 continue;
             }
 
-            if is_empty(board.board[_row][_col])
-                || board.board[_row][_col] & COLOR_MASK != piece & COLOR_MASK
-            {
+            if is_empty(square) || square & COLOR_MASK != piece & COLOR_MASK {
                 moves.push((_row, _col));
             }
         }
@@ -155,23 +152,20 @@ pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
     Generate pseudo-legal moves for a rook
 */
 pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
-    let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
     let piece = board.board[row][col];
-    for m in mods.iter() {
-        let mut multiplier = 1;
-        let mut _row = ((row as i8) + m.0) as usize;
-        let mut _col = ((col as i8) + m.1) as usize;
-        let mut square = board.board[_row][_col];
+    for m in [(1, 0), (-1, 0), (0, 1), (0, -1)].iter() {
+        let mut row = row as i8 + m.0;
+        let mut col = col as i8 + m.1;
+        let mut square = board.board[row as usize][col as usize];
         while is_empty(square) {
-            moves.push((_row, _col));
-            multiplier += 1;
-            _row = ((row as i8) + m.0 * multiplier) as usize;
-            _col = ((col as i8) + m.1 * multiplier) as usize;
-            square = board.board[_row][_col];
+            moves.push((row as usize, col as usize));
+            row += m.0;
+            col += m.1;
+            square = board.board[row as usize][col as usize];
         }
 
         if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
-            moves.push((_row, _col));
+            moves.push((row as usize, col as usize));
         }
     }
 }
@@ -180,25 +174,20 @@ pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
     Generate pseudo-legal moves for a bishop
 */
 pub fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
-    let mods = [1, -1];
     let piece = board.board[row][col];
-    for i in mods.iter() {
-        for j in mods.iter() {
-            let mut multiplier = 1;
-            let mut _row = (row as i8 + i) as usize;
-            let mut _col = (col as i8 + j) as usize;
-            let mut square = board.board[_row][_col];
-            while is_empty(square) {
-                moves.push((_row, _col));
-                multiplier += 1;
-                _row = ((row as i8) + i * multiplier) as usize;
-                _col = ((col as i8) + j * multiplier) as usize;
-                square = board.board[_row][_col];
-            }
+    for m in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter() {
+        let mut row = row as i8 + m.0;
+        let mut col = col as i8 + m.1;
+        let mut square = board.board[row as usize][col as usize];
+        while is_empty(square) {
+            moves.push((row as usize, col as usize));
+            row += m.0;
+            col += m.1;
+            square = board.board[row as usize][col as usize];
+        }
 
-            if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
-                moves.push((_row, _col));
-            }
+        if !is_outside_board(square) && piece & COLOR_MASK != square & COLOR_MASK {
+            moves.push((row as usize, col as usize));
         }
     }
 }
@@ -245,50 +234,20 @@ pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
     sees if the piece is there, thus it is important the king_location is set
 */
 fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) -> bool {
-    let attacking_color: PieceColor;
-    if color == PieceColor::White {
-        attacking_color = PieceColor::Black;
-    } else {
-        attacking_color = PieceColor::White;
-    }
-
-    // Check from knight
-    for mods in KNIGHT_CORDS.iter() {
-        let _row = (square_cords.0 as i8 + mods.0) as usize;
-        let _col = (square_cords.1 as i8 + mods.1) as usize;
-        let square = board.board[_row][_col];
-
-        if square == KNIGHT | attacking_color.as_mask() {
-            return true;
-        }
-    }
-
-    // Check from pawn
-    let _row;
-    if color == PieceColor::White {
-        _row = square_cords.0 - 1;
-    } else {
-        _row = square_cords.0 + 1;
-    }
-
-    if board.board[_row][square_cords.1 - 1] == attacking_color.as_mask() | PAWN
-        || board.board[_row][square_cords.1 + 1] == attacking_color.as_mask() | PAWN
-    {
-        return true;
-    }
+    let attacking_color = match color {
+        PieceColor::White => PieceColor::Black,
+        _ => PieceColor::White,
+    };
 
     // Check from rook or queen
-    let mods = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    for m in mods.iter() {
-        let mut multiplier = 1;
-        let mut _row = square_cords.0 as i8 + m.0;
-        let mut _col = square_cords.1 as i8 + m.1;
-        let mut square = board.board[_row as usize][_col as usize];
+    for m in [(1, 0), (-1, 0), (0, 1), (0, -1)].iter() {
+        let mut row = square_cords.0 as i8 + m.0;
+        let mut col = square_cords.1 as i8 + m.1;
+        let mut square = board.board[row as usize][col as usize];
         while is_empty(square) {
-            multiplier += 1;
-            _row = square_cords.0 as i8 + m.0 * multiplier;
-            _col = square_cords.1 as i8 + m.1 * multiplier;
-            square = board.board[_row as usize][_col as usize];
+            row += m.0;
+            col += m.1;
+            square = board.board[row as usize][col as usize];
         }
 
         if square == attacking_color.as_mask() | ROOK || square == attacking_color.as_mask() | QUEEN
@@ -298,39 +257,58 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from bishop or queen
-    let mods = [1, -1];
-    for i in mods.iter() {
-        for j in mods.iter() {
-            let mut multiplier = 1;
-            let mut _row = square_cords.0 as i8 + i;
-            let mut _col = square_cords.1 as i8 + j;
-            let mut square = board.board[_row as usize][_col as usize];
-            while is_empty(square) {
-                multiplier += 1;
-                _row = square_cords.0 as i8 + i * multiplier;
-                _col = square_cords.1 as i8 + j * multiplier;
-                square = board.board[_row as usize][_col as usize];
-            }
-
-            if square == attacking_color.as_mask() | BISHOP
-                || square == attacking_color.as_mask() | QUEEN
-            {
-                return true;
-            }
+    for m in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter() {
+        let mut row = square_cords.0 as i8 + m.0;
+        let mut col = square_cords.1 as i8 + m.1;
+        let mut square = board.board[row as usize][col as usize];
+        while is_empty(square) {
+            row += m.0;
+            col += m.1;
+            square = board.board[row as usize][col as usize];
         }
+
+        if square == attacking_color.as_mask() | BISHOP
+            || square == attacking_color.as_mask() | QUEEN
+        {
+            return true;
+        }
+    }
+
+    // Check from knight
+    for mods in KNIGHT_CORDS.iter() {
+        let row = (square_cords.0 as i8 + mods.0) as usize;
+        let col = (square_cords.1 as i8 + mods.1) as usize;
+        let square = board.board[row][col];
+
+        if square == KNIGHT | attacking_color.as_mask() {
+            return true;
+        }
+    }
+
+    // Check from pawn
+    let _row = match color {
+        PieceColor::White => square_cords.0 - 1,
+        _ => square_cords.0 + 1,
+    };
+
+    let attacking_pawn = attacking_color.as_mask() | PAWN;
+    if board.board[_row][square_cords.1 - 1] == attacking_pawn
+        || board.board[_row][square_cords.1 + 1] == attacking_pawn
+    {
+        return true;
     }
 
     // Check from king
     for i in 0..3 {
         for j in 0..3 {
-            let _row = square_cords.0 + i - 1;
-            let _col = square_cords.1 + j - 1;
-            let square = board.board[_row][_col];
+            let row = square_cords.0 + i - 1;
+            let col = square_cords.1 + j - 1;
+            let square = board.board[row][col];
             if is_outside_board(square) {
                 continue;
             }
 
-            if is_king(square) && square & COLOR_MASK == attacking_color.as_mask() {
+            if square == KING | attacking_color.as_mask() {
                 return true;
             }
         }
