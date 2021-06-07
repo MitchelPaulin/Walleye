@@ -2,6 +2,7 @@ extern crate clap;
 use clap::{App, Arg};
 mod board;
 mod move_generation;
+mod engine;
 
 // Board position for the start of a new game
 const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
