@@ -1,8 +1,8 @@
 extern crate clap;
 use clap::{App, Arg};
 mod board;
-mod move_generation;
 mod engine;
+mod move_generation;
 
 // Board position for the start of a new game
 const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -24,9 +24,40 @@ fn main() {
 
     let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
 
-    let b = move_generation::board_from_fen(fen);
-    match b {
-        Ok(b) => b.pretty_print_board(),
-        Err(err) => println!("{}", err),
+    let b = board::board_from_fen(fen);
+    let mut board = match b {
+        Ok(b) => b,
+        Err(err) => {
+            println!("{}", err);
+            return;
+        }
+    };
+
+    while true {
+        let mut best_move;
+        let mut next_board = board;
+        if board.to_move == board::PieceColor::White {
+            best_move = i32::MIN;
+        } else {
+            best_move = i32::MAX;
+        }
+
+        let moves = move_generation::generate_moves(&board);
+        if moves.len() == 0 {
+            break;
+        }
+        for mov in moves {
+            let res = engine::alpha_beta_search(&mov, 3, i32::MIN, i32::MAX, board.to_move);
+            if board.to_move == board::PieceColor::White && best_move < res {
+                best_move = res;
+                next_board = mov;
+            } else if board.to_move == board::PieceColor::Black && res < best_move {
+                best_move = res;
+                next_board = mov;
+            }
+        }
+        next_board.pretty_print_board();
+        board = next_board;
     }
+    board.pretty_print_board();
 }

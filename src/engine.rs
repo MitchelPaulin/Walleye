@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 pub use crate::board::*;
+pub use crate::move_generation::*;
+use std::cmp;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -104,23 +106,74 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
 }
 
 /*
-    Return a number to represent how good a certain position is for a color
-    The larger the number the better the position
+    Return a number to represent how good a certain position is
+
+    White will attempt to "maximize" this score while black will attempt to "minimize" it
 */
-pub fn get_evaluation(board: &BoardState, color: PieceColor) -> i32 {
+pub fn get_evaluation(board: &BoardState) -> i32 {
     let mut evaluation = 0;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
-            if get_color(square) != Some(color) {
+            if is_empty(square) {
                 continue;
             }
 
-            evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize];
-            evaluation += get_pos_evaluation(row, col, board, color);
+            if get_color(square) == Some(PieceColor::White) {
+                evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize];
+            } else {
+                evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize] * -1;
+            }
+            evaluation += get_pos_evaluation(row, col, board, PieceColor::Black) * -1;
+            evaluation += get_pos_evaluation(row, col, board, PieceColor::White);
         }
     }
     return evaluation;
+}
+
+pub fn alpha_beta_search(
+    board: &BoardState,
+    depth: u8,
+    mut alpha: i32,
+    mut beta: i32,
+    maximizing_player: PieceColor,
+) -> i32 {
+    if depth == 0 {
+        return get_evaluation(board);
+    }
+
+    let states = generate_moves(board);
+    if states.len() == 0 {
+        return get_evaluation(board);
+    }
+
+    if maximizing_player == PieceColor::White {
+        let mut val = i32::MIN;
+        for board in states {
+            val = cmp::max(
+                val,
+                alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black),
+            );
+            if val >= beta {
+                break;
+            }
+            alpha = cmp::max(alpha, val);
+        }
+        return val;
+    } else {
+        let mut val = i32::MAX;
+        for board in states {
+            val = cmp::min(
+                val,
+                alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White),
+            );
+            if val <= alpha {
+                break;
+            }
+            beta = cmp::min(beta, val);
+        }
+        return val;
+    }
 }
 
 #[cfg(test)]
