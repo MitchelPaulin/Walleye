@@ -161,6 +161,8 @@ impl PieceColor {
 
 #[derive(Copy, Clone)]
 pub struct BoardState {
+    pub full_move_clock: u8, // The number of the full moves. It starts at 1, and is incremented after Black's move
+    pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule 
     pub board: [[u8; 12]; 12],
     pub to_move: PieceColor,
     // if a pawn, on the last move, made a double move, this is set, otherwise this is None
@@ -233,9 +235,16 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
-    // TODO
-    let _halfmove_clock = fen_config[4];
-    let _fullmove_clock = fen_config[5];
+
+    let half_move_clock = fen_config[4].parse::<u8>();
+    if half_move_clock.is_err() {
+        return Err("Could not parse fen string: Invalid half move value");
+    }
+
+    let full_move_clock = fen_config[5].parse::<u8>();
+    if full_move_clock.is_err() {
+        return Err("Could not parse fen string: Invalid full move value");
+    }
 
     let mut white_king_location = (0, 0);
     let mut black_king_location = (0, 0);
@@ -294,6 +303,8 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     }
 
     Ok(BoardState {
+        full_move_clock: full_move_clock.unwrap(),
+        half_move_clock: half_move_clock.unwrap(),
         board: board,
         to_move: to_move,
         white_king_location: white_king_location,

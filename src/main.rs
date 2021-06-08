@@ -33,9 +33,9 @@ fn main() {
         }
     };
 
-    while true {
-        let mut best_move;
-        let mut next_board = board;
+    let mut best_move;
+    let mut next_board = board;
+    while board.full_move_clock < 200 {
         if board.to_move == board::PieceColor::White {
             best_move = i32::MIN;
         } else {
@@ -47,7 +47,13 @@ fn main() {
             break;
         }
         for mov in moves {
-            let res = engine::alpha_beta_search(&mov, 3, i32::MIN, i32::MAX, board.to_move);
+
+            let maximizer = match board.to_move {
+                board::PieceColor::White => board::PieceColor::Black,
+                _ => board::PieceColor::White
+            };
+
+            let res = engine::alpha_beta_search(&mov, 4, i32::MIN, i32::MAX, maximizer);
             if board.to_move == board::PieceColor::White && best_move < res {
                 best_move = res;
                 next_board = mov;

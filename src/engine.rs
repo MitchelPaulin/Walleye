@@ -91,18 +91,24 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
     let mut _row = row - BOARD_START;
     let _col = col - BOARD_START;
     if color == PieceColor::Black {
-        _row = BOARD_END - BOARD_START - 1 - _row;
+        _row = 7 - _row;
     }
 
-    match piece {
+    return match piece {
         PAWN => PAWN_WEIGHTS[_row][_col],
         ROOK => ROOK_WEIGHTS[_row][_col],
         BISHOP => BISHOP_WEIGHTS[_row][_col],
         KNIGHT => KNIGHT_WEIGHTS[_row][_col],
-        KING => KING_WEIGHTS[_row][_col],
+        KING => {
+            if board.full_move_clock > 30 {
+                KING_LATE_GAME[_row][_col]
+            } else {
+                KING_WEIGHTS[_row][_col]
+            }
+        }
         QUEEN => QUEEN_WEIGHTS[_row][_col],
         _ => panic!("Could not recognize piece"),
-    }
+    };
 }
 
 /*
@@ -121,11 +127,11 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
 
             if get_color(square) == Some(PieceColor::White) {
                 evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize];
+                evaluation += get_pos_evaluation(row, col, board, PieceColor::White);
             } else {
-                evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize] * -1;
+                evaluation -= PIECE_VALUES[(square & PIECE_MASK) as usize];
+                evaluation -= get_pos_evaluation(row, col, board, PieceColor::Black);
             }
-            evaluation += get_pos_evaluation(row, col, board, PieceColor::Black) * -1;
-            evaluation += get_pos_evaluation(row, col, board, PieceColor::White);
         }
     }
     return evaluation;

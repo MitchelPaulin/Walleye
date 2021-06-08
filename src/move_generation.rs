@@ -458,6 +458,11 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                 // make all the valid moves of this piece
                 for _move in moves {
                     let mut new_board = board.clone();
+                    new_board.swap_color();
+                    if color.unwrap() == PieceColor::Black {
+                        new_board.full_move_clock += 1;
+                    }
+                    
                     // update king location if we are moving the king
                     if piece == WHITE | KING {
                         new_board.white_king_location = (_move.0, _move.1);
@@ -514,17 +519,15 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                         new_board.pawn_double_move = None;
                     }
 
-                    new_board.swap_color();
-
                     // deal with pawn promotions
-                    if piece == WHITE | PAWN && _move.0 == BOARD_START {
+                    if _move.0 == BOARD_START && piece == WHITE | PAWN  {
                         for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
                             let mut _new_board = new_board.clone();
                             _new_board.pawn_double_move = None;
                             _new_board.board[_move.0][_move.1] = WHITE | piece;
                             new_moves.push(_new_board);
                         }
-                    } else if piece == BLACK | PAWN && _move.0 == BOARD_END - 1 {
+                    } else if _move.0 == BOARD_END - 1 && piece == BLACK | PAWN {
                         for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
                             let mut _new_board = new_board.clone();
                             _new_board.pawn_double_move = None;
