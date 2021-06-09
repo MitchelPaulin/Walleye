@@ -20,6 +20,17 @@ static PAWN_WEIGHTS: [[i32; 8]; 8] = [
     [0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
+static PAWN_LATE_GAME: [[i32; 8]; 8] = [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [50, 50, 50, 50, 50, 50, 50, 50],
+    [30, 30, 30, 30, 30, 30, 30, 30],
+    [10, 10, 10, 25, 25, 10, 10, 10],
+    [10, 10, 10, 20, 20, 10, 10, 10],
+    [5, 5, 5, 10, 10, 5, 5, 5],
+    [0, 0, 0, -20, -20, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+];
+
 static KNIGHT_WEIGHTS: [[i32; 8]; 8] = [
     [-50, -40, -30, -30, -30, -30, -40, -50],
     [-40, -20, 0, 0, 0, 0, -20, -40],
@@ -87,15 +98,21 @@ static KING_LATE_GAME: [[i32; 8]; 8] = [
 ];
 
 fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceColor) -> i32 {
-    let piece = board.board[row][col] & PIECE_MASK;
-    let mut _row = row - BOARD_START;
     let _col = col - BOARD_START;
-    if color == PieceColor::Black {
-        _row = 7 - _row;
-    }
+    let _row = match color {
+        PieceColor::White => row - BOARD_START,
+        _ => 9 - row,
+    };
 
-    return match piece {
-        PAWN => PAWN_WEIGHTS[_row][_col],
+    let piece = board.board[row][col] & PIECE_MASK;
+    match piece {
+        PAWN => {
+            if board.full_move_clock > 35 {
+                PAWN_LATE_GAME[_row][_col]
+            } else {
+                PAWN_WEIGHTS[_row][_col]
+            }
+        }
         ROOK => ROOK_WEIGHTS[_row][_col],
         BISHOP => BISHOP_WEIGHTS[_row][_col],
         KNIGHT => KNIGHT_WEIGHTS[_row][_col],
@@ -108,7 +125,7 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
         }
         QUEEN => QUEEN_WEIGHTS[_row][_col],
         _ => panic!("Could not recognize piece"),
-    };
+    }
 }
 
 /*
@@ -179,6 +196,43 @@ pub fn alpha_beta_search(
             beta = cmp::min(beta, val);
         }
         return val;
+    }
+}
+
+/*
+    Play a game in the terminal where the engine plays against itself
+*/
+pub fn play_game_against_self(board: &BoardState, depth: u8, max_moves: u8) {
+    let mut best_move;
+    let mut next_board = board.clone();
+    let mut board = board.clone();
+    while board.full_move_clock < max_moves {
+        board.pretty_print_board();
+        best_move = match board.to_move {
+            PieceColor::White => i32::MIN,
+            _ => i32::MAX,
+        };
+        let maximizer = match board.to_move {
+            PieceColor::White => PieceColor::Black,
+            _ => PieceColor::White,
+        };
+
+        let moves = generate_moves(&board);
+        if moves.len() == 0 {
+            break;
+        }
+
+        for mov in moves {
+            let res = alpha_beta_search(&mov, depth, i32::MIN, i32::MAX, maximizer);
+            if board.to_move == PieceColor::White && best_move < res {
+                best_move = res;
+                next_board = mov;
+            } else if board.to_move == PieceColor::Black && res < best_move {
+                best_move = res;
+                next_board = mov;
+            }
+        }
+        board = next_board;
     }
 }
 

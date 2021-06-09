@@ -19,13 +19,14 @@ fn main() {
                 .value_name("FEN STRING")
                 .help("Load a board state from a fen string")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("depth")
                 .short("d")
                 .long("depth")
                 .value_name("DEPTH")
                 .help("Set the depth the engine should search to")
-                .takes_value(true)
+                .takes_value(true),
         )
         .get_matches();
 
@@ -39,7 +40,7 @@ fn main() {
     };
 
     let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
-    let mut board = match board::board_from_fen(fen) {
+    let board = match board::board_from_fen(fen) {
         Ok(b) => b,
         Err(err) => {
             println!("{}", err);
@@ -47,37 +48,5 @@ fn main() {
         }
     };
 
-    let mut best_move;
-    let mut next_board = board;
-    while board.full_move_clock < 200 {
-        if board.to_move == board::PieceColor::White {
-            best_move = i32::MIN;
-        } else {
-            best_move = i32::MAX;
-        }
-
-        let moves = move_generation::generate_moves(&board);
-        if moves.len() == 0 {
-            break;
-        }
-        for mov in moves {
-
-            let maximizer = match board.to_move {
-                board::PieceColor::White => board::PieceColor::Black,
-                _ => board::PieceColor::White
-            };
-
-            let res = engine::alpha_beta_search(&mov, depth, i32::MIN, i32::MAX, maximizer);
-            if board.to_move == board::PieceColor::White && best_move < res {
-                best_move = res;
-                next_board = mov;
-            } else if board.to_move == board::PieceColor::Black && res < best_move {
-                best_move = res;
-                next_board = mov;
-            }
-        }
-        next_board.pretty_print_board();
-        board = next_board;
-    }
-    board.pretty_print_board();
+    engine::play_game_against_self(&board, depth, 100);
 }
