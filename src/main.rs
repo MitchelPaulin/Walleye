@@ -19,13 +19,27 @@ fn main() {
                 .value_name("FEN STRING")
                 .help("Load a board state from a fen string")
                 .takes_value(true),
+        ).arg(
+            Arg::with_name("depth")
+                .short("d")
+                .long("depth")
+                .value_name("DEPTH")
+                .help("Set the depth the engine should search to")
+                .takes_value(true)
         )
         .get_matches();
 
-    let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
+    let depth_str = matches.value_of("depth").unwrap_or("4");
+    let depth = match depth_str.parse::<u8>() {
+        Ok(d) => d,
+        Err(_) => {
+            println!("Invalid depth provided");
+            return;
+        }
+    };
 
-    let b = board::board_from_fen(fen);
-    let mut board = match b {
+    let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
+    let mut board = match board::board_from_fen(fen) {
         Ok(b) => b,
         Err(err) => {
             println!("{}", err);
@@ -53,7 +67,7 @@ fn main() {
                 _ => board::PieceColor::White
             };
 
-            let res = engine::alpha_beta_search(&mov, 4, i32::MIN, i32::MAX, maximizer);
+            let res = engine::alpha_beta_search(&mov, depth, i32::MIN, i32::MAX, maximizer);
             if board.to_move == board::PieceColor::White && best_move < res {
                 best_move = res;
                 next_board = mov;
