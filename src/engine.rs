@@ -7,7 +7,7 @@ use std::cmp;
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
 */
 
-static PIECE_VALUES: [i32; 7] = [0, 100, 320, 330, 500, 900, 20000];
+pub static PIECE_VALUES: [i32; 7] = [0, 100, 320, 330, 500, 900, 20000];
 
 static PAWN_WEIGHTS: [[i32; 8]; 8] = [
     [0, 0, 0, 0, 0, 0, 0, 0],
@@ -134,7 +134,8 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
     White will attempt to "maximize" this score while black will attempt to "minimize" it
 */
 pub fn get_evaluation(board: &BoardState) -> i32 {
-    let mut evaluation = 0;
+    let mut evaluation = board.white_total_piece_value;
+    evaluation -= board.black_total_piece_value;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
@@ -143,10 +144,8 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
             }
 
             if get_color(square) == Some(PieceColor::White) {
-                evaluation += PIECE_VALUES[(square & PIECE_MASK) as usize];
                 evaluation += get_pos_evaluation(row, col, board, PieceColor::White);
             } else {
-                evaluation -= PIECE_VALUES[(square & PIECE_MASK) as usize];
                 evaluation -= get_pos_evaluation(row, col, board, PieceColor::Black);
             }
         }
@@ -154,6 +153,10 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     return evaluation;
 }
 
+/*
+    Run a standard alpha beta search to try and find the best move searching up to 'depth'
+    Orders moves by piece value to attempt to improve search efficiency
+*/
 pub fn alpha_beta_search(
     board: &BoardState,
     depth: u8,
@@ -165,12 +168,13 @@ pub fn alpha_beta_search(
         return get_evaluation(board);
     }
 
-    let states = generate_moves(board);
+    let mut states = generate_moves(board);
     if states.len() == 0 {
         return get_evaluation(board);
     }
 
     if maximizing_player == PieceColor::White {
+        states.sort_by(|a, b| a.black_total_piece_value.cmp(&b.black_total_piece_value));
         let mut val = i32::MIN;
         for board in states {
             val = cmp::max(
@@ -184,6 +188,7 @@ pub fn alpha_beta_search(
         }
         return val;
     } else {
+        states.sort_by(|a, b| a.white_total_piece_value.cmp(&b.white_total_piece_value));
         let mut val = i32::MAX;
         for board in states {
             val = cmp::min(

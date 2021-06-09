@@ -462,12 +462,21 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                     if color.unwrap() == PieceColor::Black {
                         new_board.full_move_clock += 1;
                     }
-                    
                     // update king location if we are moving the king
                     if piece == WHITE | KING {
                         new_board.white_king_location = (_move.0, _move.1);
                     } else if piece == BLACK | KING {
                         new_board.black_king_location = (_move.0, _move.1);
+                    }
+
+                    let target_square = new_board.board[_move.0][_move.1];
+                    if !is_empty(target_square) {
+                        let piece_value = PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+                        if board.to_move == PieceColor::White {
+                            new_board.black_total_piece_value -= piece_value;
+                        } else {
+                            new_board.white_total_piece_value -= piece_value;
+                        }
                     }
 
                     // move the piece, this will take care of any captures as well, excluding en passant
@@ -520,11 +529,13 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                     }
 
                     // deal with pawn promotions
-                    if _move.0 == BOARD_START && piece == WHITE | PAWN  {
+                    if _move.0 == BOARD_START && piece == WHITE | PAWN {
                         for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
                             let mut _new_board = new_board.clone();
                             _new_board.pawn_double_move = None;
                             _new_board.board[_move.0][_move.1] = WHITE | piece;
+                            _new_board.white_total_piece_value +=
+                                PIECE_VALUES[*piece as usize] - PIECE_VALUES[PAWN as usize];
                             new_moves.push(_new_board);
                         }
                     } else if _move.0 == BOARD_END - 1 && piece == BLACK | PAWN {
@@ -532,6 +543,8 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                             let mut _new_board = new_board.clone();
                             _new_board.pawn_double_move = None;
                             _new_board.board[_move.0][_move.1] = BLACK | piece;
+                            _new_board.black_total_piece_value +=
+                                PIECE_VALUES[*piece as usize] - PIECE_VALUES[PAWN as usize];
                             new_moves.push(_new_board);
                         }
                     } else {
@@ -551,8 +564,10 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
                         new_board.board[i][j] = EMPTY;
                         if is_white(piece) {
                             new_board.board[_move.0 + 1][_move.1] = EMPTY;
+                            new_board.black_total_piece_value -= PIECE_VALUES[PAWN as usize];
                         } else {
                             new_board.board[_move.0 - 1][_move.1] = EMPTY;
+                            new_board.white_total_piece_value -= PIECE_VALUES[PAWN as usize];
                         }
 
                         // if you make a move, and you do not end up in check, then this move is valid

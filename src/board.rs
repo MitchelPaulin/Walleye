@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use colored::*;
+pub use crate::engine::*;
 
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
@@ -173,6 +174,8 @@ pub struct BoardState {
     pub white_queen_side_castle: bool,
     pub black_king_side_castle: bool,
     pub black_queen_side_castle: bool,
+    pub black_total_piece_value: i32,
+    pub white_total_piece_value: i32
 }
 
 impl BoardState {
@@ -257,6 +260,8 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
 
     let mut row: usize = BOARD_START;
     let mut col: usize = BOARD_START;
+    let mut white_piece_values = 0;
+    let mut black_piece_values = 0;
     for fen_row in fen_rows {
         for square in fen_row.chars() {
             if square.is_digit(10) {
@@ -270,9 +275,15 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
                     square_skip_count -= 1;
                 }
             } else {
-                match get_piece_from_fen_string_char(square) {
-                    Some(piece) => board[row][col] = piece,
+                board[row][col] = match get_piece_from_fen_string_char(square) {
+                    Some(piece) => piece,
                     None => return Err("Could not parse fen string: Invalid character found"),
+                };
+
+                if is_white(board[row][col]) {
+                    white_piece_values += PIECE_VALUES[(board[row][col] & PIECE_MASK) as usize];
+                } else {
+                    black_piece_values += PIECE_VALUES[(board[row][col] & PIECE_MASK) as usize];
                 }
 
                 if is_king(board[row][col]) {
@@ -314,6 +325,8 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         white_queen_side_castle: castling_privileges.find('Q') != None,
         black_king_side_castle: castling_privileges.find('k') != None,
         black_queen_side_castle: castling_privileges.find('q') != None,
+        black_total_piece_value: black_piece_values,
+        white_total_piece_value: white_piece_values
     })
 }
 
@@ -457,6 +470,9 @@ mod tests {
         for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], WHITE | PAWN);
         }
+
+        assert_eq!(b.white_total_piece_value, 20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100);
+        assert_eq!(b.black_total_piece_value, 20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100);
     }
 
     #[test]
