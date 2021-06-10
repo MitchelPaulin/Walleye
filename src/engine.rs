@@ -171,16 +171,17 @@ pub fn alpha_beta_search(
     let mut moves = generate_moves(board);
 
     if moves.len() == 0 {
+        // here we add the depths to encourage faster checkmates
         if maximizing_player == PieceColor::White {
             if is_check(board, PieceColor::White) {
-                return (None, i32::MIN);
+                return (None, -99999999 - depth as i32); // checkmate
             }
         } else {
             if is_check(board, PieceColor::Black) {
-                return (None, i32::MAX);
+                return (None, 99999999 + depth as i32); // checkmate
             }
         }
-        return (None, 0);
+        return (None, 0); // stalemate
     }
 
     let mut best_move = None;
