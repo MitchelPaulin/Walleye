@@ -163,81 +163,74 @@ pub fn alpha_beta_search(
     mut alpha: i32,
     mut beta: i32,
     maximizing_player: PieceColor,
-) -> i32 {
+) -> (Option<BoardState>, i32) {
     if depth == 0 {
-        return get_evaluation(board);
+        return (None, get_evaluation(board));
     }
 
-    let mut states = generate_moves(board);
-    if states.len() == 0 {
-        return get_evaluation(board);
+    let mut moves = generate_moves(board);
+
+    if moves.len() == 0 {
+        if maximizing_player == PieceColor::White {
+            if is_check(board, PieceColor::White) {
+                return (None, i32::MIN);
+            }
+        } else {
+            if is_check(board, PieceColor::Black) {
+                return (None, i32::MAX);
+            }
+        }
+        return (None, 0);
     }
 
+    let mut best_move = None;
     if maximizing_player == PieceColor::White {
-        states.sort_by(|a, b| a.black_total_piece_value.cmp(&b.black_total_piece_value));
-        let mut val = i32::MIN;
-        for board in states {
-            val = cmp::max(
-                val,
-                alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black),
-            );
-            if val >= beta {
+        moves.sort_by(|a, b| a.black_total_piece_value.cmp(&b.black_total_piece_value));
+        let mut best_val = i32::MIN;
+        for board in moves {
+            let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black);
+            if evaluation.1 > best_val {
+                best_val = evaluation.1;
+                best_move = Some(board);
+            }
+            alpha = cmp::max(alpha, evaluation.1);
+            if beta <= alpha {
                 break;
             }
-            alpha = cmp::max(alpha, val);
         }
-        return val;
+        return (best_move, best_val);
     } else {
-        states.sort_by(|a, b| a.white_total_piece_value.cmp(&b.white_total_piece_value));
-        let mut val = i32::MAX;
-        for board in states {
-            val = cmp::min(
-                val,
-                alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White),
-            );
-            if val <= alpha {
+        moves.sort_by(|a, b| a.white_total_piece_value.cmp(&b.white_total_piece_value));
+        let mut best_val = i32::MAX;
+        for board in moves {
+            let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White);
+            if evaluation.1 < best_val {
+                best_val = evaluation.1;
+                best_move = Some(board);
+            }
+            beta = cmp::min(beta, evaluation.1);
+            if beta <= alpha {
                 break;
             }
-            beta = cmp::min(beta, val);
         }
-        return val;
+        return (best_move, best_val);
     }
 }
 
 /*
     Play a game in the terminal where the engine plays against itself
 */
-pub fn play_game_against_self(board: &BoardState, depth: u8, max_moves: u8) {
-    let mut best_move;
-    let mut next_board = board.clone();
-    let mut board = board.clone();
+pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8) {
+    let mut board = b.clone();
+    board.pretty_print_board();
     while board.full_move_clock < max_moves {
-        board.pretty_print_board();
-        best_move = match board.to_move {
-            PieceColor::White => i32::MIN,
-            _ => i32::MAX,
-        };
-        let maximizer = match board.to_move {
-            PieceColor::White => PieceColor::Black,
-            _ => PieceColor::White,
-        };
-
-        let moves = generate_moves(&board);
-        if moves.len() == 0 {
+        let res = alpha_beta_search(&board, depth, i32::MIN, i32::MAX, board.to_move);
+        if res.0.is_some() {
+            board = res.0.unwrap().clone();
+        } else {
             break;
         }
-
-        for mov in moves {
-            let res = alpha_beta_search(&mov, depth, i32::MIN, i32::MAX, maximizer);
-            if board.to_move == PieceColor::White && best_move < res {
-                best_move = res;
-                next_board = mov;
-            } else if board.to_move == PieceColor::Black && res < best_move {
-                best_move = res;
-                next_board = mov;
-            }
-        }
-        board = next_board;
+        board.pretty_print_board();
     }
 }
 

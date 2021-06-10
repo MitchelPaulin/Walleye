@@ -48,5 +48,5 @@ fn main() {
         }
     };
 
-    engine::play_game_against_self(&board, depth, 100);
+    engine::play_game_against_self(&board, depth, 50);
 }
