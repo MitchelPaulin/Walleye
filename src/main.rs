@@ -6,6 +6,8 @@ mod move_generation;
 
 // Board position for the start of a new game
 const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+// During testing I found a depth of 7 to perform best on the optimized build, recommend depth 4 on debug build
+const DEFAULT_DEPTH: &str = "7";
 
 fn main() {
     let matches = App::new("Chess Engine")
@@ -28,9 +30,14 @@ fn main() {
                 .help("Set the depth the engine should search to")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("play self")
+                .short("p")
+                .help("Play a game against itself in the terminal"),
+        )
         .get_matches();
 
-    let depth_str = matches.value_of("depth").unwrap_or("4");
+    let depth_str = matches.value_of("depth").unwrap_or(DEFAULT_DEPTH);
     let depth = match depth_str.parse::<u8>() {
         Ok(d) => d,
         Err(_) => {
@@ -48,5 +55,7 @@ fn main() {
         }
     };
 
-    engine::play_game_against_self(&board, depth, 50);
+    if matches.is_present("play self") {
+        engine::play_game_against_self(&board, depth, 50);
+    }
 }

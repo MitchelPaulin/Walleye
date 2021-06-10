@@ -24,21 +24,51 @@ pub enum CastlingType {
 }
 
 /*
+    Generate all possible moves *legal* from the given board
+    Also sets appropriate variables for the board state
+*/
+pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
+    let mut new_moves = Vec::new();
+
+    for i in BOARD_START..BOARD_END {
+        for j in BOARD_START..BOARD_END {
+            let color = get_color(board.board[i][j]);
+            if color.is_some() && color.unwrap() == board.to_move {
+                generate_move_for_piece(board, (i, j), &mut new_moves);
+            }
+        }
+    }
+
+    generate_castling_moves(board, &mut new_moves);
+    return new_moves;
+}
+
+/*
+    Determine if a color is currently in check
+*/
+pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
+    match color {
+        PieceColor::Black => is_check_cords(board, PieceColor::Black, board.black_king_location),
+        PieceColor::White => is_check_cords(board, PieceColor::White, board.white_king_location),
+    }
+}
+
+/*
     Generate pseudo-legal moves for a knight
 */
-pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+    let piece = board.board[row][col];
     for mods in KNIGHT_CORDS.iter() {
-        let piece = board.board[row][col];
-        let _row = (row as i8 + mods.0) as usize;
-        let _col = (col as i8 + mods.1) as usize;
-        let square = board.board[_row][_col];
+        let row = (row as i8 + mods.0) as usize;
+        let col = (col as i8 + mods.1) as usize;
+        let square = board.board[row][col];
 
         if is_outside_board(square) {
             continue;
         }
 
         if is_empty(square) || square & COLOR_MASK != piece & COLOR_MASK {
-            moves.push((_row, _col));
+            moves.push((row, col));
         }
     }
 }
@@ -46,7 +76,7 @@ pub fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<
 /*
     Generate pseudo-legal moves for a pawn
 */
-pub fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
 
     // white pawns move up board
@@ -99,7 +129,7 @@ pub fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
     Returns None if no legal move is available, otherwise return the coordinates of the capture
 */
 
-pub fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Option<Point> {
+fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Option<Point> {
     if board.pawn_double_move.is_none() {
         return None;
     }
@@ -130,19 +160,19 @@ pub fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Opti
 /*
     Generate pseudo-legal moves for a king
 */
-pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
     for i in 0..3 {
         for j in 0..3 {
-            let _row = row + i - 1;
-            let _col = col + j - 1;
-            let square = board.board[_row][_col];
+            let row = row + i - 1;
+            let col = col + j - 1;
+            let square = board.board[row][col];
             if is_outside_board(square) {
                 continue;
             }
 
             if is_empty(square) || square & COLOR_MASK != piece & COLOR_MASK {
-                moves.push((_row, _col));
+                moves.push((row, col));
             }
         }
     }
@@ -151,7 +181,7 @@ pub fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
 /*
     Generate pseudo-legal moves for a rook
 */
-pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
     for m in [(1, 0), (-1, 0), (0, 1), (0, -1)].iter() {
         let mut row = row as i8 + m.0;
@@ -173,7 +203,7 @@ pub fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Po
 /*
     Generate pseudo-legal moves for a bishop
 */
-pub fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
     for m in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter() {
         let mut row = row as i8 + m.0;
@@ -195,7 +225,7 @@ pub fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<
 /*
     Generate pseudo-legal moves for a queen
 */
-pub fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     rook_moves(row, col, board, moves);
     bishop_moves(row, col, board, moves);
 }
@@ -204,7 +234,7 @@ pub fn queen_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<P
     Generate pseudo-legal moves for a piece
     This will not generate en passants and castling, these cases are handled separately
 */
-pub fn get_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
+fn get_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     match board.board[row][col] & PIECE_MASK {
         PAWN => pawn_moves(row, col, board, moves),
         ROOK => rook_moves(row, col, board, moves),
@@ -213,16 +243,6 @@ pub fn get_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Poi
         KING => king_moves(row, col, board, moves),
         QUEEN => queen_moves(row, col, board, moves),
         _ => panic!("Unrecognized piece"),
-    }
-}
-
-/*
-    Determine if a color is currently in check
-*/
-pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
-    match color {
-        PieceColor::Black => is_check_cords(board, PieceColor::Black, board.black_king_location),
-        PieceColor::White => is_check_cords(board, PieceColor::White, board.white_king_location),
     }
 }
 
@@ -236,7 +256,7 @@ pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
 fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) -> bool {
     let attacking_color = match color {
         PieceColor::White => PieceColor::Black,
-        _ => PieceColor::White,
+        PieceColor::Black => PieceColor::White,
     };
 
     // Check from rook or queen
@@ -286,14 +306,14 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from pawn
-    let _row = match color {
+    let pawn_row = match color {
         PieceColor::White => square_cords.0 - 1,
-        _ => square_cords.0 + 1,
+        PieceColor::Black => square_cords.0 + 1,
     };
 
     let attacking_pawn = attacking_color.as_mask() | PAWN;
-    if board.board[_row][square_cords.1 - 1] == attacking_pawn
-        || board.board[_row][square_cords.1 + 1] == attacking_pawn
+    if board.board[pawn_row][square_cords.1 - 1] == attacking_pawn
+        || board.board[pawn_row][square_cords.1 + 1] == attacking_pawn
     {
         return true;
     }
@@ -338,249 +358,240 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     Thus its the responsibility of other functions to update the castling privilege variables when the king or associated rook moves (including castling)
 
 */
-pub fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
-    if castling_type == CastlingType::WhiteKingSide {
-        if !board.white_king_side_castle {
-            return false;
-        }
-        // check that squares required for castling are empty
-        if !is_empty(board.board[BOARD_END - 1][BOARD_END - 3])
-            || !is_empty(board.board[BOARD_END - 1][BOARD_END - 2])
-        {
-            return false;
-        }
-        // check that the king currently isn't in check
-        if is_check(board, PieceColor::White) {
-            return false;
-        }
-        //check that the squares required for castling are not threatened
-        if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 3))
-            || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 2))
-        {
-            return false;
-        }
-        return true;
+fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
+    match castling_type {
+        CastlingType::WhiteKingSide => can_castle_white_king_side(board),
+        CastlingType::WhiteQueenSide => can_castle_white_queen_side(board),
+        CastlingType::BlackKingSide => can_castle_black_king_side(board),
+        CastlingType::BlackQueenSide => can_castle_black_queen_side(board),
+    }
+}
+
+fn can_castle_white_king_side(board: &BoardState) -> bool {
+    if !board.white_king_side_castle {
+        return false;
+    }
+    // check that squares required for castling are empty
+    if !is_empty(board.board[BOARD_END - 1][BOARD_END - 3])
+        || !is_empty(board.board[BOARD_END - 1][BOARD_END - 2])
+    {
+        return false;
+    }
+    // check that the king currently isn't in check
+    if is_check(board, PieceColor::White) {
+        return false;
+    }
+    //check that the squares required for castling are not threatened
+    if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 3))
+        || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_END - 2))
+    {
+        return false;
+    }
+    return true;
+}
+
+fn can_castle_white_queen_side(board: &BoardState) -> bool {
+    if !board.white_queen_side_castle {
+        return false;
+    }
+    // check that squares required for castling are empty
+    if !is_empty(board.board[BOARD_END - 1][BOARD_START + 1])
+        || !is_empty(board.board[BOARD_END - 1][BOARD_START + 2])
+        || !is_empty(board.board[BOARD_END - 1][BOARD_START + 3])
+    {
+        return false;
+    }
+    // check that the king currently isn't in check
+    if is_check(board, PieceColor::White) {
+        return false;
+    }
+    //check that the squares required for castling are not threatened
+    if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 3))
+        || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 2))
+    {
+        return false;
     }
 
-    if castling_type == CastlingType::WhiteQueenSide {
-        if !board.white_queen_side_castle {
-            return false;
-        }
-        // check that squares required for castling are empty
-        if !is_empty(board.board[BOARD_END - 1][BOARD_START + 1])
-            || !is_empty(board.board[BOARD_END - 1][BOARD_START + 2])
-            || !is_empty(board.board[BOARD_END - 1][BOARD_START + 3])
-        {
-            return false;
-        }
-        // check that the king currently isn't in check
-        if is_check(board, PieceColor::White) {
-            return false;
-        }
-        //check that the squares required for castling are not threatened
-        if is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 3))
-            || is_check_cords(board, PieceColor::White, (BOARD_END - 1, BOARD_START + 2))
-        {
-            return false;
-        }
+    return true;
+}
 
-        return true;
+fn can_castle_black_king_side(board: &BoardState) -> bool {
+    if !board.black_king_side_castle {
+        return false;
+    }
+    // check that squares required for castling are empty
+    if !is_empty(board.board[BOARD_START][BOARD_END - 3])
+        || !is_empty(board.board[BOARD_START][BOARD_END - 2])
+    {
+        return false;
+    }
+    // check that the king currently isn't in check
+    if is_check(board, PieceColor::Black) {
+        return false;
+    }
+    //check that the squares required for castling are not threatened
+    if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 3))
+        || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 2))
+    {
+        return false;
     }
 
-    if castling_type == CastlingType::BlackKingSide {
-        if !board.black_king_side_castle {
-            return false;
-        }
-        // check that squares required for castling are empty
-        if !is_empty(board.board[BOARD_START][BOARD_END - 3])
-            || !is_empty(board.board[BOARD_START][BOARD_END - 2])
-        {
-            return false;
-        }
-        // check that the king currently isn't in check
-        if is_check(board, PieceColor::Black) {
-            return false;
-        }
-        //check that the squares required for castling are not threatened
-        if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 3))
-            || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_END - 2))
-        {
-            return false;
-        }
+    return true;
+}
 
-        return true;
+fn can_castle_black_queen_side(board: &BoardState) -> bool {
+    if !board.black_queen_side_castle {
+        return false;
+    }
+    // check that squares required for castling are empty
+    if !is_empty(board.board[BOARD_START][BOARD_START + 1])
+        || !is_empty(board.board[BOARD_START][BOARD_START + 2])
+        || !is_empty(board.board[BOARD_START][BOARD_START + 3])
+    {
+        return false;
+    }
+    // check that the king currently isn't in check
+    if is_check(board, PieceColor::Black) {
+        return false;
+    }
+    //check that the squares required for castling are not threatened
+    if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 2))
+        || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 3))
+    {
+        return false;
     }
 
-    if castling_type == CastlingType::BlackQueenSide {
-        if !board.black_queen_side_castle {
-            return false;
-        }
-        // check that squares required for castling are empty
-        if !is_empty(board.board[BOARD_START][BOARD_START + 1])
-            || !is_empty(board.board[BOARD_START][BOARD_START + 2])
-            || !is_empty(board.board[BOARD_START][BOARD_START + 3])
-        {
-            return false;
-        }
-        // check that the king currently isn't in check
-        if is_check(board, PieceColor::Black) {
-            return false;
-        }
-        //check that the squares required for castling are not threatened
-        if is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 2))
-            || is_check_cords(board, PieceColor::Black, (BOARD_START, BOARD_START + 3))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    panic!("Shouldn't be here");
+    return true;
 }
 
 /*
-    Generate all possible moves from the given board
-    Also sets appropriate variables for the board state
+    Given the coordinates of a piece and that pieces color, generate all possible *legal* moves for that piece
 */
-pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
-    let mut new_moves = Vec::new();
+fn generate_move_for_piece(
+    board: &BoardState,
+    square_cords: Point,
+    new_moves: &mut Vec<BoardState>,
+) {
+    let mut moves: Vec<Point> = vec![];
+    let piece = board.board[square_cords.0][square_cords.1];
+    let color = get_color(piece).unwrap();
+    get_moves(square_cords.0, square_cords.1, &board, &mut moves);
 
-    for i in BOARD_START..BOARD_END {
-        for j in BOARD_START..BOARD_END {
-            let color = get_color(board.board[i][j]);
-            if color.is_some() && color.unwrap() == board.to_move {
-                //generate moves
-                let mut moves: Vec<Point> = vec![];
-                let piece = board.board[i][j];
-                get_moves(i, j, &board, &mut moves);
+    // make all the valid moves of this piece
+    for _move in moves {
+        let mut new_board = board.clone();
+        new_board.swap_color();
+        if color == PieceColor::Black {
+            new_board.full_move_clock += 1;
+        }
+        // update king location if we are moving the king
+        if piece == WHITE | KING {
+            new_board.white_king_location = (_move.0, _move.1);
+        } else if piece == BLACK | KING {
+            new_board.black_king_location = (_move.0, _move.1);
+        }
 
-                // make all the valid moves of this piece
-                for _move in moves {
-                    let mut new_board = board.clone();
-                    new_board.swap_color();
-                    if color.unwrap() == PieceColor::Black {
-                        new_board.full_move_clock += 1;
-                    }
-                    // update king location if we are moving the king
-                    if piece == WHITE | KING {
-                        new_board.white_king_location = (_move.0, _move.1);
-                    } else if piece == BLACK | KING {
-                        new_board.black_king_location = (_move.0, _move.1);
-                    }
-
-                    let target_square = new_board.board[_move.0][_move.1];
-                    if !is_empty(target_square) {
-                        let piece_value = PIECE_VALUES[(target_square & PIECE_MASK) as usize];
-                        if board.to_move == PieceColor::White {
-                            new_board.black_total_piece_value -= piece_value;
-                        } else {
-                            new_board.white_total_piece_value -= piece_value;
-                        }
-                    }
-
-                    // move the piece, this will take care of any captures as well, excluding en passant
-                    new_board.board[_move.0][_move.1] = piece;
-                    new_board.board[i][j] = EMPTY;
-
-                    // if you make your move, and you are in check, this move is not valid
-                    if is_check(&new_board, color.unwrap()) {
-                        continue;
-                    }
-
-                    // if the rook or king move, take away castling privileges
-                    if piece == WHITE | KING {
-                        new_board.white_king_side_castle = false;
-                        new_board.white_queen_side_castle = false;
-                    } else if piece == BLACK | KING {
-                        new_board.black_queen_side_castle = false;
-                        new_board.black_king_side_castle = false;
-                    } else if i == BOARD_END - 1 && j == BOARD_END - 1 {
-                        new_board.white_king_side_castle = false;
-                    } else if i == BOARD_END - 1 && j == BOARD_START {
-                        new_board.white_queen_side_castle = false;
-                    } else if i == BOARD_START && j == BOARD_START {
-                        new_board.black_queen_side_castle = false;
-                    } else if i == BOARD_START && j == BOARD_END - 1 {
-                        new_board.black_king_side_castle = false;
-                    }
-
-                    // if the rook is captured, take away castling privileges
-                    if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
-                        new_board.white_king_side_castle = false;
-                    } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_START {
-                        new_board.white_queen_side_castle = false;
-                    } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
-                        new_board.black_queen_side_castle = false;
-                    } else if _move.0 == BOARD_START && _move.1 == BOARD_END - 1 {
-                        new_board.black_king_side_castle = false;
-                    }
-
-                    // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
-                    if is_pawn(piece) && (i as i8 - _move.0 as i8).abs() == 2 {
-                        if is_white(piece) {
-                            new_board.pawn_double_move = Some((_move.0 + 1, _move.1));
-                        } else {
-                            new_board.pawn_double_move = Some((_move.0 - 1, _move.1));
-                        }
-                    } else {
-                        // the most recent move was not a double pawn move, unset any possibly existing pawn double move
-                        new_board.pawn_double_move = None;
-                    }
-
-                    // deal with pawn promotions
-                    if _move.0 == BOARD_START && piece == WHITE | PAWN {
-                        for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
-                            let mut _new_board = new_board.clone();
-                            _new_board.pawn_double_move = None;
-                            _new_board.board[_move.0][_move.1] = WHITE | piece;
-                            _new_board.white_total_piece_value +=
-                                PIECE_VALUES[*piece as usize] - PIECE_VALUES[PAWN as usize];
-                            new_moves.push(_new_board);
-                        }
-                    } else if _move.0 == BOARD_END - 1 && piece == BLACK | PAWN {
-                        for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
-                            let mut _new_board = new_board.clone();
-                            _new_board.pawn_double_move = None;
-                            _new_board.board[_move.0][_move.1] = BLACK | piece;
-                            _new_board.black_total_piece_value +=
-                                PIECE_VALUES[*piece as usize] - PIECE_VALUES[PAWN as usize];
-                            new_moves.push(_new_board);
-                        }
-                    } else {
-                        new_moves.push(new_board);
-                    }
-                }
-
-                // take care of en passant captures
-                if is_pawn(piece) {
-                    let en_passant = pawn_moves_en_passant(i, j, &board);
-                    if en_passant.is_some() {
-                        let _move = en_passant.unwrap();
-                        let mut new_board = board.clone();
-                        new_board.swap_color();
-                        new_board.pawn_double_move = None;
-                        new_board.board[_move.0][_move.1] = piece;
-                        new_board.board[i][j] = EMPTY;
-                        if is_white(piece) {
-                            new_board.board[_move.0 + 1][_move.1] = EMPTY;
-                            new_board.black_total_piece_value -= PIECE_VALUES[PAWN as usize];
-                        } else {
-                            new_board.board[_move.0 - 1][_move.1] = EMPTY;
-                            new_board.white_total_piece_value -= PIECE_VALUES[PAWN as usize];
-                        }
-
-                        // if you make a move, and you do not end up in check, then this move is valid
-                        if !is_check(&new_board, board.to_move) {
-                            new_moves.push(new_board);
-                        }
-                    }
-                }
+        let target_square = new_board.board[_move.0][_move.1];
+        if !is_empty(target_square) {
+            let piece_value = PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+            if board.to_move == PieceColor::White {
+                new_board.black_total_piece_value -= piece_value;
+            } else {
+                new_board.white_total_piece_value -= piece_value;
             }
+        }
+
+        // move the piece, this will take care of any captures as well, excluding en passant
+        new_board.board[_move.0][_move.1] = piece;
+        new_board.board[square_cords.0][square_cords.1] = EMPTY;
+
+        // if you make your move, and you are in check, this move is not valid
+        if is_check(&new_board, color) {
+            continue;
+        }
+
+        // if the rook or king move, take away castling privileges
+        if piece == WHITE | KING {
+            new_board.white_king_side_castle = false;
+            new_board.white_queen_side_castle = false;
+        } else if piece == BLACK | KING {
+            new_board.black_queen_side_castle = false;
+            new_board.black_king_side_castle = false;
+        } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_END - 1 {
+            new_board.white_king_side_castle = false;
+        } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_START {
+            new_board.white_queen_side_castle = false;
+        } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_START {
+            new_board.black_queen_side_castle = false;
+        } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_END - 1 {
+            new_board.black_king_side_castle = false;
+        }
+
+        // if the rook is captured, take away castling privileges
+        if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+            new_board.white_king_side_castle = false;
+        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_START {
+            new_board.white_queen_side_castle = false;
+        } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
+            new_board.black_queen_side_castle = false;
+        } else if _move.0 == BOARD_START && _move.1 == BOARD_END - 1 {
+            new_board.black_king_side_castle = false;
+        }
+
+        // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
+        if is_pawn(piece) && (square_cords.0 as i8 - _move.0 as i8).abs() == 2 {
+            if is_white(piece) {
+                new_board.pawn_double_move = Some((_move.0 + 1, _move.1));
+            } else {
+                new_board.pawn_double_move = Some((_move.0 - 1, _move.1));
+            }
+        } else {
+            // the most recent move was not a double pawn move, unset any possibly existing pawn double move
+            new_board.pawn_double_move = None;
+        }
+
+        // deal with pawn promotions
+        if _move.0 == BOARD_START && piece == WHITE | PAWN {
+            promote_pawn(&new_board, PieceColor::White, (_move.0, _move.1), new_moves);
+        } else if _move.0 == BOARD_END - 1 && piece == BLACK | PAWN {
+            promote_pawn(&new_board, PieceColor::Black, (_move.0, _move.1), new_moves);
+        } else {
+            new_moves.push(new_board);
         }
     }
 
-    // take care of castling
+    // take care of en passant captures
+    if is_pawn(piece) {
+        let en_passant = pawn_moves_en_passant(square_cords.0, square_cords.1, &board);
+        if en_passant.is_some() {
+            let _move = en_passant.unwrap();
+            let mut new_board = board.clone();
+            new_board.swap_color();
+            new_board.pawn_double_move = None;
+            new_board.board[_move.0][_move.1] = piece;
+            new_board.board[square_cords.0][square_cords.1] = EMPTY;
+            if is_white(piece) {
+                new_board.board[_move.0 + 1][_move.1] = EMPTY;
+                new_board.black_total_piece_value -= PIECE_VALUES[PAWN as usize];
+            } else {
+                new_board.board[_move.0 - 1][_move.1] = EMPTY;
+                new_board.white_total_piece_value -= PIECE_VALUES[PAWN as usize];
+            }
+
+            // if you make a move, and you do not end up in check, then this move is valid
+            if !is_check(&new_board, board.to_move) {
+                new_moves.push(new_board);
+            }
+        }
+    }
+}
+
+/*
+    Given the current board, attempt to castle
+    If castling is possible add the move the the list of possible moves
+    Will also update appropriate castling variables if castling was successful
+*/
+fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) {
     if board.to_move == PieceColor::White && can_castle(&board, CastlingType::WhiteKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
@@ -636,7 +647,32 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
         new_board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
         new_moves.push(new_board);
     }
-    return new_moves;
+}
+
+/*
+    Executes a pawn promotion on the given cords
+
+    This function assumes that the board state is a valid pawn promotion and does not do additional checks
+*/
+fn promote_pawn(
+    board: &BoardState,
+    color: PieceColor,
+    square_cords: Point,
+    moves: &mut Vec<BoardState>,
+) {
+    let pawn_value = PIECE_VALUES[PAWN as usize];
+    for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
+        let mut new_board = board.clone();
+        new_board.pawn_double_move = None;
+        new_board.board[square_cords.0][square_cords.1] = color.as_mask() | piece;
+        let value = PIECE_VALUES[*piece as usize] - pawn_value;
+        if color == PieceColor::Black {
+            new_board.black_total_piece_value += value;
+        } else {
+            new_board.white_total_piece_value += value;
+        }
+        moves.push(new_board);
+    }
 }
 
 #[cfg(test)]

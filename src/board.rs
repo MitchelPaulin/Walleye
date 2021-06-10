@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use colored::*;
 pub use crate::engine::*;
+use colored::*;
 
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
@@ -163,7 +163,7 @@ impl PieceColor {
 #[derive(Copy, Clone)]
 pub struct BoardState {
     pub full_move_clock: u8, // The number of the full moves. It starts at 1, and is incremented after Black's move
-    pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule 
+    pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule
     pub board: [[u8; 12]; 12],
     pub to_move: PieceColor,
     // if a pawn, on the last move, made a double move, this is set, otherwise this is None
@@ -175,7 +175,7 @@ pub struct BoardState {
     pub black_king_side_castle: bool,
     pub black_queen_side_castle: bool,
     pub black_total_piece_value: i32,
-    pub white_total_piece_value: i32
+    pub white_total_piece_value: i32,
 }
 
 impl BoardState {
@@ -233,9 +233,9 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
 
     let to_move = match fen_config[1] {
         "w" => PieceColor::White,
-        _ => PieceColor::Black,
+        "b" => PieceColor::Black,
+        _ => return Err("Could not parse fen string: Next player to move was not provided"),
     };
-    
     let castling_privileges = fen_config[2];
     let en_passant = fen_config[3];
 
@@ -249,9 +249,6 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         return Err("Could not parse fen string: Invalid full move value");
     }
 
-    let mut white_king_location = (0, 0);
-    let mut black_king_location = (0, 0);
-
     let fen_rows: Vec<&str> = fen_config[0].split('/').collect();
 
     if fen_rows.len() != 8 {
@@ -260,19 +257,20 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
 
     let mut row: usize = BOARD_START;
     let mut col: usize = BOARD_START;
+    let mut white_king_location = (0, 0);
+    let mut black_king_location = (0, 0);
     let mut white_piece_values = 0;
     let mut black_piece_values = 0;
     for fen_row in fen_rows {
         for square in fen_row.chars() {
             if square.is_digit(10) {
-                let mut square_skip_count = square.to_digit(10).unwrap() as usize;
+                let square_skip_count = square.to_digit(10).unwrap() as usize;
                 if square_skip_count + col > BOARD_END {
                     return Err("Could not parse fen string: Index out of bounds");
                 }
-                while square_skip_count > 0 {
+                for _ in 0..square_skip_count {
                     board[row][col] = EMPTY;
                     col += 1;
-                    square_skip_count -= 1;
                 }
             } else {
                 board[row][col] = match get_piece_from_fen_string_char(square) {
@@ -282,14 +280,12 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
 
                 if is_white(board[row][col]) {
                     white_piece_values += PIECE_VALUES[(board[row][col] & PIECE_MASK) as usize];
+                    if is_king(board[row][col]) {
+                        white_king_location = (row, col);
+                    }
                 } else {
                     black_piece_values += PIECE_VALUES[(board[row][col] & PIECE_MASK) as usize];
-                }
-
-                if is_king(board[row][col]) {
-                    if is_white(board[row][col]) {
-                        white_king_location = (row, col);
-                    } else {
+                    if is_king(board[row][col]) {
                         black_king_location = (row, col);
                     }
                 }
@@ -326,7 +322,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         black_king_side_castle: castling_privileges.find('k') != None,
         black_queen_side_castle: castling_privileges.find('q') != None,
         black_total_piece_value: black_piece_values,
-        white_total_piece_value: white_piece_values
+        white_total_piece_value: white_piece_values,
     })
 }
 
@@ -471,8 +467,14 @@ mod tests {
             assert_eq!(b.board[8][i], WHITE | PAWN);
         }
 
-        assert_eq!(b.white_total_piece_value, 20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100);
-        assert_eq!(b.black_total_piece_value, 20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100);
+        assert_eq!(
+            b.white_total_piece_value,
+            20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100
+        );
+        assert_eq!(
+            b.black_total_piece_value,
+            20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100
+        );
     }
 
     #[test]
