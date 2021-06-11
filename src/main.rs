@@ -1,6 +1,7 @@
 extern crate clap;
 use clap::{App, Arg};
 mod board;
+mod uci;
 mod engine;
 mod move_generation;
 
@@ -65,5 +66,9 @@ fn main() {
     let simple_print = matches.is_present("simple print");
     if matches.is_present("play self") {
         engine::play_game_against_self(&board, depth, 50, simple_print);
+        return;
     }
+
+    uci::play_game_uci(&board);
+
 }

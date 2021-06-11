@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub use crate::board::*;
 pub use crate::move_generation::*;
 use std::cmp;

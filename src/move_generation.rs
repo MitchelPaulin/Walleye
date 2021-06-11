@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub use crate::board::PieceColor;
 pub use crate::board::*;
 
