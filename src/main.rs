@@ -32,8 +32,15 @@ fn main() {
         )
         .arg(
             Arg::with_name("play self")
-                .short("p")
+                .short("P")
+                .long("play-self")
                 .help("Play a game against itself in the terminal"),
+        )
+        .arg(
+            Arg::with_name("simple print")
+                .short("S")
+                .long("simple-print")
+                .help("Does not use unicode or background coloring in the output, useful on windows OS"),
         )
         .get_matches();
 
@@ -55,7 +62,8 @@ fn main() {
         }
     };
 
+    let simple_print = matches.is_present("simple print");
     if matches.is_present("play self") {
-        engine::play_game_against_self(&board, depth, 50);
+        engine::play_game_against_self(&board, depth, 50, simple_print);
     }
 }

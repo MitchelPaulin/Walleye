@@ -124,22 +124,22 @@ fn get_piece_character(piece: u8) -> &'static str {
 fn get_piece_character_simple(piece: u8) -> &'static str {
     if is_white(piece) {
         return match piece & PIECE_MASK {
-            PAWN => "♟︎",
-            KNIGHT => "♞",
-            BISHOP => "♝",
-            ROOK => "♜",
-            QUEEN => "♛",
-            KING => "♚",
+            PAWN => "P",
+            KNIGHT => "N",
+            BISHOP => "B",
+            ROOK => "R",
+            QUEEN => "Q",
+            KING => "K",
             _ => " ",
         };
     } else {
         return match piece & PIECE_MASK {
-            PAWN => "♙",
-            KNIGHT => "♘",
-            BISHOP => "♗",
-            ROOK => "♖",
-            QUEEN => "♕",
-            KING => "♔",
+            PAWN => "p",
+            KNIGHT => "n",
+            BISHOP => "b",
+            ROOK => "r",
+            QUEEN => "q",
+            KING => "k",
             _ => " ",
         };
     }

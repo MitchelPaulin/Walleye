@@ -221,9 +221,18 @@ pub fn alpha_beta_search(
 /*
     Play a game in the terminal where the engine plays against itself
 */
-pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8) {
+pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_print: bool) {
     let mut board = b.clone();
-    board.pretty_print_board();
+
+    let show_board = |simple_print: bool, b: &BoardState| {
+        if simple_print {
+            b.simple_print_board()
+        } else {
+            b.pretty_print_board()
+        }
+    };
+
+    show_board(simple_print, &board);
     while board.full_move_clock < max_moves {
         let res = alpha_beta_search(&board, depth, i32::MIN, i32::MAX, board.to_move);
         if res.0.is_some() {
@@ -231,7 +240,7 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8) {
         } else {
             break;
         }
-        board.pretty_print_board();
+        show_board(simple_print, &board);
     }
 }
 
