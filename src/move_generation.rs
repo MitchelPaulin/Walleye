@@ -503,6 +503,7 @@ fn generate_move_for_piece(
         // move the piece, this will take care of any captures as well, excluding en passant
         new_board.board[_move.0][_move.1] = piece;
         new_board.board[square_cords.0][square_cords.1] = EMPTY;
+        new_board.last_move = Some(((square_cords.0, square_cords.1), (_move.0, _move.1)));
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
