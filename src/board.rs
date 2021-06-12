@@ -109,6 +109,32 @@ pub fn algebraic_pairs_to_board_position(pair: &str) -> Option<Point> {
     Some((row, col + BOARD_START))
 }
 
+pub fn board_position_to_algebraic_pair(pair: Point) -> String {
+    let row = match pair.0 {
+        2 => "8",
+        3 => "7",
+        4 => "6",
+        5 => "5",
+        6 => "4",
+        7 => "3",
+        8 => "2",
+        9 => "1",
+        _ => "1",
+    };
+    let col = match pair.1 {
+        2 => "a",
+        3 => "b",
+        4 => "c",
+        5 => "d",
+        6 => "e",
+        7 => "f",
+        8 => "g",
+        9 => "h",
+        _ => "h",
+    };
+    return col.to_string() + &row.to_string();
+}
+
 fn get_piece_character(piece: u8) -> &'static str {
     match piece & PIECE_MASK {
         PAWN => "♟︎",
@@ -176,6 +202,7 @@ pub struct BoardState {
     pub black_queen_side_castle: bool,
     pub black_total_piece_value: i32,
     pub white_total_piece_value: i32,
+    pub last_move: Option<(Point, Point)>, // the start and last position of the last move made
 }
 
 impl BoardState {
@@ -323,6 +350,7 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
         black_queen_side_castle: castling_privileges.find('q') != None,
         black_total_piece_value: black_piece_values,
         white_total_piece_value: white_piece_values,
+        last_move: None,
     })
 }
 
@@ -418,6 +446,15 @@ mod tests {
     #[should_panic]
     fn algebraic_translation_panic_long() {
         algebraic_pairs_to_board_position("a11").unwrap();
+    }
+
+    #[test]
+    fn points_to_long_algebraic_position_test() {
+        let res = board_position_to_algebraic_pair((2, 2));
+        assert_eq!(res, "a8");
+
+        let res = board_position_to_algebraic_pair((4, 6));
+        assert_eq!(res, "e6");
     }
 
     // Fen string tests

@@ -1,9 +1,9 @@
 extern crate clap;
 use clap::{App, Arg};
 mod board;
-mod uci;
 mod engine;
 mod move_generation;
+mod uci;
 
 // Board position for the start of a new game
 const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -70,5 +70,4 @@ fn main() {
     }
 
     uci::play_game_uci();
-
 }
