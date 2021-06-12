@@ -3,9 +3,8 @@ pub use crate::engine::*;
 use std::io::{self, BufRead, Write};
 
 pub fn play_game_uci() {
-    let mut buffer = String::new();
-    let mut board =
-        board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let mut buffer;
+    let mut board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
     let log = std::fs::File::create("C:\\Users\\Mitch\\Desktop\\log.txt")
         .expect("Could not create log file");
     buffer = read_from_gui(&log);
@@ -28,31 +27,22 @@ pub fn play_game_uci() {
             // ignore
         } else if command[0] == "position" {
             if command[1] == "startpos\n" {
-                board = board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-                    .unwrap();
-            } else if command[1] == "startpos" {
-                if command.len() >= 3 && command[2] == "moves" {
-                    let mov = command.len() - 1; // only play last move
-                    let start_pos = &command[mov][0..2];
-                    let end_pos = &command[mov][2..4];
-                    let start_pair = algebraic_pairs_to_board_position(start_pos).unwrap();
-                    let end_pair = algebraic_pairs_to_board_position(end_pos).unwrap();
-                    board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
-                    board.board[start_pair.0][start_pair.1] = EMPTY;
-                }
+                board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
+            } else if command.len() >= 3 && command[2] == "moves" {
+                let mov = command.len() - 1; // only play last move, the rest has been recorded in the board state
+                let start_pair = algebraic_pairs_to_board_position(&command[mov][0..2]).unwrap();
+                let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
+                board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
+                board.board[start_pair.0][start_pair.1] = EMPTY;
             }
         } else if command[0] == "go" {
-            board.to_move = PieceColor::Black;
-            let evaluation = alpha_beta_search(&board, 5, i32::MIN, i32::MAX, PieceColor::Black);
-            let b = evaluation.0.unwrap();
-            let best_move = b.last_move.unwrap();
-            let start = best_move.0;
-            let end = best_move.1;
-            let best_move_alg =
-                board_position_to_algebraic_pair(start) + &board_position_to_algebraic_pair(end);
-            let command = "bestmove ".to_string() + &best_move_alg.to_string() + &"\n".to_string();
-            board = b;
-            send_to_gui(command, &log);
+            let evaluation = alpha_beta_search(&board, 5, i32::MIN, i32::MAX, board.to_move);
+            let next_board = evaluation.0.unwrap();
+            let best_move = next_board.last_move.unwrap();
+            let best_move_alg = board_position_to_algebraic_pair(best_move.0)
+                + &board_position_to_algebraic_pair(best_move.1);
+            board = next_board;
+            send_to_gui(format!("bestmove {}\n", best_move_alg), &log);
         } else {
             log_error("Unrecognized command ".to_string() + &buffer, &log);
         }

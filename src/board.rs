@@ -2,6 +2,9 @@
 pub use crate::engine::*;
 use colored::*;
 
+// Board position for the start of a new game
+pub const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 /*
     Example Piece: 0b10000101 = WHITE | QUEEN
     1st bit: Color 1 = White, 0 = Black

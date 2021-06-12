@@ -5,8 +5,6 @@ mod engine;
 mod move_generation;
 mod uci;
 
-// Board position for the start of a new game
-const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 // During testing I found a depth of 7 to perform best on the optimized build, recommend depth 4 on debug build
 const DEFAULT_DEPTH: &str = "7";
 
@@ -54,7 +52,7 @@ fn main() {
         }
     };
 
-    let fen = matches.value_of("fen").unwrap_or(DEFAULT_FEN_STRING);
+    let fen = matches.value_of("fen").unwrap_or(board::DEFAULT_FEN_STRING);
     let board = match board::board_from_fen(fen) {
         Ok(b) => b,
         Err(err) => {
