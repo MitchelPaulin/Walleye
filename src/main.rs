@@ -69,6 +69,6 @@ fn main() {
         return;
     }
 
-    uci::play_game_uci(&board);
+    uci::play_game_uci();
 
 }
