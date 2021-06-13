@@ -39,7 +39,7 @@ pub fn get_color(square: u8) -> Option<PieceColor> {
     if square & COLOR_MASK == WHITE {
         return Some(PieceColor::White);
     }
-    return Some(PieceColor::Black);
+    Some(PieceColor::Black)
 }
 
 pub fn is_white(square: u8) -> bool {
@@ -105,7 +105,7 @@ pub fn algebraic_pairs_to_board_position(pair: &str) -> Option<Point> {
     };
 
     let row = BOARD_END - (r.to_digit(10).unwrap() as usize);
-    if row < BOARD_START || row >= BOARD_END {
+    if !(BOARD_START..BOARD_END).contains(&row) {
         return None;
     }
 
@@ -135,7 +135,7 @@ pub fn board_position_to_algebraic_pair(pair: Point) -> String {
         9 => "h",
         _ => "h",
     };
-    return col.to_string() + &row.to_string();
+    col.to_string() + &row.to_string()
 }
 
 fn get_piece_character(piece: u8) -> &'static str {
@@ -152,7 +152,7 @@ fn get_piece_character(piece: u8) -> &'static str {
 
 fn get_piece_character_simple(piece: u8) -> &'static str {
     if is_white(piece) {
-        return match piece & PIECE_MASK {
+        match piece & PIECE_MASK {
             PAWN => "P",
             KNIGHT => "N",
             BISHOP => "B",
@@ -160,9 +160,9 @@ fn get_piece_character_simple(piece: u8) -> &'static str {
             QUEEN => "Q",
             KING => "K",
             _ => " ",
-        };
+        }
     } else {
-        return match piece & PIECE_MASK {
+        match piece & PIECE_MASK {
             PAWN => "p",
             KNIGHT => "n",
             BISHOP => "b",
@@ -170,7 +170,7 @@ fn get_piece_character_simple(piece: u8) -> &'static str {
             QUEEN => "q",
             KING => "k",
             _ => " ",
-        };
+        }
     }
 }
 
@@ -220,12 +220,10 @@ impl BoardState {
                     } else {
                         print!("{}", piece.black().on_truecolor(158, 93, 30));
                     }
+                } else if is_white(self.board[i][j]) {
+                    print!("{}", piece.white().on_truecolor(205, 170, 125));
                 } else {
-                    if is_white(self.board[i][j]) {
-                        print!("{}", piece.white().on_truecolor(205, 170, 125));
-                    } else {
-                        print!("{}", piece.black().on_truecolor(205, 170, 125));
-                    }
+                    print!("{}", piece.black().on_truecolor(205, 170, 125));
                 }
             }
             println!(" {}", 10 - i);
@@ -240,7 +238,7 @@ impl BoardState {
             }
             board = format!("{} {}\n", board, 10 - i);
         }
-        return board;
+        board
     }
 
     pub fn simple_print_board(&self) {
@@ -346,10 +344,10 @@ pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     Ok(BoardState {
         full_move_clock: full_move_clock.unwrap(),
         half_move_clock: half_move_clock.unwrap(),
-        board: board,
-        to_move: to_move,
-        white_king_location: white_king_location,
-        black_king_location: black_king_location,
+        board,
+        to_move,
+        white_king_location,
+        black_king_location,
         pawn_double_move: en_passant_pos,
         white_king_side_castle: castling_privileges.find('K') != None,
         white_queen_side_castle: castling_privileges.find('Q') != None,

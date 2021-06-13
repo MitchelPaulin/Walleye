@@ -22,6 +22,11 @@ pub enum CastlingType {
     BlackQueenSide,
 }
 
+pub const WHITE_KING_SIDE_ALG: &str = "e1g1";
+pub const WHITE_QUEEN_SIDE_ALG: &str = "e1c1";
+pub const BLACK_KING_SIDE_CASTLE_ALG: &str = "e8g8";
+pub const BLACK_QUEEN_SIDE_CASTLE_ALG: &str = "e8c8";
+
 /*
     Generate all possible moves *legal* from the given board
     Also sets appropriate variables for the board state
@@ -39,7 +44,7 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
     }
 
     generate_castling_moves(board, &mut new_moves);
-    return new_moves;
+    new_moves
 }
 
 /*
@@ -129,9 +134,7 @@ fn pawn_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>
 */
 
 fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Option<Point> {
-    if board.pawn_double_move.is_none() {
-        return None;
-    }
+    board.pawn_double_move?;
 
     let piece = board.board[row][col];
     let left_cap;
@@ -153,7 +156,7 @@ fn pawn_moves_en_passant(row: usize, col: usize, board: &BoardState) -> Option<P
         return Some(right_cap);
     }
 
-    return None;
+    None
 }
 
 /*
@@ -333,7 +336,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
         }
     }
 
-    return false;
+    false
 }
 
 /*
@@ -386,7 +389,8 @@ fn can_castle_white_king_side(board: &BoardState) -> bool {
     {
         return false;
     }
-    return true;
+
+    true
 }
 
 fn can_castle_white_queen_side(board: &BoardState) -> bool {
@@ -411,7 +415,7 @@ fn can_castle_white_queen_side(board: &BoardState) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 fn can_castle_black_king_side(board: &BoardState) -> bool {
@@ -435,7 +439,7 @@ fn can_castle_black_king_side(board: &BoardState) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 fn can_castle_black_queen_side(board: &BoardState) -> bool {
@@ -460,7 +464,7 @@ fn can_castle_black_queen_side(board: &BoardState) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 /*
@@ -504,7 +508,7 @@ fn generate_move_for_piece(
         new_board.board[_move.0][_move.1] = piece;
         new_board.board[square_cords.0][square_cords.1] = EMPTY;
         let move_alg = board_position_to_algebraic_pair((square_cords.0, square_cords.1))
-                + &board_position_to_algebraic_pair((_move.0, _move.1));
+            + &board_position_to_algebraic_pair((_move.0, _move.1));
         new_board.last_move = Some(move_alg.to_string());
 
         // if you make your move, and you are in check, this move is not valid
@@ -565,18 +569,17 @@ fn generate_move_for_piece(
     // take care of en passant captures
     if is_pawn(piece) {
         let en_passant = pawn_moves_en_passant(square_cords.0, square_cords.1, &board);
-        if en_passant.is_some() {
-            let _move = en_passant.unwrap();
+        if let Some(mov) = en_passant {
             let mut new_board = board.clone();
             new_board.swap_color();
             new_board.pawn_double_move = None;
-            new_board.board[_move.0][_move.1] = piece;
+            new_board.board[mov.0][mov.1] = piece;
             new_board.board[square_cords.0][square_cords.1] = EMPTY;
             if is_white(piece) {
-                new_board.board[_move.0 + 1][_move.1] = EMPTY;
+                new_board.board[mov.0 + 1][mov.1] = EMPTY;
                 new_board.black_total_piece_value -= PIECE_VALUES[PAWN as usize];
             } else {
-                new_board.board[_move.0 - 1][_move.1] = EMPTY;
+                new_board.board[mov.0 - 1][mov.1] = EMPTY;
                 new_board.white_total_piece_value -= PIECE_VALUES[PAWN as usize];
             }
 
@@ -605,7 +608,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_END - 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
-        new_board.last_move = Some("e1g1".to_string());
+        new_board.last_move = Some(WHITE_KING_SIDE_ALG.to_string());
         new_moves.push(new_board);
     }
 
@@ -620,7 +623,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_START] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_START + 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
-        new_board.last_move = Some("e1c1".to_string());
+        new_board.last_move = Some(WHITE_QUEEN_SIDE_ALG.to_string());
         new_moves.push(new_board);
     }
 
@@ -635,7 +638,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_END - 1] = EMPTY;
         new_board.board[BOARD_START][BOARD_END - 2] = BLACK | KING;
         new_board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
-        new_board.last_move = Some("e8g8".to_string());
+        new_board.last_move = Some(BLACK_KING_SIDE_CASTLE_ALG.to_string());
         new_moves.push(new_board);
     }
 
@@ -650,7 +653,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_START] = EMPTY;
         new_board.board[BOARD_START][BOARD_START + 2] = BLACK | KING;
         new_board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
-        new_board.last_move = Some("e8c8".to_string());
+        new_board.last_move = Some(BLACK_QUEEN_SIDE_CASTLE_ALG.to_string());
         new_moves.push(new_board);
     }
 }

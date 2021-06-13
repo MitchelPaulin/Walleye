@@ -149,7 +149,7 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
             }
         }
     }
-    return evaluation;
+    evaluation
 }
 
 /*
@@ -169,16 +169,14 @@ pub fn alpha_beta_search(
 
     let mut moves = generate_moves(board);
 
-    if moves.len() == 0 {
+    if moves.is_empty() {
         // here we add the depths to encourage faster checkmates
         if maximizing_player == PieceColor::White {
             if is_check(board, PieceColor::White) {
                 return (None, -99999999 - depth as i32); // checkmate
             }
-        } else {
-            if is_check(board, PieceColor::Black) {
-                return (None, 99999999 + depth as i32); // checkmate
-            }
+        } else if is_check(board, PieceColor::Black) {
+            return (None, 99999999 + depth as i32); // checkmate
         }
         return (None, 0); // stalemate
     }
@@ -198,7 +196,7 @@ pub fn alpha_beta_search(
                 break;
             }
         }
-        return (best_move, best_val);
+        (best_move, best_val)
     } else {
         moves.sort_by(|a, b| a.white_total_piece_value.cmp(&b.white_total_piece_value));
         let mut best_val = i32::MAX;
@@ -213,7 +211,7 @@ pub fn alpha_beta_search(
                 break;
             }
         }
-        return (best_move, best_val);
+        (best_move, best_val)
     }
 }
 
