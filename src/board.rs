@@ -189,7 +189,7 @@ impl PieceColor {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct BoardState {
     pub full_move_clock: u8, // The number of the full moves. It starts at 1, and is incremented after Black's move
     pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule
@@ -205,7 +205,7 @@ pub struct BoardState {
     pub black_queen_side_castle: bool,
     pub black_total_piece_value: i32,
     pub white_total_piece_value: i32,
-    pub last_move: Option<(Point, Point)>, // the start and last position of the last move made
+    pub last_move: Option<String>, // the start and last position of the last move made
 }
 
 impl BoardState {

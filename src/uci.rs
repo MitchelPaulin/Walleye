@@ -56,11 +56,9 @@ pub fn play_game_uci() {
         } else if command[0] == "go" {
             let evaluation = alpha_beta_search(&board, 5, i32::MIN, i32::MAX, board.to_move);
             let next_board = evaluation.0.unwrap();
-            let best_move = next_board.last_move.unwrap();
-            let best_move_alg = board_position_to_algebraic_pair(best_move.0)
-                + &board_position_to_algebraic_pair(best_move.1);
+            let best_move = next_board.last_move.clone().unwrap();
             board = next_board;
-            send_to_gui(format!("bestmove {}\n", best_move_alg), &log);
+            send_to_gui(format!("bestmove {}\n", best_move), &log);
             log_info(board.simple_board(), &log);
         } else {
             log_error("Unrecognized command ".to_string() + &buffer, &log);

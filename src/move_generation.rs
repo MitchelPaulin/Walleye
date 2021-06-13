@@ -503,7 +503,9 @@ fn generate_move_for_piece(
         // move the piece, this will take care of any captures as well, excluding en passant
         new_board.board[_move.0][_move.1] = piece;
         new_board.board[square_cords.0][square_cords.1] = EMPTY;
-        new_board.last_move = Some(((square_cords.0, square_cords.1), (_move.0, _move.1)));
+        let move_alg = board_position_to_algebraic_pair((square_cords.0, square_cords.1))
+                + &board_position_to_algebraic_pair((_move.0, _move.1));
+        new_board.last_move = Some(move_alg.to_string());
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
@@ -603,6 +605,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_END - 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
+        new_board.last_move = Some("e1g1".to_string());
         new_moves.push(new_board);
     }
 
@@ -617,6 +620,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_START] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_START + 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
+        new_board.last_move = Some("e1c1".to_string());
         new_moves.push(new_board);
     }
 
@@ -631,6 +635,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_END - 1] = EMPTY;
         new_board.board[BOARD_START][BOARD_END - 2] = BLACK | KING;
         new_board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
+        new_board.last_move = Some("e8g8".to_string());
         new_moves.push(new_board);
     }
 
@@ -645,6 +650,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_START] = EMPTY;
         new_board.board[BOARD_START][BOARD_START + 2] = BLACK | KING;
         new_board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
+        new_board.last_move = Some("e8c8".to_string());
         new_moves.push(new_board);
     }
 }
