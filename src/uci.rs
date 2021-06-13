@@ -32,6 +32,15 @@ pub fn play_game_uci() {
                 let mov = command.len() - 1; // only play last move, the rest has been recorded in the board state
                 let start_pair = algebraic_pairs_to_board_position(&command[mov][0..2]).unwrap();
                 let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
+                let target_square = board.board[end_pair.0][end_pair.1];
+                if !is_empty(target_square) {
+                    if is_white(target_square) {
+                        board.white_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+                    } else {
+                        board.black_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+                    }
+                }
+
                 board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
                 board.board[start_pair.0][start_pair.1] = EMPTY;
 
@@ -54,7 +63,7 @@ pub fn play_game_uci() {
                 log_info(board.simple_board(), &log);
             }
         } else if command[0] == "go" {
-            let evaluation = alpha_beta_search(&board, 5, i32::MIN, i32::MAX, board.to_move);
+            let evaluation = alpha_beta_search(&board, 6, i32::MIN, i32::MAX, board.to_move);
             let next_board = evaluation.0.unwrap();
             let best_move = next_board.last_move.clone().unwrap();
             board = next_board;
