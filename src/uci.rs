@@ -25,11 +25,23 @@ pub fn play_game_uci() {
         } else if command[0] == "isready\n" {
             send_to_gui("readyok\n".to_string(), &log);
         } else if command[0] == "ucinewgame\n" {
-            // ignore
-        } else if command[0] == "position" {
             if command[1] == "startpos\n" {
                 board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
-            } else if command.len() >= 3 && command[2] == "moves" {
+            } else if command[1] == "fen" {
+                let mut fen = "".to_string();
+                for i in 2..7 {
+                    fen = format!("{} {}", &fen, command[i]);
+                }
+                board = match board_from_fen(&fen) {
+                    Ok(b) => b,
+                    Err(err) => {
+                        log_error(err.to_string(), &log);
+                        break;
+                    }
+                };
+            }
+        } else if command[0] == "position" && command.contains(&"moves") {
+            if command.len() >= 3 && command[2] == "moves" {
                 let mov = command.len() - 1; // only play last move, the rest has been recorded in the board state
                 let start_pair = algebraic_pairs_to_board_position(&command[mov][0..2]).unwrap();
                 let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
