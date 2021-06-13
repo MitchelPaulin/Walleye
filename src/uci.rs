@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Write};
 pub fn play_game_uci() {
     let mut buffer;
     let mut board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
-    let log = std::fs::File::create("C:\\Users\\Mitch\\Desktop\\log.txt")
+    let log = std::fs::File::create("/home/mitch/Desktop/log.txt")
         .expect("Could not create log file");
     buffer = read_from_gui(&log);
     if buffer != "uci\n" {
@@ -34,6 +34,8 @@ pub fn play_game_uci() {
                 let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
                 board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
                 board.board[start_pair.0][start_pair.1] = EMPTY;
+                board.swap_color();
+                log_info(board.simple_board(), &log);
             }
         } else if command[0] == "go" {
             let evaluation = alpha_beta_search(&board, 5, i32::MIN, i32::MAX, board.to_move);
@@ -43,10 +45,16 @@ pub fn play_game_uci() {
                 + &board_position_to_algebraic_pair(best_move.1);
             board = next_board;
             send_to_gui(format!("bestmove {}\n", best_move_alg), &log);
+            log_info(board.simple_board(), &log);
         } else {
             log_error("Unrecognized command ".to_string() + &buffer, &log);
         }
     }
+}
+
+fn log_info(message: String, mut log: &std::fs::File) {
+    log.write_all(("<INFO> ".to_string() + &message).as_bytes())
+        .expect("write failed");
 }
 
 fn log_error(message: String, mut log: &std::fs::File) {

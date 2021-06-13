@@ -232,15 +232,19 @@ impl BoardState {
         }
     }
 
-    pub fn simple_print_board(&self) {
-        println!("a b c d e f g h");
+    pub fn simple_board(&self) -> String {
+        let mut board = "\na b c d e f g h\n".to_string();
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
-                let piece = format!("{} ", get_piece_character_simple(self.board[i][j]));
-                print!("{}", piece);
+                board = format!("{}{} ", board, get_piece_character_simple(self.board[i][j]));
             }
-            println!(" {}", 10 - i);
+            board = format!("{} {}\n", board, 10 - i);
         }
+        return board;
+    }
+
+    pub fn simple_print_board(&self) {
+        print!("{}", self.simple_board());
     }
 
     pub fn swap_color(&mut self) {
