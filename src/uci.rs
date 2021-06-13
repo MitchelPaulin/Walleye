@@ -34,6 +34,22 @@ pub fn play_game_uci() {
                 let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
                 board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
                 board.board[start_pair.0][start_pair.1] = EMPTY;
+
+                //deal with castling 
+                if &command[mov][0..4] == "e1g1" && board.board[end_pair.0][end_pair.1] == WHITE | KING {
+                    board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
+                    board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
+                } else if &command[mov][0..4] == "e1c1" && board.board[end_pair.0][end_pair.1] == WHITE | KING {
+                    board.board[BOARD_END - 1][BOARD_START] = EMPTY;
+                    board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
+                } else if &command[mov][0..4] == "e8g8" && board.board[end_pair.0][end_pair.1] == BLACK| KING {
+                    board.board[BOARD_START][BOARD_END - 1] = EMPTY;
+                    board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
+                } else if &command[mov][0..4] == "e8c8" && board.board[end_pair.0][end_pair.1] == BLACK| KING {
+                    board.board[BOARD_START][BOARD_START] = EMPTY;
+                    board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
+                }
+
                 board.swap_color();
                 log_info(board.simple_board(), &log);
             }
