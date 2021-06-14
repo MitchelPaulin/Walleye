@@ -1,5 +1,5 @@
 [package]
-name = "courier"
+name = "walleye"
 version = "0.1.0"
 authors = ["MitchelPaulin <mitchel0022@gmail.com>"]
 edition = "2018"

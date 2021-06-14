@@ -1,10 +1,10 @@
-# Courier
+# Walleye
 
-Courier is a chess engine written completely in rust.
+Walleye is a chess engine written completely in rust.
 
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
 
-Courier is a UCI compatible engine written using the classical alpha-beta style AI. It supports loading board positions from arbitrary FEN strings, unicode pretty printing to the console and UCI communication logs to help with debugging.
+Walleye is a UCI compatible engine written using the classical alpha-beta style AI. It supports loading board positions from arbitrary FEN strings, unicode pretty printing to the console and UCI communication logs to help with debugging.
 
 Originally this project was meant as a first introduction to rust and chess programming, but it got a bit carried away.
 
@@ -14,7 +14,7 @@ By default the engine launches in UCI mode and expects to be loaded into a chess
 
 ![demo](./demo/demo.png)
 
-Type `./courier --help` for a complete list of commands.
+Type `./walleye --help` for a complete list of commands.
 
 ## Play Against It
 
@@ -30,4 +30,4 @@ Some resources I found helpful when creating this engine
 
 ## License
 
-Courier is under the MIT license.
+Walleye is under the MIT license.
