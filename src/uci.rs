@@ -11,7 +11,7 @@ pub fn play_game_uci() {
         log_error("Expected uci protocol but got ".to_string() + &buffer, &log);
         return;
     }
-    send_to_gui("id name ChessEngine\n".to_string(), &log);
+    send_to_gui("id name Walleye\n".to_string(), &log);
     send_to_gui("id author Mitchel Paulin\n".to_string(), &log);
     send_to_gui("uciok\n".to_string(), &log);
 
@@ -58,6 +58,22 @@ pub fn play_game_uci() {
 
             board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
             board.board[start_pair.0][start_pair.1] = EMPTY;
+            
+            //deal with pawn promotions, check for 6 because of new line character
+            if command[mov].len() == 6 {
+                log_info("HERE".to_string(), &log);
+                let piece = match command[mov].chars().nth(4).unwrap() {
+                    'q' => QUEEN,
+                    'n' => KNIGHT,
+                    'b' => BISHOP,
+                    'r' => ROOK,
+                    _ => {
+                        log_error("Could not recognize piece value".to_string(), &log);
+                        break;
+                    }
+                };
+                board.board[end_pair.0][end_pair.1] = piece | board.to_move.as_mask();
+            }
 
             //deal with castling
             if &command[mov][0..4] == WHITE_KING_SIDE_ALG

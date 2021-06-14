@@ -253,11 +253,22 @@ impl BoardState {
     }
 }
 
+fn trim_newline(s: &mut String) {
+    if s.ends_with('\n') {
+        s.pop();
+        if s.ends_with('\r') {
+            s.pop();
+        }
+    }
+}
+
 /*
     Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state
 */
 pub fn board_from_fen(fen: &str) -> Result<BoardState, &str> {
     let mut board = [[SENTINEL; 12]; 12];
+    let mut fen = fen.to_string();
+    trim_newline(&mut fen);
     let fen_config: Vec<&str> = fen.split(' ').collect();
     if fen_config.len() != 6 {
         return Err("Could not parse fen string: Invalid fen string");
