@@ -489,9 +489,9 @@ fn generate_move_for_piece(
         }
         // update king location if we are moving the king
         if piece == WHITE | KING {
-            new_board.white_king_location = (_move.0, _move.1);
+            new_board.white_king_location = _move;
         } else if piece == BLACK | KING {
-            new_board.black_king_location = (_move.0, _move.1);
+            new_board.black_king_location = _move;
         }
 
         let target_square = new_board.board[_move.0][_move.1];
@@ -507,8 +507,8 @@ fn generate_move_for_piece(
         // move the piece, this will take care of any captures as well, excluding en passant
         new_board.board[_move.0][_move.1] = piece;
         new_board.board[square_cords.0][square_cords.1] = EMPTY;
-        let move_alg = board_position_to_algebraic_pair((square_cords.0, square_cords.1))
-            + &board_position_to_algebraic_pair((_move.0, _move.1));
+        let move_alg = board_position_to_algebraic_pair(square_cords)
+            + &board_position_to_algebraic_pair(_move);
         new_board.last_move = Some(move_alg.to_string());
 
         // if you make your move, and you are in check, this move is not valid
@@ -558,9 +558,9 @@ fn generate_move_for_piece(
 
         // deal with pawn promotions
         if _move.0 == BOARD_START && piece == WHITE | PAWN {
-            promote_pawn(&new_board, PieceColor::White, (_move.0, _move.1), new_moves);
+            promote_pawn(&new_board, PieceColor::White, square_cords, _move, new_moves);
         } else if _move.0 == BOARD_END - 1 && piece == BLACK | PAWN {
-            promote_pawn(&new_board, PieceColor::Black, (_move.0, _move.1), new_moves);
+            promote_pawn(&new_board, PieceColor::Black, square_cords, _move, new_moves);
         } else {
             new_moves.push(new_board);
         }
@@ -666,20 +666,24 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
 fn promote_pawn(
     board: &BoardState,
     color: PieceColor,
-    square_cords: Point,
+    start: Point,
+    target: Point,
     moves: &mut Vec<BoardState>,
 ) {
     let pawn_value = PIECE_VALUES[PAWN as usize];
-    for piece in [QUEEN, KNIGHT, BISHOP, ROOK].iter() {
+    for piece in [(QUEEN, 'q'), (KNIGHT, 'n'), (BISHOP, 'b'), (ROOK, 'r')].iter() {
         let mut new_board = board.clone();
         new_board.pawn_double_move = None;
-        new_board.board[square_cords.0][square_cords.1] = color.as_mask() | piece;
-        let value = PIECE_VALUES[*piece as usize] - pawn_value;
+        new_board.board[target.0][target.1] = color.as_mask() | piece.0;
+        let value = PIECE_VALUES[piece.0 as usize] - pawn_value;
         if color == PieceColor::Black {
             new_board.black_total_piece_value += value;
         } else {
             new_board.white_total_piece_value += value;
         }
+        let move_alg = format!("{}{}{}", board_position_to_algebraic_pair(start), 
+            board_position_to_algebraic_pair(target), piece.1);
+        new_board.last_move = Some(move_alg.to_string());
         moves.push(new_board);
     }
 }
