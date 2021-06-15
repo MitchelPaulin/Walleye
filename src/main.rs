@@ -6,8 +6,8 @@ mod move_generation;
 mod uci;
 mod utils;
 
-// During testing I found a depth of 7 to perform best on the optimized build, recommend depth 4 on debug build
-const DEFAULT_DEPTH: &str = "7";
+// During testing I found a depth of 6 to perform best on the optimized build, recommend depth 4 on debug build
+const DEFAULT_DEPTH: &str = "6";
 
 fn main() {
     let matches = App::new("Chess Engine")
@@ -68,5 +68,5 @@ fn main() {
         return;
     }
 
-    uci::play_game_uci();
+    uci::play_game_uci(depth);
 }

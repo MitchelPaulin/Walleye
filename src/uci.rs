@@ -3,7 +3,7 @@ pub use crate::engine::*;
 pub use crate::move_generation::*;
 use std::io::{self, BufRead, Write};
 
-pub fn play_game_uci() {
+pub fn play_game_uci(search_depth: u8) {
     let mut board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
     let log = std::fs::File::create("log.txt").expect("Could not create log file");
     let buffer = read_from_gui(&log);
@@ -35,7 +35,7 @@ pub fn play_game_uci() {
             let player_move = command.last().unwrap();
             handle_player_move(&mut board, player_move, &log);
         } else if command[0] == "go" {
-            board = find_best_move(&board, &log);
+            board = find_best_move(&board, search_depth, &log);
         } else {
             log_error(format!("Unrecognized command: {}", buffer), &log);
         }
@@ -102,8 +102,8 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
     log_info(board.simple_board(), &log);
 }
 
-fn find_best_move(board: &BoardState, log: &std::fs::File) -> BoardState {
-    let evaluation = alpha_beta_search(&board, 6, i32::MIN, i32::MAX, board.to_move);
+fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> BoardState {
+    let evaluation = alpha_beta_search(&board, search_depth, i32::MIN, i32::MAX, board.to_move);
     let next_board = evaluation.0.unwrap();
     let best_move = next_board.last_move.clone().unwrap();
     send_to_gui(format!("bestmove {}\n", best_move), &log);
