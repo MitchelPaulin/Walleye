@@ -33,6 +33,7 @@ pub fn play_game_uci(search_depth: u8) {
         } else if command[0] == "position" && command.contains(&"moves") {
             // only play last move, the rest has been recorded in the board state
             let player_move = command.last().unwrap();
+            log_info(player_move.to_string(), &log);
             handle_player_move(&mut board, player_move, &log);
         } else if command[0] == "go" {
             board = find_best_move(&board, search_depth, &log);
@@ -44,7 +45,7 @@ pub fn play_game_uci(search_depth: u8) {
 
 fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs::File) {
     let start_pair = algebraic_pairs_to_board_position(&player_move[0..2]).unwrap();
-    let end_pair = algebraic_pairs_to_board_position(&player_move[0..2][2..4]).unwrap();
+    let end_pair = algebraic_pairs_to_board_position(&player_move[2..4]).unwrap();
     let target_square = board.board[end_pair.0][end_pair.1];
     if !is_empty(target_square) {
         if is_white(target_square) {
