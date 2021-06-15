@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 pub use crate::engine::*;
+pub use crate::utils::*;
 use colored::*;
 
 // Board position for the start of a new game
@@ -249,15 +250,6 @@ impl BoardState {
         match self.to_move {
             PieceColor::White => self.to_move = PieceColor::Black,
             PieceColor::Black => self.to_move = PieceColor::White,
-        }
-    }
-}
-
-fn trim_newline(s: &mut String) {
-    if s.ends_with('\n') {
-        s.pop();
-        if s.ends_with('\r') {
-            s.pop();
         }
     }
 }

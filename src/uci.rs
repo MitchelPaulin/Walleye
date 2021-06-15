@@ -24,93 +24,112 @@ pub fn play_game_uci() {
             send_to_gui("readyok\n".to_string(), &log);
         } else if command[0] == "ucinewgame\n" {
             let buffer = read_from_gui(&log);
-            let command: Vec<&str> = buffer.split(' ').collect();
-            if command[1] == "startpos\n" {
-                board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
-            } else if command[1] == "fen" {
-                let mut fen = "".to_string();
-                for i in 2..7 {
-                    fen += &(command[i].to_string() + &" ".to_string());
+            board = match setup_new_game(buffer, &log) {
+                Some(b) => b,
+                _ => {
+                    break;
                 }
-                fen += &command[7].to_string();
-                board = match board_from_fen(&fen) {
-                    Ok(b) => b,
-                    Err(err) => {
-                        log_error(format!("{} : {}", err, fen), &log);
-                        break;
-                    }
-                };
             }
         } else if command[0] == "position" && command.contains(&"moves") {
-            let mov = command.len() - 1; // only play last move, the rest has been recorded in the board state
-            let start_pair = algebraic_pairs_to_board_position(&command[mov][0..2]).unwrap();
-            let end_pair = algebraic_pairs_to_board_position(&command[mov][2..4]).unwrap();
-            let target_square = board.board[end_pair.0][end_pair.1];
-            if !is_empty(target_square) {
-                if is_white(target_square) {
-                    board.white_total_piece_value -=
-                        PIECE_VALUES[(target_square & PIECE_MASK) as usize];
-                } else {
-                    board.black_total_piece_value -=
-                        PIECE_VALUES[(target_square & PIECE_MASK) as usize];
-                }
-            }
-
-            board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
-            board.board[start_pair.0][start_pair.1] = EMPTY;
-            
-            //deal with pawn promotions, check for 6 because of new line character
-            if command[mov].len() == 6 {
-                log_info("HERE".to_string(), &log);
-                let piece = match command[mov].chars().nth(4).unwrap() {
-                    'q' => QUEEN,
-                    'n' => KNIGHT,
-                    'b' => BISHOP,
-                    'r' => ROOK,
-                    _ => {
-                        log_error("Could not recognize piece value".to_string(), &log);
-                        break;
-                    }
-                };
-                board.board[end_pair.0][end_pair.1] = piece | board.to_move.as_mask();
-            }
-
-            //deal with castling
-            if &command[mov][0..4] == WHITE_KING_SIDE_ALG
-                && board.board[end_pair.0][end_pair.1] == WHITE | KING
-            {
-                board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
-                board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
-            } else if &command[mov][0..4] == WHITE_QUEEN_SIDE_ALG
-                && board.board[end_pair.0][end_pair.1] == WHITE | KING
-            {
-                board.board[BOARD_END - 1][BOARD_START] = EMPTY;
-                board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
-            } else if &command[mov][0..4] == BLACK_KING_SIDE_CASTLE_ALG
-                && board.board[end_pair.0][end_pair.1] == BLACK | KING
-            {
-                board.board[BOARD_START][BOARD_END - 1] = EMPTY;
-                board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
-            } else if &command[mov][0..4] == BLACK_QUEEN_SIDE_CASTLE_ALG
-                && board.board[end_pair.0][end_pair.1] == BLACK | KING
-            {
-                board.board[BOARD_START][BOARD_START] = EMPTY;
-                board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
-            }
-
-            board.swap_color();
-            log_info(board.simple_board(), &log);
+            // only play last move, the rest has been recorded in the board state
+            let player_move = command.last().unwrap();
+            handle_player_move(&mut board, player_move, &log);
         } else if command[0] == "go" {
-            let evaluation = alpha_beta_search(&board, 6, i32::MIN, i32::MAX, board.to_move);
-            let next_board = evaluation.0.unwrap();
-            let best_move = next_board.last_move.clone().unwrap();
-            board = next_board;
-            send_to_gui(format!("bestmove {}\n", best_move), &log);
-            log_info(board.simple_board(), &log);
+            board = find_best_move(&board, &log);
         } else {
-            log_error("Unrecognized command ".to_string() + &buffer, &log);
+            log_error(format!("Unrecognized command: {}", buffer), &log);
         }
     }
+}
+
+fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs::File) {
+    let start_pair = algebraic_pairs_to_board_position(&player_move[0..2]).unwrap();
+    let end_pair = algebraic_pairs_to_board_position(&player_move[0..2][2..4]).unwrap();
+    let target_square = board.board[end_pair.0][end_pair.1];
+    if !is_empty(target_square) {
+        if is_white(target_square) {
+            board.white_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+        } else {
+            board.black_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+        }
+    }
+
+    board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
+    board.board[start_pair.0][start_pair.1] = EMPTY;
+    //deal with pawn promotions, check for 6 because of new line character
+    if player_move.len() == 6 {
+        log_info("HERE".to_string(), &log);
+        let piece = match player_move.chars().nth(4).unwrap() {
+            'q' => QUEEN,
+            'n' => KNIGHT,
+            'b' => BISHOP,
+            'r' => ROOK,
+            _ => {
+                log_error(
+                    "Could not recognize piece value, default to queen".to_string(),
+                    &log,
+                );
+                QUEEN
+            }
+        };
+        board.board[end_pair.0][end_pair.1] = piece | board.to_move.as_mask();
+    }
+
+    //deal with castling
+    if &player_move[0..4] == WHITE_KING_SIDE_ALG
+        && board.board[end_pair.0][end_pair.1] == WHITE | KING
+    {
+        board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
+        board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
+    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_ALG
+        && board.board[end_pair.0][end_pair.1] == WHITE | KING
+    {
+        board.board[BOARD_END - 1][BOARD_START] = EMPTY;
+        board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
+    } else if &player_move[0..4] == BLACK_KING_SIDE_CASTLE_ALG
+        && board.board[end_pair.0][end_pair.1] == BLACK | KING
+    {
+        board.board[BOARD_START][BOARD_END - 1] = EMPTY;
+        board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
+    } else if &player_move[0..4] == BLACK_QUEEN_SIDE_CASTLE_ALG
+        && board.board[end_pair.0][end_pair.1] == BLACK | KING
+    {
+        board.board[BOARD_START][BOARD_START] = EMPTY;
+        board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
+    }
+
+    board.swap_color();
+    log_info(board.simple_board(), &log);
+}
+
+fn find_best_move(board: &BoardState, log: &std::fs::File) -> BoardState {
+    let evaluation = alpha_beta_search(&board, 6, i32::MIN, i32::MAX, board.to_move);
+    let next_board = evaluation.0.unwrap();
+    let best_move = next_board.last_move.clone().unwrap();
+    send_to_gui(format!("bestmove {}\n", best_move), &log);
+    log_info(board.simple_board(), &log);
+    next_board
+}
+
+fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
+    let command: Vec<&str> = buffer.split(' ').collect();
+    if command[1] == "startpos\n" {
+        return Some(board_from_fen(DEFAULT_FEN_STRING).unwrap());
+    } else if command[1] == "fen" {
+        let mut fen = "".to_string();
+        for i in 2..7 {
+            fen += &(command[i].to_string() + &" ".to_string());
+        }
+        fen += &command[7].to_string();
+        match board_from_fen(&fen) {
+            Ok(b) => return Some(b),
+            Err(err) => {
+                log_error(format!("{} : {}", err, fen), &log);
+                return None;
+            }
+        }
+    }
+    return None;
 }
 
 fn log_info(message: String, mut log: &std::fs::File) {
