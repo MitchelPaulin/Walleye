@@ -58,7 +58,6 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
     board.board[start_pair.0][start_pair.1] = EMPTY;
     //deal with pawn promotions, check for 6 because of new line character
     if player_move.len() == 6 {
-        log_info("HERE".to_string(), &log);
         let piece = match player_move.chars().nth(4).unwrap() {
             'q' => QUEEN,
             'n' => KNIGHT,
