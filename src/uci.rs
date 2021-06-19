@@ -118,9 +118,9 @@ fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
     } else if command[1] == "fen" {
         let mut fen = "".to_string();
         for i in 2..7 {
-            fen += &(command[i].to_string() + &" ".to_string());
+            fen += &format!("{} ", command[i]);
         }
-        fen += &command[7].to_string();
+        fen += command[7];
         match board_from_fen(&fen) {
             Ok(b) => return Some(b),
             Err(err) => {
@@ -129,22 +129,22 @@ fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
             }
         }
     }
-    return None;
+    None
 }
 
 fn log_info(message: String, mut log: &std::fs::File) {
-    log.write_all(("<INFO> ".to_string() + &message).as_bytes())
+    log.write_all(format!("<INFO> {}", message).as_bytes())
         .expect("write failed");
 }
 
 fn log_error(message: String, mut log: &std::fs::File) {
-    log.write_all(("<ERROR> ".to_string() + &message).as_bytes())
+    log.write_all(format!("<ERROR> {}", message).as_bytes())
         .expect("write failed");
 }
 
 fn send_to_gui(message: String, mut log: &std::fs::File) {
     print!("{}", message);
-    log.write_all(("ENGINE >> ".to_string() + &message).as_bytes())
+    log.write_all(format!("ENGINE >> {}", message).as_bytes())
         .expect("write failed");
 }
 
@@ -152,7 +152,7 @@ fn read_from_gui(mut log: &std::fs::File) -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
     stdin.lock().read_line(&mut buffer).unwrap();
-    log.write_all(("ENGINE << ".to_string() + &buffer).as_bytes())
+    log.write_all(format!("ENGINE << {}", buffer).as_bytes())
         .expect("write failed");
     buffer
 }
