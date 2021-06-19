@@ -19,17 +19,6 @@ static PAWN_WEIGHTS: [[i32; 8]; 8] = [
     [0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
-static PAWN_LATE_GAME: [[i32; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [50, 50, 50, 50, 50, 50, 50, 50],
-    [30, 30, 30, 30, 30, 30, 30, 30],
-    [10, 10, 10, 25, 25, 10, 10, 10],
-    [10, 10, 10, 20, 20, 10, 10, 10],
-    [5, 5, 5, 10, 10, 5, 5, 5],
-    [0, 0, 0, -20, -20, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-];
-
 static KNIGHT_WEIGHTS: [[i32; 8]; 8] = [
     [-50, -40, -30, -30, -30, -30, -40, -50],
     [-40, -20, 0, 0, 0, 0, -20, -40],
@@ -97,32 +86,26 @@ static KING_LATE_GAME: [[i32; 8]; 8] = [
 ];
 
 fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceColor) -> i32 {
-    let _col = col - BOARD_START;
-    let _row = match color {
+    let piece = board.board[row][col] & PIECE_MASK;
+    let col = col - BOARD_START;
+    let row = match color {
         PieceColor::White => row - BOARD_START,
         _ => 9 - row,
     };
 
-    let piece = board.board[row][col] & PIECE_MASK;
     match piece {
-        PAWN => {
-            if board.full_move_clock > 35 {
-                PAWN_LATE_GAME[_row][_col]
-            } else {
-                PAWN_WEIGHTS[_row][_col]
-            }
-        }
-        ROOK => ROOK_WEIGHTS[_row][_col],
-        BISHOP => BISHOP_WEIGHTS[_row][_col],
-        KNIGHT => KNIGHT_WEIGHTS[_row][_col],
+        PAWN => PAWN_WEIGHTS[row][col],
+        ROOK => ROOK_WEIGHTS[row][col],
+        BISHOP => BISHOP_WEIGHTS[row][col],
+        KNIGHT => KNIGHT_WEIGHTS[row][col],
         KING => {
             if board.full_move_clock > 30 {
-                KING_LATE_GAME[_row][_col]
+                KING_LATE_GAME[row][col]
             } else {
-                KING_WEIGHTS[_row][_col]
+                KING_WEIGHTS[row][col]
             }
         }
-        QUEEN => QUEEN_WEIGHTS[_row][_col],
+        QUEEN => QUEEN_WEIGHTS[row][col],
         _ => panic!("Could not recognize piece"),
     }
 }
@@ -183,7 +166,7 @@ pub fn alpha_beta_search(
 
     let mut best_move = None;
     if maximizing_player == PieceColor::White {
-        moves.sort_by(|a, b| a.black_total_piece_value.cmp(&b.black_total_piece_value));
+        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
         let mut best_val = i32::MIN;
         for board in moves {
             let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black);
@@ -198,7 +181,7 @@ pub fn alpha_beta_search(
         }
         (best_move, best_val)
     } else {
-        moves.sort_by(|a, b| a.white_total_piece_value.cmp(&b.white_total_piece_value));
+        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
         let mut best_val = i32::MAX;
         for board in moves {
             let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White);
@@ -213,6 +196,10 @@ pub fn alpha_beta_search(
         }
         (best_move, best_val)
     }
+}
+
+fn piece_value_differential(board: &BoardState) -> i32 {
+    board.white_total_piece_value - board.black_total_piece_value
 }
 
 /*
