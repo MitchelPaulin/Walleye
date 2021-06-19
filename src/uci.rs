@@ -76,12 +76,12 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
     }
 
     //deal with castling
-    if &player_move[0..4] == WHITE_KING_SIDE_ALG
+    if &player_move[0..4] == WHITE_KING_SIDE_CASTLE_ALG
         && board.board[end_pair.0][end_pair.1] == WHITE | KING
     {
         board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
         board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
-    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_ALG
+    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_CASTLE_ALG
         && board.board[end_pair.0][end_pair.1] == WHITE | KING
     {
         board.board[BOARD_END - 1][BOARD_START] = EMPTY;

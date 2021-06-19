@@ -22,8 +22,8 @@ pub enum CastlingType {
     BlackQueenSide,
 }
 
-pub const WHITE_KING_SIDE_ALG: &str = "e1g1";
-pub const WHITE_QUEEN_SIDE_ALG: &str = "e1c1";
+pub const WHITE_KING_SIDE_CASTLE_ALG: &str = "e1g1";
+pub const WHITE_QUEEN_SIDE_CASTLE_ALG: &str = "e1c1";
 pub const BLACK_KING_SIDE_CASTLE_ALG: &str = "e8g8";
 pub const BLACK_QUEEN_SIDE_CASTLE_ALG: &str = "e8c8";
 
@@ -62,7 +62,7 @@ pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
 */
 fn knight_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
-    for mods in KNIGHT_CORDS.iter() {
+    for mods in &KNIGHT_CORDS {
         let row = (row as i8 + mods.0) as usize;
         let col = (col as i8 + mods.1) as usize;
         let square = board.board[row][col];
@@ -185,7 +185,7 @@ fn king_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>
 */
 fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
-    for m in [(1, 0), (-1, 0), (0, 1), (0, -1)].iter() {
+    for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
         let mut row = row as i8 + m.0;
         let mut col = col as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
@@ -207,7 +207,7 @@ fn rook_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>
 */
 fn bishop_moves(row: usize, col: usize, board: &BoardState, moves: &mut Vec<Point>) {
     let piece = board.board[row][col];
-    for m in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter() {
+    for m in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
         let mut row = row as i8 + m.0;
         let mut col = col as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
@@ -262,7 +262,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     };
 
     // Check from rook or queen
-    for m in [(1, 0), (-1, 0), (0, 1), (0, -1)].iter() {
+    for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
         let mut row = square_cords.0 as i8 + m.0;
         let mut col = square_cords.1 as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
@@ -279,7 +279,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from bishop or queen
-    for m in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter() {
+    for m in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
         let mut row = square_cords.0 as i8 + m.0;
         let mut col = square_cords.1 as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
@@ -297,7 +297,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from knight
-    for mods in KNIGHT_CORDS.iter() {
+    for mods in &KNIGHT_CORDS {
         let row = (square_cords.0 as i8 + mods.0) as usize;
         let col = (square_cords.1 as i8 + mods.1) as usize;
         let square = board.board[row][col];
@@ -608,7 +608,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_END - 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
-        new_board.last_move = Some(WHITE_KING_SIDE_ALG.to_string());
+        new_board.last_move = Some(WHITE_KING_SIDE_CASTLE_ALG.to_string());
         new_moves.push(new_board);
     }
 
@@ -623,7 +623,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_START] = EMPTY;
         new_board.board[BOARD_END - 1][BOARD_START + 2] = WHITE | KING;
         new_board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
-        new_board.last_move = Some(WHITE_QUEEN_SIDE_ALG.to_string());
+        new_board.last_move = Some(WHITE_QUEEN_SIDE_CASTLE_ALG.to_string());
         new_moves.push(new_board);
     }
 
@@ -671,7 +671,7 @@ fn promote_pawn(
     moves: &mut Vec<BoardState>,
 ) {
     let pawn_value = PIECE_VALUES[PAWN as usize];
-    for piece in [(QUEEN, 'q'), (KNIGHT, 'n'), (BISHOP, 'b'), (ROOK, 'r')].iter() {
+    for piece in &[(QUEEN, 'q'), (KNIGHT, 'n'), (BISHOP, 'b'), (ROOK, 'r')] {
         let mut new_board = board.clone();
         new_board.pawn_double_move = None;
         new_board.board[target.0][target.1] = color.as_mask() | piece.0;
