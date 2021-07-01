@@ -1,12 +1,11 @@
 pub use crate::board::*;
+pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::move_generation::*;
 use std::cmp;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
 */
-
-pub static PIECE_VALUES: [i32; 7] = [0, 100, 320, 330, 500, 900, 20000];
 
 static PAWN_WEIGHTS: [[i32; 8]; 8] = [
     [0, 0, 0, 0, 0, 0, 0, 0],
@@ -86,27 +85,29 @@ static KING_LATE_GAME: [[i32; 8]; 8] = [
 ];
 
 fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceColor) -> i32 {
-    let piece = board.board[row][col] & PIECE_MASK;
-    let col = col - BOARD_START;
-    let row = match color {
-        PieceColor::White => row - BOARD_START,
-        _ => 9 - row,
-    };
+    if let Square::Full(piece) = board.board[row][col] {
+        let col = col - BOARD_START;
+        let row = match color {
+            PieceColor::White => row - BOARD_START,
+            _ => 9 - row,
+        };
 
-    match piece {
-        PAWN => PAWN_WEIGHTS[row][col],
-        ROOK => ROOK_WEIGHTS[row][col],
-        BISHOP => BISHOP_WEIGHTS[row][col],
-        KNIGHT => KNIGHT_WEIGHTS[row][col],
-        KING => {
-            if board.full_move_clock > 30 {
-                KING_LATE_GAME[row][col]
-            } else {
-                KING_WEIGHTS[row][col]
+        match piece.kind {
+            Pawn => PAWN_WEIGHTS[row][col],
+            Rook => ROOK_WEIGHTS[row][col],
+            Bishop => BISHOP_WEIGHTS[row][col],
+            Knight => KNIGHT_WEIGHTS[row][col],
+            King => {
+                if board.full_move_clock > 30 {
+                    KING_LATE_GAME[row][col]
+                } else {
+                    KING_WEIGHTS[row][col]
+                }
             }
+            Queen => QUEEN_WEIGHTS[row][col],
         }
-        QUEEN => QUEEN_WEIGHTS[row][col],
-        _ => panic!("Could not recognize piece"),
+    } else {
+        panic!("Could not recognize piece")
     }
 }
 
@@ -121,14 +122,13 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
-            if is_empty(square) {
-                continue;
-            }
-
-            if get_color(square) == Some(PieceColor::White) {
-                evaluation += get_pos_evaluation(row, col, board, PieceColor::White);
-            } else {
-                evaluation -= get_pos_evaluation(row, col, board, PieceColor::Black);
+            if let Square::Full(Piece { color, .. }) = square {
+                let square_eval = get_pos_evaluation(row, col, board, color);
+                if color == White {
+                    evaluation += square_eval;
+                } else {
+                    evaluation -= square_eval;
+                }
             }
         }
     }
@@ -225,19 +225,5 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
             break;
         }
         show_board(simple_print, &board);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn right_values() {
-        assert_eq!(PIECE_VALUES[PAWN as usize], 100);
-        assert_eq!(PIECE_VALUES[KNIGHT as usize], 320);
-        assert_eq!(PIECE_VALUES[BISHOP as usize], 330);
-        assert_eq!(PIECE_VALUES[ROOK as usize], 500);
-        assert_eq!(PIECE_VALUES[QUEEN as usize], 900);
-        assert_eq!(PIECE_VALUES[KING as usize], 20000);
     }
 }

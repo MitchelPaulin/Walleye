@@ -54,7 +54,7 @@ fn main() {
     };
 
     let fen = matches.value_of("fen").unwrap_or(board::DEFAULT_FEN_STRING);
-    let board = match board::board_from_fen(fen) {
+    let board = match board::BoardState::from_fen(fen) {
         Ok(b) => b,
         Err(err) => {
             println!("{}", err);
