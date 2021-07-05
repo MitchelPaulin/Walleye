@@ -9,21 +9,21 @@ pub const DEFAULT_FEN_STRING: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Square {
-    /// This square is empty.
+    // This square is empty.
     Empty,
 
-    /// A piece is on this square
+    // A piece is on this square
     Full(Piece),
 
-    /// A non-board square; the board data structure contains squares not present on the
-    /// actual board in order to make move calculation easier, and all such squares have
-    /// this variant.
-    Invalid,
+    // A non-board square; the board data structure contains squares not present on the
+    // actual board in order to make move calculation easier, and all such squares have
+    // this variant.
+    Boundary,
 }
 
 impl Square {
-    /// Check if this square is empty or contains a piece of the given color (used in move
-    /// generation)
+    // Check if this square is empty or contains a piece of the given color (used in move
+    // generation)
     pub fn is_empty_or_color(&self, color: PieceColor) -> bool {
         match self {
             Square::Empty => true,
@@ -35,17 +35,17 @@ impl Square {
         }
     }
 
-    /// Check if this square is empty
+    // Check if this square is empty
     pub fn is_empty(&self) -> bool {
         matches!(self, Square::Empty)
     }
 
-    /// Check if this square is valid (invalid squares are used to make move generation easier)
-    pub fn is_valid(&self) -> bool {
-        !matches!(self, Square::Invalid)
+    // Check if this square is within the bounds of the board, out of bounds square are used to make move generation easier
+    pub fn is_in_bounds(&self) -> bool {
+        !matches!(self, Square::Boundary)
     }
 
-    /// Get the "fancy" character to reporesent the content of this square
+    // Get the "fancy" character to represent the content of this square
     fn fancy_char(&self) -> &'static str {
         match self {
             Square::Full(piece) => piece.fancy_char(),
@@ -53,8 +53,8 @@ impl Square {
         }
     }
 
-    /// Get the "simple" character to represent this content of this square (capitalized based on
-    /// the piece's color)
+    // Get the "simple" character to represent this content of this square (capitalized based on
+    // the piece's color)
     fn simple_char(&self) -> &'static str {
         match self {
             Square::Full(piece) => piece.simple_char(),
@@ -64,7 +64,7 @@ impl Square {
 }
 
 impl From<Piece> for Square {
-    /// Given a piece, generate a square containing that piece
+    // Given a piece, generate a square containing that piece
     fn from(piece: Piece) -> Self {
         Square::Full(piece)
     }
@@ -86,7 +86,7 @@ pub struct Piece {
 }
 
 impl Piece {
-    /// Get the value of this piece
+    // Get the value of this piece
     pub fn value(&self) -> i32 {
         self.kind.value()
     }
@@ -121,7 +121,7 @@ impl Piece {
         Self { kind: King, color }
     }
 
-    /// Get the "fancy" character for this piece
+    // Get the "fancy" character for this piece
     fn fancy_char(&self) -> &'static str {
         match self.kind {
             Pawn => "♟︎",
@@ -133,7 +133,7 @@ impl Piece {
         }
     }
 
-    /// Get the "simple" character to represent this piece (capitalized based on the piece's color)
+    // Get the "simple" character to represent this piece (capitalized based on the piece's color)
     fn simple_char(&self) -> &'static str {
         match (self.color, self.kind) {
             (White, Pawn) => "P",
@@ -159,7 +159,7 @@ pub enum PieceColor {
 }
 
 impl PieceColor {
-    /// Get the opposite color
+    // Get the opposite color
     pub fn opposite(&self) -> Self {
         match self {
             Black => White,
@@ -179,7 +179,7 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    /// Get the value of this kind of piece
+    // Get the value of this kind of piece
     pub fn value(&self) -> i32 {
         match self {
             Pawn => 100,
@@ -191,7 +191,7 @@ impl PieceKind {
         }
     }
 
-    /// Get the alg name for this kind of piece
+    // Get the alg name for this kind of piece
     pub fn alg(&self) -> &'static str {
         match self {
             Pawn => "p",
@@ -213,7 +213,7 @@ pub struct Point(pub usize, pub usize);
 impl FromStr for Point {
     type Err = &'static str;
 
-    /// Parse an algebraic pair into a board position
+    // Parse an algebraic pair into a board position
     fn from_str(pair: &str) -> Result<Self, Self::Err> {
         if pair.len() != 2 {
             return Err("Invalid length for algebraic string");
@@ -293,9 +293,9 @@ pub struct BoardState {
 }
 
 impl BoardState {
-    /// Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state
+    // Parse the standard fen string notation (en.wikipedia.org/wiki/Forsyth–Edwards_Notation) and return a board state
     pub fn from_fen(fen: &str) -> Result<BoardState, &str> {
-        let mut board = [[Square::Invalid; 12]; 12];
+        let mut board = [[Square::Boundary; 12]; 12];
         let mut fen = fen.to_string();
         trim_newline(&mut fen);
         let fen_config: Vec<&str> = fen.split(' ').collect();
@@ -526,9 +526,9 @@ mod tests {
         assert!(Square::Empty.is_empty());
         assert!(!Square::Full(Piece::king(White)).is_empty());
 
-        assert!(!Square::Invalid.is_valid());
-        assert!(Square::Empty.is_valid());
-        assert!(Square::Full(Piece::king(White)).is_valid());
+        assert!(!Square::Boundary.is_in_bounds());
+        assert!(Square::Empty.is_in_bounds());
+        assert!(Square::Full(Piece::king(White)).is_in_bounds());
     }
 
     // Algebraic translation tests

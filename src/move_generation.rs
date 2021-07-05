@@ -26,7 +26,7 @@ pub const BLACK_KING_SIDE_CASTLE_ALG: &str = "e8g8";
 pub const BLACK_QUEEN_SIDE_CASTLE_ALG: &str = "e8c8";
 
 /*
-    Generate all possible moves *legal* from the given board
+    Generate all possible *legal* moves from the given board
     Also sets appropriate variables for the board state
 */
 pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
@@ -65,7 +65,7 @@ fn knight_moves(piece: Piece, row: usize, col: usize, board: &BoardState, moves:
         let col = (col as i8 + mods.1) as usize;
         let square = board.board[row][col];
 
-        if !square.is_valid() {
+        if !square.is_in_bounds() {
             continue;
         }
 
@@ -174,7 +174,7 @@ fn king_moves(piece: Piece, row: usize, col: usize, board: &BoardState, moves: &
             let row = row + i - 1;
             let col = col + j - 1;
             let square = board.board[row][col];
-            if !square.is_valid() {
+            if !square.is_in_bounds() {
                 continue;
             }
 
@@ -329,7 +329,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
             let row = square_cords.0 + i - 1;
             let col = square_cords.1 + j - 1;
             let square = board.board[row][col];
-            if !square.is_valid() {
+            if !square.is_in_bounds() {
                 continue;
             }
 
