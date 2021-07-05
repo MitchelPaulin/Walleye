@@ -1,10 +1,11 @@
 pub use crate::board::*;
+pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::engine::*;
 pub use crate::move_generation::*;
 use std::io::{self, BufRead, Write};
 
 pub fn play_game_uci(search_depth: u8) {
-    let mut board = board_from_fen(DEFAULT_FEN_STRING).unwrap();
+    let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
     let log = std::fs::File::create("log.txt").expect("Could not create log file");
     let buffer = read_from_gui(&log);
     if buffer != "uci\n" {
@@ -44,58 +45,61 @@ pub fn play_game_uci(search_depth: u8) {
 }
 
 fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs::File) {
-    let start_pair = algebraic_pairs_to_board_position(&player_move[0..2]).unwrap();
-    let end_pair = algebraic_pairs_to_board_position(&player_move[2..4]).unwrap();
+    let start_pair: Point = (&player_move[0..2]).parse().unwrap();
+    let end_pair: Point = (&player_move[2..4]).parse().unwrap();
     let target_square = board.board[end_pair.0][end_pair.1];
-    if !is_empty(target_square) {
-        if is_white(target_square) {
-            board.white_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
-        } else {
-            board.black_total_piece_value -= PIECE_VALUES[(target_square & PIECE_MASK) as usize];
+    if let Square::Full(piece) = target_square {
+        match piece.color {
+            White => board.white_total_piece_value -= piece.value(),
+            Black => board.black_total_piece_value -= piece.value(),
         }
     }
 
     board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
-    board.board[start_pair.0][start_pair.1] = EMPTY;
+    board.board[start_pair.0][start_pair.1] = Square::Empty;
     //deal with pawn promotions, check for 6 because of new line character
     if player_move.len() == 6 {
-        let piece = match player_move.chars().nth(4).unwrap() {
-            'q' => QUEEN,
-            'n' => KNIGHT,
-            'b' => BISHOP,
-            'r' => ROOK,
+        let kind = match player_move.chars().nth(4).unwrap() {
+            'q' => Queen,
+            'n' => Knight,
+            'b' => Bishop,
+            'r' => Rook,
             _ => {
                 log_error(
                     "Could not recognize piece value, default to queen".to_string(),
                     &log,
                 );
-                QUEEN
+                Queen
             }
         };
-        board.board[end_pair.0][end_pair.1] = piece | board.to_move.as_mask();
+        board.board[end_pair.0][end_pair.1] = Piece {
+            color: board.to_move,
+            kind,
+        }
+        .into();
     }
 
     //deal with castling
     if &player_move[0..4] == WHITE_KING_SIDE_CASTLE_ALG
-        && board.board[end_pair.0][end_pair.1] == WHITE | KING
+        && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
-        board.board[BOARD_END - 1][BOARD_END - 1] = EMPTY;
-        board.board[BOARD_END - 1][BOARD_END - 3] = WHITE | ROOK;
+        board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
+        board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
     } else if &player_move[0..4] == WHITE_QUEEN_SIDE_CASTLE_ALG
-        && board.board[end_pair.0][end_pair.1] == WHITE | KING
+        && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
-        board.board[BOARD_END - 1][BOARD_START] = EMPTY;
-        board.board[BOARD_END - 1][BOARD_START + 3] = WHITE | ROOK;
+        board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
+        board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
     } else if &player_move[0..4] == BLACK_KING_SIDE_CASTLE_ALG
-        && board.board[end_pair.0][end_pair.1] == BLACK | KING
+        && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
-        board.board[BOARD_START][BOARD_END - 1] = EMPTY;
-        board.board[BOARD_START][BOARD_END - 3] = BLACK | ROOK;
+        board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
+        board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
     } else if &player_move[0..4] == BLACK_QUEEN_SIDE_CASTLE_ALG
-        && board.board[end_pair.0][end_pair.1] == BLACK | KING
+        && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
-        board.board[BOARD_START][BOARD_START] = EMPTY;
-        board.board[BOARD_START][BOARD_START + 3] = BLACK | ROOK;
+        board.board[BOARD_START][BOARD_START] = Square::Empty;
+        board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
     }
 
     board.swap_color();
@@ -114,14 +118,14 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> 
 fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
     let command: Vec<&str> = buffer.split(' ').collect();
     if command[1] == "startpos\n" {
-        return Some(board_from_fen(DEFAULT_FEN_STRING).unwrap());
+        return Some(BoardState::from_fen(DEFAULT_FEN_STRING).unwrap());
     } else if command[1] == "fen" {
         let mut fen = "".to_string();
         for i in 2..7 {
             fen += &format!("{} ", command[i]);
         }
         fen += command[7];
-        match board_from_fen(&fen) {
+        match BoardState::from_fen(&fen) {
             Ok(b) => return Some(b),
             Err(err) => {
                 log_error(format!("{} : {}", err, fen), &log);
