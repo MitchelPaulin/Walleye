@@ -48,7 +48,14 @@ pub fn play_game_uci(search_depth: u8) {
 fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs::File) {
     let start_pair: Point = (&player_move[0..2]).parse().unwrap();
     let end_pair: Point = (&player_move[2..4]).parse().unwrap();
-
+    
+    if let Square::Full(Piece { kind, color }) = board.board[end_pair.0][end_pair.1] {
+        if color == White {
+            board.white_total_piece_value -= kind.value();
+        } else {
+            board.black_total_piece_value -= kind.value();
+        }
+    }
     board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
     board.board[start_pair.0][start_pair.1] = Square::Empty;
     //deal with pawn promotions, check for 6 because of new line character
@@ -71,6 +78,12 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
             kind,
         }
         .into();
+
+        if board.to_move == White {
+            board.white_total_piece_value += kind.value() - Pawn.value();
+        } else {
+            board.black_total_piece_value += kind.value() - Pawn.value();
+        }
     }
 
     //deal with castling
@@ -98,6 +111,7 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
 
     board.swap_color();
     log_info(board.simple_board(), &log);
+    send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> BoardState {
