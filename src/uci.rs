@@ -101,12 +101,12 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> BoardState {
+    send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
     let evaluation = alpha_beta_search(&board, search_depth, i32::MIN, i32::MAX, board.to_move);
     let next_board = evaluation.0.unwrap();
     let best_move = next_board.last_move.clone().unwrap();
     send_to_gui(format!("bestmove {}\n", best_move), &log);
     log_info(board.simple_board(), &log);
-    log_info(format!("pos eval: {}", get_evaluation(board)), &log);
     next_board
 }
 
