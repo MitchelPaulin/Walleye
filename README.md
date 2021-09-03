@@ -12,9 +12,14 @@ Originally this project was meant as a first introduction to rust and chess prog
 
 By default, the engine launches in UCI mode and expects to be loaded into a chess GUI. However, you can also run some commands from the terminal, such as `-P` to watch the engine play against itself.
 
+```bash
+# start a game from the FEN string
+./walleye --fen="r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" -P --depth=10
+```
+
 ![demo](./demo/demo.png)
 
-Type `./walleye --help` for a complete list of commands.
+Use `./walleye --help` for a complete list of commands.
 
 ## Play Against It
 
@@ -24,9 +29,9 @@ The engine should be able to be loaded into any chess GUI that supports UCI, at 
 
 Some resources I found helpful when creating this engine.
 
-- https://www.chessprogramming.org
-- https://backscattering.de/chess/uci/
-- http://www.netreal.de/Forsyth-Edwards-Notation/index.php
+- [Chess Programming Wiki](https://www.chessprogramming.org)
+- [UCI Protocol Spec](https://backscattering.de/chess/uci/)
+- [FEN String Generator](http://www.netreal.de/Forsyth-Edwards-Notation/index.php)
 
 ## License
 

@@ -11,7 +11,7 @@ const DEFAULT_DEPTH: &str = "6";
 
 fn main() {
     let matches = App::new("Chess Engine")
-        .version("0.1")
+        .version("1.0.0")
         .author("Mitchel P. <mitchel0022@gmail.com>")
         .about("Plays Chess (Sometimes well)")
         .arg(
