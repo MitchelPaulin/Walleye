@@ -279,8 +279,7 @@ pub struct BoardState {
     pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule
     pub board: [[Square; 12]; 12],
     pub to_move: PieceColor,
-    // if a pawn, on the last move, made a double move, this is set, otherwise this is None
-    pub pawn_double_move: Option<Point>,
+    pub pawn_double_move: Option<Point>, // if a pawn, on the last move, made a double move, this is set, otherwise this is None
     pub white_king_location: Point,
     pub black_king_location: Point,
     pub white_king_side_castle: bool,

@@ -58,8 +58,7 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
     }
     board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
     board.board[start_pair.0][start_pair.1] = Square::Empty;
-    //deal with pawn promotions, check for 6 because of new line character
-    if player_move.len() == 6 {
+    if player_move.len() == 5 {
         let kind = match player_move.chars().nth(4).unwrap() {
             'q' => Queen,
             'n' => Knight,
@@ -115,12 +114,12 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> BoardState {
-    send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
     let evaluation = alpha_beta_search(&board, search_depth, i32::MIN, i32::MAX, board.to_move);
     let next_board = evaluation.0.unwrap();
     let best_move = next_board.last_move.clone().unwrap();
     send_to_gui(format!("bestmove {}\n", best_move), &log);
-    log_info(board.simple_board(), &log);
+    send_to_gui(format!("info score cp {} depth {}\n", get_evaluation(&next_board), search_depth), &log);
+    log_info(next_board.simple_board(), &log);
     next_board
 }
 

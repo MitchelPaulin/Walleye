@@ -1,7 +1,6 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::move_generation::*;
-use std::cmp;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -117,17 +116,15 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
     White will attempt to "maximize" this score while black will attempt to "minimize" it
 */
 pub fn get_evaluation(board: &BoardState) -> i32 {
-    let mut evaluation = board.white_total_piece_value;
-    evaluation -= board.black_total_piece_value;
+    let mut evaluation = board.white_total_piece_value - board.black_total_piece_value;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
             if let Square::Full(Piece { color, .. }) = square {
-                let square_eval = get_pos_evaluation(row, col, board, color);
                 if color == White {
-                    evaluation += square_eval;
+                    evaluation += get_pos_evaluation(row, col, board, color);
                 } else {
-                    evaluation -= square_eval;
+                    evaluation -= get_pos_evaluation(row, col, board, color);
                 }
             }
         }
@@ -156,10 +153,10 @@ pub fn alpha_beta_search(
         // here we add the depths to encourage faster checkmates
         if maximizing_player == PieceColor::White {
             if is_check(board, PieceColor::White) {
-                return (None, -99999999 - depth as i32); // checkmate
+                return (None, -99999999 - depth as i32); // checkmate white
             }
         } else if is_check(board, PieceColor::Black) {
-            return (None, 99999999 + depth as i32); // checkmate
+            return (None, 99999999 + depth as i32); // checkmate black
         }
         return (None, 0); // stalemate
     }
@@ -167,34 +164,30 @@ pub fn alpha_beta_search(
     let mut best_move = None;
     if maximizing_player == PieceColor::White {
         moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
-        let mut best_val = i32::MIN;
         for board in moves {
             let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black);
-            if evaluation.1 > best_val {
-                best_val = evaluation.1;
+            if evaluation.1 > alpha {
+                alpha = evaluation.1;
                 best_move = Some(board);
             }
-            alpha = cmp::max(alpha, evaluation.1);
             if beta <= alpha {
                 break;
             }
         }
-        (best_move, best_val)
+        (best_move, alpha)
     } else {
         moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
-        let mut best_val = i32::MAX;
         for board in moves {
             let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White);
-            if evaluation.1 < best_val {
-                best_val = evaluation.1;
+            if evaluation.1 < beta {
+                beta = evaluation.1;
                 best_move = Some(board);
             }
-            beta = cmp::min(beta, evaluation.1);
             if beta <= alpha {
                 break;
             }
         }
-        (best_move, best_val)
+        (best_move, beta)
     }
 }
 
