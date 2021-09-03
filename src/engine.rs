@@ -227,3 +227,21 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
         show_board(simple_print, &board);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn position_evaluation() {
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        assert_eq!(get_evaluation(&b), 0);
+    }
+
+    #[test]
+    fn position_evaluation2() {
+        let b = BoardState::from_fen("rnbqkbnr/1ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        assert_eq!(get_evaluation(&b), 105);
+    }
+}
