@@ -4,6 +4,10 @@ pub use crate::move_generation::*;
 use std::cmp;
 use std::cmp::Reverse;
 
+const MATE_SCORE : i32 = 100000;
+const POS_INF : i32 = 9999999;
+const NEG_INF : i32 = -POS_INF;
+
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
 */
@@ -144,7 +148,7 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     Run a standard alpha beta search to try and find the best move searching up to 'depth'
     Orders moves by piece value to attempt to improve search efficiency
 */
-fn alpha_beta_search(board: &BoardState, depth: u8, mut alpha: i32, beta: i32) -> i32 {
+fn alpha_beta_search(board: &BoardState, depth: u8, ply_from_root: i32, mut alpha: i32, mut beta: i32) -> i32 {
     if depth == 0 {
         return get_evaluation(board);
     }
@@ -156,15 +160,22 @@ fn alpha_beta_search(board: &BoardState, depth: u8, mut alpha: i32, beta: i32) -
         moves.sort_by_key(|a| piece_value_differential(a));
     }
 
+    alpha = cmp::max(alpha, -MATE_SCORE + ply_from_root);
+    beta = cmp::min(beta, MATE_SCORE - ply_from_root);
+    if alpha >= beta {
+        return alpha;
+    }
+
     if moves.is_empty() {
         if is_check(board, board.to_move) {
-            return -9999999;
+            let mate_score = MATE_SCORE - ply_from_root;
+            return -mate_score;
         }
         return 0;
     }
 
     for mov in moves {
-        let evaluation = -alpha_beta_search(&mov, depth - 1, -beta, -alpha);
+        let evaluation = -alpha_beta_search(&mov, depth - 1, ply_from_root + 1, -beta, -alpha);
         if evaluation >= beta {
             return beta;
         }
@@ -182,8 +193,8 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
         return Some(board.clone());
     }
 
-    let mut alpha = -99999;
-    let beta = 99999;
+    let mut alpha = NEG_INF;
+    let beta = POS_INF;
 
     let mut moves = generate_moves(board);
     if board.to_move == White {
@@ -201,7 +212,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
 
     let mut best_move = None;
     for mov in moves {
-        let evaluation = -alpha_beta_search(&mov, depth - 1, -beta, -alpha);
+        let evaluation = -alpha_beta_search(&mov, depth - 1, 1, -beta, -alpha);
         if evaluation >= beta {
             return Some(mov);
         }
