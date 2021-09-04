@@ -1,6 +1,7 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::move_generation::*;
+use std::cmp;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -97,7 +98,7 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
             Bishop => BISHOP_WEIGHTS[row][col],
             Knight => KNIGHT_WEIGHTS[row][col],
             King => {
-                if board.full_move_clock > 30 {
+                if is_end_game(board) {
                     KING_LATE_GAME[row][col]
                 } else {
                     KING_WEIGHTS[row][col]
@@ -110,18 +111,24 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
     }
 }
 
-/*
-    Return a number to represent how good a certain position is
+fn is_end_game(board: &BoardState) -> bool {
+    board.white_total_piece_value + board.black_total_piece_value < King.value() * 2 + 1200
+}
 
-    White will attempt to "maximize" this score while black will attempt to "minimize" it
+/*
+    Return how good a position is from the perspective of whose turn it is
 */
 pub fn get_evaluation(board: &BoardState) -> i32 {
-    let mut evaluation = board.white_total_piece_value - board.black_total_piece_value;
+    let mut evaluation = match board.to_move {
+        White => board.white_total_piece_value - board.black_total_piece_value,
+        _ => board.black_total_piece_value - board.white_total_piece_value,
+    };
+
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
             if let Square::Full(Piece { color, .. }) = square {
-                if color == White {
+                if color == board.to_move {
                     evaluation += get_pos_evaluation(row, col, board, color);
                 } else {
                     evaluation -= get_pos_evaluation(row, col, board, color);
@@ -136,59 +143,71 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     Run a standard alpha beta search to try and find the best move searching up to 'depth'
     Orders moves by piece value to attempt to improve search efficiency
 */
-pub fn alpha_beta_search(
-    board: &BoardState,
-    depth: u8,
-    mut alpha: i32,
-    mut beta: i32,
-    maximizing_player: PieceColor,
-) -> (Option<BoardState>, i32) {
+fn alpha_beta_search(board: &BoardState, depth: u8, mut alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
-        return (None, get_evaluation(board));
+        return get_evaluation(board);
     }
 
     let mut moves = generate_moves(board);
+    if board.to_move == White {
+        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
+    } else {
+        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
+    }
 
     if moves.is_empty() {
-        // here we add the depths to encourage faster checkmates
-        if maximizing_player == PieceColor::White {
-            if is_check(board, PieceColor::White) {
-                return (None, -99999999 - depth as i32); // checkmate white
-            }
-        } else if is_check(board, PieceColor::Black) {
-            return (None, 99999999 + depth as i32); // checkmate black
+        if is_check(board, board.to_move) {
+            return -9999999;
         }
-        return (None, 0); // stalemate
+        return 0;
+    }
+
+    for mov in moves {
+        let evaluation = -alpha_beta_search(&mov, depth - 1, -beta, -alpha);
+        if evaluation >= beta {
+            return beta;
+        }
+        alpha = cmp::max(alpha, evaluation);
+    }
+
+    alpha
+}
+
+pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
+    if depth == 0 {
+        return Some(board.clone());
+    }
+
+    let mut alpha = -99999;
+    let beta = 99999;
+
+    let mut moves = generate_moves(board);
+    if board.to_move == White {
+        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
+    } else {
+        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
+    }
+
+    if moves.is_empty() {
+        if is_check(board, board.to_move) {
+            return None; //checkmate
+        }
+        return None; // stalemate
     }
 
     let mut best_move = None;
-    if maximizing_player == PieceColor::White {
-        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
-        for board in moves {
-            let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::Black);
-            if evaluation.1 > alpha {
-                alpha = evaluation.1;
-                best_move = Some(board);
-            }
-            if beta <= alpha {
-                break;
-            }
+    for mov in moves {
+        let evaluation = -alpha_beta_search(&mov, depth - 1, -beta, -alpha);
+        if evaluation >= beta {
+            return Some(mov);
         }
-        (best_move, alpha)
-    } else {
-        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
-        for board in moves {
-            let evaluation = alpha_beta_search(&board, depth - 1, alpha, beta, PieceColor::White);
-            if evaluation.1 < beta {
-                beta = evaluation.1;
-                best_move = Some(board);
-            }
-            if beta <= alpha {
-                break;
-            }
+        if evaluation > alpha {
+            alpha = evaluation;
+            best_move = Some(mov);
         }
-        (best_move, beta)
     }
+
+    best_move
 }
 
 fn piece_value_differential(board: &BoardState) -> i32 {
@@ -211,9 +230,9 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
 
     show_board(simple_print, &board);
     while board.full_move_clock < max_moves {
-        let res = alpha_beta_search(&board, depth, i32::MIN, i32::MAX, board.to_move);
-        if res.0.is_some() {
-            board = res.0.unwrap().clone();
+        let res = get_best_move(&board, depth);
+        if res.is_some() {
+            board = res.unwrap().clone();
         } else {
             break;
         }

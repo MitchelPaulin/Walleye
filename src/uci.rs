@@ -3,10 +3,11 @@ pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::engine::*;
 pub use crate::move_generation::*;
 use std::io::{self, BufRead, Write};
+use std::fs::File;
 
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
-    let log = std::fs::File::create("log.txt").expect("Could not create log file");
+    let log = File::create("log.txt").expect("Could not create log file");
     let buffer = read_from_gui(&log);
     if buffer != "uci" {
         log_error("Expected uci protocol but got ".to_string() + &buffer, &log);
@@ -45,7 +46,7 @@ pub fn play_game_uci(search_depth: u8) {
     }
 }
 
-fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs::File) {
+fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &File) {
     let start_pair: Point = (&player_move[0..2]).parse().unwrap();
     let end_pair: Point = (&player_move[2..4]).parse().unwrap();
     
@@ -113,9 +114,8 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &std::fs:
     send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
 }
 
-fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> BoardState {
-    let evaluation = alpha_beta_search(&board, search_depth, i32::MIN, i32::MAX, board.to_move);
-    let next_board = evaluation.0.unwrap();
+fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {
+    let next_board = get_best_move(&board, search_depth).unwrap();
     let best_move = next_board.last_move.clone().unwrap();
     send_to_gui(format!("bestmove {}\n", best_move), &log);
     send_to_gui(format!("info score cp {} depth {}\n", get_evaluation(&next_board), search_depth), &log);
@@ -123,7 +123,7 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &std::fs::File) -> 
     next_board
 }
 
-fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
+fn setup_new_game(buffer: String, log: &File) -> Option<BoardState> {
     let command: Vec<&str> = buffer.split(' ').collect();
     if command[1] == "startpos" {
         return Some(BoardState::from_fen(DEFAULT_FEN_STRING).unwrap());
@@ -144,23 +144,23 @@ fn setup_new_game(buffer: String, log: &std::fs::File) -> Option<BoardState> {
     None
 }
 
-fn log_info(message: String, mut log: &std::fs::File) {
+fn log_info(message: String, mut log: &File) {
     log.write_all(format!("<INFO> {}\n", message).as_bytes())
         .expect("write failed");
 }
 
-fn log_error(message: String, mut log: &std::fs::File) {
+fn log_error(message: String, mut log: &File) {
     log.write_all(format!("<ERROR> {}\n", message).as_bytes())
         .expect("write failed");
 }
 
-fn send_to_gui(message: String, mut log: &std::fs::File) {
+fn send_to_gui(message: String, mut log: &File) {
     print!("{}", message);
     log.write_all(format!("ENGINE >> {}", message).as_bytes())
         .expect("write failed");
 }
 
-fn read_from_gui(mut log: &std::fs::File) -> String {
+fn read_from_gui(mut log: &File) -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
     stdin.lock().read_line(&mut buffer).unwrap();
