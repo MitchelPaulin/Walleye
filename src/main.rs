@@ -7,7 +7,7 @@ mod uci;
 mod utils;
 
 // During testing I found a depth of 6 to perform best on the optimized build, recommend depth 4 on debug build
-const DEFAULT_DEPTH: &str = "5";
+const DEFAULT_DEPTH: &str = "6";
 
 fn main() {
     let matches = App::new("Chess Engine")

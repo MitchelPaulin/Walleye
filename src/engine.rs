@@ -124,19 +124,15 @@ fn is_end_game(board: &BoardState) -> bool {
     Return how good a position is from the perspective of whose turn it is
 */
 pub fn get_evaluation(board: &BoardState) -> i32 {
-    let mut evaluation = match board.to_move {
-        White => board.white_total_piece_value - board.black_total_piece_value,
-        _ => board.black_total_piece_value - board.white_total_piece_value,
-    };
-
+    let mut evaluation = 0;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
-            if let Square::Full(Piece { color, .. }) = square {
+            if let Square::Full(Piece { color, kind }) = square {
                 if color == board.to_move {
-                    evaluation += get_pos_evaluation(row, col, board, color);
+                    evaluation += get_pos_evaluation(row, col, board, color) + kind.value();
                 } else {
-                    evaluation -= get_pos_evaluation(row, col, board, color);
+                    evaluation -= get_pos_evaluation(row, col, board, color) + kind.value();
                 }
             }
         }
