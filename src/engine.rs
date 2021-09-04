@@ -113,7 +113,7 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
 }
 
 fn is_end_game(board: &BoardState) -> bool {
-    board.white_total_piece_value + board.black_total_piece_value < King.value() * 2 + 1200
+    board.white_total_piece_value + board.black_total_piece_value < King.value() * 2 + 1600
 }
 
 /*
@@ -174,6 +174,9 @@ fn alpha_beta_search(board: &BoardState, depth: u8, mut alpha: i32, beta: i32) -
     alpha
 }
 
+/*
+    Interface to the alpha_beta function, works very similarly but returns a board state at the end
+*/
 pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     if depth == 0 {
         return Some(board.clone());
