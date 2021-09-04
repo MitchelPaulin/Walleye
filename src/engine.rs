@@ -156,7 +156,12 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, depth: u32) -> i32 {
         alpha = stand_pat;
     }
 
-    let moves = generate_only_captures(board);
+    let mut moves = generate_only_captures(board);
+    if board.to_move == White {
+        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
+    } else {
+        moves.sort_by_key(|a| piece_value_differential(a));
+    }
     for mov in moves {
         let score = -quiesce(&mov, -beta, -alpha, depth - 1);
         if score >= beta {
@@ -182,7 +187,7 @@ fn alpha_beta_search(
 ) -> i32 {
     if depth == 0 {
         // look 5 captures into the future
-        return quiesce(board, alpha, beta, 5);
+        return quiesce(board, alpha, beta, 10);
     }
 
     let mut moves = generate_moves(board);
