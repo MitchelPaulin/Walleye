@@ -47,6 +47,25 @@ pub fn generate_moves(board: &BoardState) -> Vec<BoardState> {
 }
 
 /*
+    Generate all possible *legal* captures
+    Also sets appropriate variables for the board state
+*/
+pub fn generate_only_captures(board: &BoardState) -> Vec<BoardState> {
+    let mut new_moves = Vec::new();
+
+    for i in BOARD_START..BOARD_END {
+        for j in BOARD_START..BOARD_END {
+            if let Square::Full(piece) = board.board[i][j] {
+                if piece.color == board.to_move {
+                    generate_captures_for_piece(piece, board, Point(i, j), &mut new_moves);
+                }
+            }
+        }
+    }
+    new_moves
+}
+
+/*
     Determine if a color is currently in check
 */
 pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
@@ -590,6 +609,91 @@ fn generate_move_for_piece(
                 new_moves.push(new_board);
             }
         }
+    }
+}
+
+/*
+    Given the coordinates of a piece and that pieces color, generate all possible *legal* captures for that piece
+*/
+fn generate_captures_for_piece(
+    piece: Piece,
+    board: &BoardState,
+    square_cords: Point,
+    new_moves: &mut Vec<BoardState>,
+) {
+    let mut moves: Vec<Point> = vec![];
+    let Piece { color, kind } = piece;
+    get_moves(square_cords.0, square_cords.1, &board, &mut moves);
+
+    // make all the valid captures for this piece
+    for _move in moves {
+        let mut new_board;
+        let target_square = board.board[_move.0][_move.1];
+        if let Square::Full(target_piece) = target_square {
+            new_board = board.clone();
+            if board.to_move == White {
+                new_board.black_total_piece_value -= target_piece.value();
+            } else {
+                new_board.white_total_piece_value -= target_piece.value();
+            }
+        } else {
+            continue; // this move wasn't a capture, we don't want to keep it
+        }
+
+        new_board.swap_color();
+        if color == Black {
+            new_board.full_move_clock += 1;
+        }
+
+        // update king location if we are moving the king
+        if color == White && kind == King {
+            new_board.white_king_location = _move;
+        } else if color == Black && kind == King {
+            new_board.black_king_location = _move;
+        }
+
+        // move the piece, this will take care of any captures as well, excluding en passant
+        new_board.board[_move.0][_move.1] = piece.into();
+        new_board.board[square_cords.0][square_cords.1] = Square::Empty;
+        let move_alg = format!("{}{}", square_cords, _move);
+        new_board.last_move = Some(move_alg.to_string());
+
+        // if you make your move, and you are in check, this move is not valid
+        if is_check(&new_board, color) {
+            continue;
+        }
+
+        // if the rook or king move, take away castling privileges
+        if color == White && kind == King {
+            new_board.white_king_side_castle = false;
+            new_board.white_queen_side_castle = false;
+        } else if color == Black && kind == King {
+            new_board.black_queen_side_castle = false;
+            new_board.black_king_side_castle = false;
+        } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_END - 1 {
+            new_board.white_king_side_castle = false;
+        } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_START {
+            new_board.white_queen_side_castle = false;
+        } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_START {
+            new_board.black_queen_side_castle = false;
+        } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_END - 1 {
+            new_board.black_king_side_castle = false;
+        }
+
+        // if a rook is captured, take away castling privileges
+        if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+            new_board.white_king_side_castle = false;
+        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_START {
+            new_board.white_queen_side_castle = false;
+        } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
+            new_board.black_queen_side_castle = false;
+        } else if _move.0 == BOARD_START && _move.1 == BOARD_END - 1 {
+            new_board.black_king_side_castle = false;
+        }
+
+        // the most recent move was not a double pawn move since they can't capture, unset any possibly existing pawn double move
+        new_board.pawn_double_move = None;
+        new_moves.push(new_board);
     }
 }
 
@@ -1245,6 +1349,15 @@ mod tests {
         // Can't castle with pieces in way 3
         b = BoardState::from_fen("rn2k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
         assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+    }
+
+    #[test]
+    fn only_captures_correctly_counted() {
+        let b = BoardState::from_fen("K1k4p/8/8/8/8/8/8/B6R w KQkq - 0 1").unwrap();
+        assert_eq!(generate_only_captures(&b).len(), 2);
+
+        let b = BoardState::from_fen("1rk4p/8/8/8/8/8/1B6/1K5R w KQkq - 0 1").unwrap();
+        assert_eq!(generate_only_captures(&b).len(), 1);
     }
 
     /*

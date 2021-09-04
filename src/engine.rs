@@ -144,8 +144,11 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     evaluation
 }
 
-fn quiesce(board: &BoardState, mut alpha: i32, beta: i32) -> i32 {
+fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, depth: u32) -> i32 {
     let stand_pat = get_evaluation(board);
+    if depth == 0 {
+        return stand_pat;
+    }
     if stand_pat >= beta {
         return beta;
     }
@@ -153,9 +156,9 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32) -> i32 {
         alpha = stand_pat;
     }
 
-    let moves = generate_moves(board);
+    let moves = generate_only_captures(board);
     for mov in moves {
-        let score = -quiesce(&mov, -beta, -alpha);
+        let score = -quiesce(&mov, -beta, -alpha, depth - 1);
         if score >= beta {
             return beta;
         }
@@ -178,7 +181,8 @@ fn alpha_beta_search(
     mut beta: i32,
 ) -> i32 {
     if depth == 0 {
-        return get_evaluation(board);
+        // look 5 captures into the future
+        return quiesce(board, alpha, beta, 5);
     }
 
     let mut moves = generate_moves(board);
