@@ -144,6 +144,28 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     evaluation
 }
 
+fn quiesce(board: &BoardState, mut alpha: i32, beta: i32) -> i32 {
+    let stand_pat = get_evaluation(board);
+    if stand_pat >= beta {
+        return beta;
+    }
+    if alpha < stand_pat {
+        alpha = stand_pat;
+    }
+
+    let moves = generate_moves(board);
+    for mov in moves {
+        let score = -quiesce(&mov, -beta, -alpha);
+        if score >= beta {
+            return beta;
+        }
+        if score > alpha {
+            alpha = score;
+        }
+    }
+    alpha
+}
+
 /*
     Run a standard alpha beta search to try and find the best move searching up to 'depth'
     Orders moves by piece value to attempt to improve search efficiency
