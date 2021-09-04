@@ -4,9 +4,9 @@ pub use crate::move_generation::*;
 use std::cmp;
 use std::cmp::Reverse;
 
-const MATE_SCORE : i32 = 100000;
-const POS_INF : i32 = 9999999;
-const NEG_INF : i32 = -POS_INF;
+const MATE_SCORE: i32 = 100000;
+const POS_INF: i32 = 9999999;
+const NEG_INF: i32 = -POS_INF;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -148,7 +148,13 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     Run a standard alpha beta search to try and find the best move searching up to 'depth'
     Orders moves by piece value to attempt to improve search efficiency
 */
-fn alpha_beta_search(board: &BoardState, depth: u8, ply_from_root: i32, mut alpha: i32, mut beta: i32) -> i32 {
+fn alpha_beta_search(
+    board: &BoardState,
+    depth: u8,
+    ply_from_root: i32,
+    mut alpha: i32,
+    mut beta: i32,
+) -> i32 {
     if depth == 0 {
         return get_evaluation(board);
     }
@@ -159,7 +165,8 @@ fn alpha_beta_search(board: &BoardState, depth: u8, ply_from_root: i32, mut alph
     } else {
         moves.sort_by_key(|a| piece_value_differential(a));
     }
-
+    // Skip this position if a mating sequence has already been found earlier in
+    // the search, which would be shorter than any mate we could find from here.
     alpha = cmp::max(alpha, -MATE_SCORE + ply_from_root);
     beta = cmp::min(beta, MATE_SCORE - ply_from_root);
     if alpha >= beta {
@@ -168,9 +175,11 @@ fn alpha_beta_search(board: &BoardState, depth: u8, ply_from_root: i32, mut alph
 
     if moves.is_empty() {
         if is_check(board, board.to_move) {
+            // checkmate
             let mate_score = MATE_SCORE - ply_from_root;
             return -mate_score;
         }
+        //stalemate
         return 0;
     }
 
@@ -189,10 +198,6 @@ fn alpha_beta_search(board: &BoardState, depth: u8, ply_from_root: i32, mut alph
     Interface to the alpha_beta function, works very similarly but returns a board state at the end
 */
 pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
-    if depth == 0 {
-        return Some(board.clone());
-    }
-
     let mut alpha = NEG_INF;
     let beta = POS_INF;
 
@@ -201,13 +206,6 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
         moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
     } else {
         moves.sort_by_key(|a| piece_value_differential(a));
-    }
-
-    if moves.is_empty() {
-        if is_check(board, board.to_move) {
-            return None; //checkmate
-        }
-        return None; // stalemate
     }
 
     let mut best_move = None;
