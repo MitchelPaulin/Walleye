@@ -2,8 +2,8 @@ pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::engine::*;
 pub use crate::move_generation::*;
-use std::io::{self, BufRead, Write};
 use std::fs::File;
+use std::io::{self, BufRead, Write};
 
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
@@ -49,7 +49,6 @@ pub fn play_game_uci(search_depth: u8) {
 fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &File) {
     let start_pair: Point = (&player_move[0..2]).parse().unwrap();
     let end_pair: Point = (&player_move[2..4]).parse().unwrap();
-    
     if let Square::Full(Piece { kind, color }) = board.board[end_pair.0][end_pair.1] {
         if color == White {
             board.white_total_piece_value -= kind.value();
@@ -118,7 +117,14 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
     let next_board = get_best_move(&board, search_depth).unwrap();
     let best_move = next_board.last_move.clone().unwrap();
     send_to_gui(format!("bestmove {}\n", best_move), &log);
-    send_to_gui(format!("info score cp {} depth {}\n", get_evaluation(&next_board), search_depth), &log);
+    send_to_gui(
+        format!(
+            "info score cp {} depth {}\n",
+            get_evaluation(&next_board),
+            search_depth
+        ),
+        &log,
+    );
     log_info(next_board.simple_board(), &log);
     next_board
 }
@@ -129,8 +135,8 @@ fn setup_new_game(buffer: String, log: &File) -> Option<BoardState> {
         return Some(BoardState::from_fen(DEFAULT_FEN_STRING).unwrap());
     } else if command[1] == "fen" {
         let mut fen = "".to_string();
-        for i in 2..7 {
-            fen += &format!("{} ", command[i]);
+        for c in command.iter().take(7).skip(2) {
+            fen += &format!("{} ", c);
         }
         fen += command[7];
         match BoardState::from_fen(&fen) {

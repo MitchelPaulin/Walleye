@@ -2,6 +2,7 @@ pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::move_generation::*;
 use std::cmp;
+use std::cmp::Reverse;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -150,9 +151,9 @@ fn alpha_beta_search(board: &BoardState, depth: u8, mut alpha: i32, beta: i32) -
 
     let mut moves = generate_moves(board);
     if board.to_move == White {
-        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
+        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
     } else {
-        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
+        moves.sort_by_key(|a| piece_value_differential(a));
     }
 
     if moves.is_empty() {
@@ -183,9 +184,9 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
 
     let mut moves = generate_moves(board);
     if board.to_move == White {
-        moves.sort_by(|a, b| piece_value_differential(b).cmp(&piece_value_differential(a)));
+        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
     } else {
-        moves.sort_by(|a, b| piece_value_differential(a).cmp(&piece_value_differential(b)));
+        moves.sort_by_key(|a| piece_value_differential(a));
     }
 
     if moves.is_empty() {
@@ -231,11 +232,10 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
     show_board(simple_print, &board);
     while board.full_move_clock < max_moves {
         let res = get_best_move(&board, depth);
-        if res.is_some() {
-            board = res.unwrap().clone();
-        } else {
-            break;
-        }
+        board = match res {
+            Some(b) => b,
+            _ => break,
+        };
         show_board(simple_print, &board);
     }
 }
