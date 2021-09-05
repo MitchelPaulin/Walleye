@@ -5,6 +5,11 @@ pub use crate::move_generation::*;
 use std::fs::File;
 use std::io::{self, BufRead, Write};
 
+const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
+const WHITE_QUEEN_SIDE_CASTLE_STRING: &str = "e1c1";
+const BLACK_KING_SIDE_CASTLE_STRING: &str = "e8g8";
+const BLACK_QUEEN_SIDE_CASTLE_STRING: &str = "e8c8";
+
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
     let log = File::create("log.txt").expect("Could not create log file");
@@ -101,22 +106,22 @@ fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) 
     }
 
     //deal with castling
-    if &player_move[0..4] == WHITE_KING_SIDE_CASTLE_ALG
+    if &player_move[0..4] == WHITE_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
         board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
-    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_CASTLE_ALG
+    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
         board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
-    } else if &player_move[0..4] == BLACK_KING_SIDE_CASTLE_ALG
+    } else if &player_move[0..4] == BLACK_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
-    } else if &player_move[0..4] == BLACK_QUEEN_SIDE_CASTLE_ALG
+    } else if &player_move[0..4] == BLACK_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_START] = Square::Empty;
@@ -134,8 +139,20 @@ fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) 
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {
     let next_board = get_best_move(&board, search_depth).unwrap();
-    let best_move = next_board.last_move.clone().unwrap();
-    send_to_gui(format!("bestmove {}\n", best_move), &log);
+    let best_move = next_board.last_move.unwrap();
+    if next_board.pawn_promotion.is_some() {
+        send_to_gui(
+            format!(
+                "bestmove {}{}{}\n",
+                best_move.0,
+                best_move.1,
+                next_board.pawn_promotion.unwrap().kind.alg()
+            ),
+            &log,
+        );
+    } else {
+        send_to_gui(format!("bestmove {}{}\n", best_move.0, best_move.1), &log);
+    }
     send_to_gui(
         format!(
             "info score cp {} depth {}\n",

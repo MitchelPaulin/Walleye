@@ -129,7 +129,7 @@ fn is_end_game(board: &BoardState) -> bool {
             }
         }
     }
-    return material_total <= King.value() * 2 + Bishop.value() * 2 + Pawn.value() * 5;
+    material_total <= King.value() * 2 + Bishop.value() * 2 + Pawn.value() * 5
 }
 
 /*
@@ -190,7 +190,7 @@ fn alpha_beta_search(
     mut beta: i32,
 ) -> i32 {
     if depth == 0 {
-        // look 5 captures into the future
+        // look 10 captures into the future
         return quiesce(board, alpha, beta, 10);
     }
 

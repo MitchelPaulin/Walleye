@@ -6,7 +6,7 @@ mod move_generation;
 mod uci;
 mod utils;
 
-// During testing I found a depth of 6 to perform best on the optimized build, recommend depth 4 on debug build
+// During testing I found a depth of 5 to perform best on the optimized build, recommend depth 4 on debug build
 const DEFAULT_DEPTH: &str = "5";
 
 fn main() {

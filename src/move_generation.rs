@@ -20,10 +20,10 @@ pub enum CastlingType {
     BlackQueenSide,
 }
 
-pub const WHITE_KING_SIDE_CASTLE_ALG: &str = "e1g1";
-pub const WHITE_QUEEN_SIDE_CASTLE_ALG: &str = "e1c1";
-pub const BLACK_KING_SIDE_CASTLE_ALG: &str = "e8g8";
-pub const BLACK_QUEEN_SIDE_CASTLE_ALG: &str = "e8c8";
+const WHITE_KING_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(9, 6), Point(9, 8)));
+const WHITE_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(9, 6), Point(9, 4)));
+const BLACK_KING_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), Point(2, 8)));
+const BLACK_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), Point(2, 4)));
 
 /*
     Generate all possible *legal* moves from the given board
@@ -506,6 +506,7 @@ fn generate_move_for_piece(
     // make all the valid moves of this piece
     for _move in moves {
         let mut new_board = board.clone();
+        new_board.pawn_promotion = None;
         new_board.swap_color();
         if color == Black {
             new_board.full_move_clock += 1;
@@ -522,7 +523,6 @@ fn generate_move_for_piece(
         let target_square = new_board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
             new_board.mvv_lva = target_piece.value() - piece.value();
-            //println!("{} - {} = {}",target_piece.value(), piece.value(),  new_board.mvv_lva);
         } else {
             new_board.mvv_lva = 0;
         }
@@ -530,8 +530,7 @@ fn generate_move_for_piece(
         // move the piece, this will take care of any captures as well, excluding en passant
         new_board.board[_move.0][_move.1] = piece.into();
         new_board.board[square_cords.0][square_cords.1] = Square::Empty;
-        let move_alg = format!("{}{}", square_cords, _move);
-        new_board.last_move = Some(move_alg.to_string());
+        new_board.last_move = Some((square_cords, _move));
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
@@ -651,8 +650,7 @@ fn generate_captures_for_piece(
         // move the piece, this will take care of any captures as well, excluding en passant
         new_board.board[_move.0][_move.1] = piece.into();
         new_board.board[square_cords.0][square_cords.1] = Square::Empty;
-        let move_alg = format!("{}{}", square_cords, _move);
-        new_board.last_move = Some(move_alg.to_string());
+        new_board.last_move = Some((square_cords, _move));
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
@@ -710,7 +708,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_END - 2] = Piece::king(White).into();
         new_board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
-        new_board.last_move = Some(WHITE_KING_SIDE_CASTLE_ALG.to_string());
+        new_board.last_move = WHITE_KING_SIDE_CASTLE_ALG;
         new_moves.push(new_board);
     }
 
@@ -725,7 +723,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_START + 2] = Piece::king(White).into();
         new_board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
-        new_board.last_move = Some(WHITE_QUEEN_SIDE_CASTLE_ALG.to_string());
+        new_board.last_move = WHITE_QUEEN_SIDE_CASTLE_ALG;
         new_moves.push(new_board);
     }
 
@@ -740,7 +738,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
         new_board.board[BOARD_START][BOARD_END - 2] = Piece::king(Black).into();
         new_board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
-        new_board.last_move = Some(BLACK_KING_SIDE_CASTLE_ALG.to_string());
+        new_board.last_move = BLACK_KING_SIDE_CASTLE_ALG;
         new_moves.push(new_board);
     }
 
@@ -755,7 +753,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_board.board[BOARD_START][BOARD_START] = Square::Empty;
         new_board.board[BOARD_START][BOARD_START + 2] = Piece::king(Black).into();
         new_board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
-        new_board.last_move = Some(BLACK_QUEEN_SIDE_CASTLE_ALG.to_string());
+        new_board.last_move = BLACK_QUEEN_SIDE_CASTLE_ALG;
         new_moves.push(new_board);
     }
 }
@@ -775,9 +773,10 @@ fn promote_pawn(
     for kind in &[Queen, Knight, Bishop, Rook] {
         let mut new_board = board.clone();
         new_board.pawn_double_move = None;
-        new_board.board[target.0][target.1] = Square::Full(Piece { color, kind: *kind });
-        let move_alg = format!("{}{}{}", start, target, kind.alg(),);
-        new_board.last_move = Some(move_alg.to_string());
+        let promotion_piece = Piece { color, kind: *kind };
+        new_board.board[target.0][target.1] = Square::Full(promotion_piece);
+        new_board.last_move = Some((start, target));
+        new_board.pawn_promotion = Some(promotion_piece);
         moves.push(new_board);
     }
 }

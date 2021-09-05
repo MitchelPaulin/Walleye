@@ -287,7 +287,8 @@ pub struct BoardState {
     pub black_king_side_castle: bool,
     pub black_queen_side_castle: bool,
     pub mvv_lva: i32, // value set to help order this board, see https://www.chessprogramming.org/MVV-LVA
-    pub last_move: Option<String>, // the start and last position of the last move made
+    pub last_move: Option<(Point, Point)>, // the start and last position of the last move made
+    pub pawn_promotion: Option<Piece>, // set to the chosen pawn promotion type
 }
 
 impl BoardState {
@@ -388,6 +389,7 @@ impl BoardState {
             black_queen_side_castle: castling_privileges.find('q') != None,
             mvv_lva: 0,
             last_move: None,
+            pawn_promotion: None,
         })
     }
 
