@@ -2,6 +2,7 @@ pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::engine::*;
 pub use crate::move_generation::*;
+pub use crate::utils::*;
 use std::fs::File;
 use std::io::{self, BufRead, Write};
 
@@ -210,32 +211,4 @@ fn read_from_gui(mut log: &File) -> String {
     log.write_all(format!("ENGINE << {}\n", buffer).as_bytes())
         .expect("write failed");
     buffer
-}
-
-fn clean_input(buffer: String) -> String {
-    let mut cleaned = String::new();
-    let mut prev_char = ' ';
-    for c in buffer.chars() {
-        if !c.is_whitespace() {
-            cleaned.push(c);
-        } else if c.is_whitespace() && !prev_char.is_whitespace() {
-            cleaned.push(' ');
-        }
-        prev_char = c;
-    }
-    cleaned.trim().to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn clean_string() {
-        assert_eq!(clean_input("   debug     on  \n".to_string()), "debug on");
-        assert_eq!(
-            clean_input("\t  debug \t  \t\ton\t  \n".to_string()),
-            "debug on"
-        );
-    }
 }
