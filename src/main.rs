@@ -2,6 +2,7 @@ extern crate clap;
 use clap::{App, Arg};
 mod board;
 mod engine;
+mod evaluation;
 mod move_generation;
 mod uci;
 mod utils;

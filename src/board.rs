@@ -219,7 +219,7 @@ impl FromStr for Point {
             return Err("Invalid length for algebraic string");
         }
 
-        let c = pair.chars().nth(0).unwrap();
+        let c = pair.chars().next().unwrap();
         let r = pair.chars().nth(1).unwrap();
         let col = match c {
             'a' => 0,
