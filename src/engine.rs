@@ -89,6 +89,9 @@ static KING_LATE_GAME: [[i32; 8]; 8] = [
     [-50, -30, -30, -30, -30, -30, -30, -50],
 ];
 
+/*
+    Get the pos evaluation for every piece excluding the King
+*/
 fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceColor) -> i32 {
     if let Square::Full(piece) = board.board[row][col] {
         let col = col - BOARD_START;
@@ -102,14 +105,8 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
             Rook => ROOK_WEIGHTS[row][col],
             Bishop => BISHOP_WEIGHTS[row][col],
             Knight => KNIGHT_WEIGHTS[row][col],
-            King => {
-                if is_end_game(&board) {
-                    KING_LATE_GAME[row][col]
-                } else {
-                    KING_WEIGHTS[row][col]
-                }
-            }
             Queen => QUEEN_WEIGHTS[row][col],
+            _ => 0,
         }
     } else {
         panic!("Could not recognize piece")
@@ -117,19 +114,25 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
 }
 
 /*
-    A rough estimate of when we have entered the "end game"
+    Get the pos evaluation for the kings
+    We make this a separate function in order to avoid looping over the board more than once
 */
-fn is_end_game(board: &BoardState) -> bool {
-    let mut material_total = 0;
-    for row in BOARD_START..BOARD_END {
-        for col in BOARD_START..BOARD_END {
-            let square = board.board[row][col];
-            if let Square::Full(Piece { color: _, kind }) = square {
-                material_total += kind.value();
-            }
+fn get_pos_evaluation_king(board: &BoardState, color: PieceColor, is_end_game: bool) -> i32 {
+    if color == White {
+        if is_end_game {
+            return KING_LATE_GAME[board.white_king_location.0 - BOARD_START]
+                [board.white_king_location.1 - BOARD_START];
         }
+        return KING_WEIGHTS[board.white_king_location.0 - BOARD_START]
+            [board.white_king_location.1 - BOARD_START];
+    } else {
+        if is_end_game {
+            return KING_LATE_GAME[9 - board.black_king_location.0]
+                [board.black_king_location.1 - BOARD_START];
+        }
+        return KING_WEIGHTS[9 - board.black_king_location.0]
+            [board.black_king_location.1 - BOARD_START];
     }
-    material_total <= King.value() * 2 + Bishop.value() * 2 + Pawn.value() * 5
 }
 
 /*
@@ -137,10 +140,12 @@ fn is_end_game(board: &BoardState) -> bool {
 */
 pub fn get_evaluation(board: &BoardState) -> i32 {
     let mut evaluation = 0;
+    let mut total_piece_value = 0;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
             let square = board.board[row][col];
             if let Square::Full(Piece { color, kind }) = square {
+                total_piece_value += kind.value();
                 if color == board.to_move {
                     evaluation += get_pos_evaluation(row, col, board, color) + kind.value();
                 } else {
@@ -149,6 +154,17 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
             }
         }
     }
+
+    // an approximation of when the end game has started
+    let is_end_game = total_piece_value <= King.value() * 2 + Bishop.value() * 2 + Pawn.value() * 5;
+    if board.to_move == White {
+        evaluation += get_pos_evaluation_king(&board, White, is_end_game)
+            - get_pos_evaluation_king(&board, Black, is_end_game);
+    } else {
+        evaluation += get_pos_evaluation_king(&board, Black, is_end_game)
+            - get_pos_evaluation_king(&board, White, is_end_game);
+    }
+
     evaluation
 }
 
