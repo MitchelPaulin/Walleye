@@ -510,20 +510,21 @@ fn generate_move_for_piece(
         if color == Black {
             new_board.full_move_clock += 1;
         }
+
         // update king location if we are moving the king
-        if color == White && kind == King {
-            new_board.white_king_location = _move;
-        } else if color == Black && kind == King {
-            new_board.black_king_location = _move;
+        if kind == King {
+            match color {
+                White => new_board.white_king_location = _move,
+                Black => new_board.black_king_location = _move,
+            }
         }
 
         let target_square = new_board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
-            if board.to_move == White {
-                new_board.black_total_piece_value -= target_piece.value();
-            } else {
-                new_board.white_total_piece_value -= target_piece.value();
-            }
+            new_board.mvv_lva = target_piece.value() - piece.value();
+            //println!("{} - {} = {}",target_piece.value(), piece.value(),  new_board.mvv_lva);
+        } else {
+            new_board.mvv_lva = 0;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
@@ -598,10 +599,8 @@ fn generate_move_for_piece(
             new_board.board[square_cords.0][square_cords.1] = Square::Empty;
             if color == White {
                 new_board.board[mov.0 + 1][mov.1] = Square::Empty;
-                new_board.black_total_piece_value -= Pawn.value();
             } else {
                 new_board.board[mov.0 - 1][mov.1] = Square::Empty;
-                new_board.white_total_piece_value -= Pawn.value();
             }
 
             // if you make a move, and you do not end up in check, then this move is valid
@@ -631,11 +630,7 @@ fn generate_captures_for_piece(
         let target_square = board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
             new_board = board.clone();
-            if board.to_move == White {
-                new_board.black_total_piece_value -= target_piece.value();
-            } else {
-                new_board.white_total_piece_value -= target_piece.value();
-            }
+            new_board.mvv_lva = target_piece.value() - piece.value();
         } else {
             continue; // this move wasn't a capture, we don't want to keep it
         }
@@ -646,10 +641,11 @@ fn generate_captures_for_piece(
         }
 
         // update king location if we are moving the king
-        if color == White && kind == King {
-            new_board.white_king_location = _move;
-        } else if color == Black && kind == King {
-            new_board.black_king_location = _move;
+        if kind == King {
+            match color {
+                White => new_board.white_king_location = _move,
+                Black => new_board.black_king_location = _move,
+            }
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
@@ -780,11 +776,6 @@ fn promote_pawn(
         let mut new_board = board.clone();
         new_board.pawn_double_move = None;
         new_board.board[target.0][target.1] = Square::Full(Piece { color, kind: *kind });
-        if color == Black {
-            new_board.black_total_piece_value += kind.value() - Pawn.value();
-        } else {
-            new_board.white_total_piece_value += kind.value() - Pawn.value();
-        }
         let move_alg = format!("{}{}{}", start, target, kind.alg(),);
         new_board.last_move = Some(move_alg.to_string());
         moves.push(new_board);

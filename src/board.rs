@@ -286,8 +286,7 @@ pub struct BoardState {
     pub white_queen_side_castle: bool,
     pub black_king_side_castle: bool,
     pub black_queen_side_castle: bool,
-    pub black_total_piece_value: i32,
-    pub white_total_piece_value: i32,
+    pub mvv_lva: i32, // value set to help order this board, see https://www.chessprogramming.org/MVV-LVA
     pub last_move: Option<String>, // the start and last position of the last move made
 }
 
@@ -330,8 +329,6 @@ impl BoardState {
         let mut col: usize = BOARD_START;
         let mut white_king_location = Point(0, 0);
         let mut black_king_location = Point(0, 0);
-        let mut white_piece_values = 0;
-        let mut black_piece_values = 0;
         for fen_row in fen_rows {
             for square in fen_row.chars() {
                 if square.is_digit(10) {
@@ -350,16 +347,11 @@ impl BoardState {
                     };
 
                     if let Square::Full(Piece { kind, color }) = board[row][col] {
-                        if color == White {
-                            white_piece_values += kind.value();
-                            if kind == King {
-                                white_king_location = Point(row, col);
-                            }
-                        } else {
-                            black_piece_values += kind.value();
-                            if kind == King {
-                                black_king_location = Point(row, col);
-                            }
+                        if kind == King {
+                            match color {
+                                White => white_king_location = Point(row, col),
+                                Black => black_king_location = Point(row, col),
+                            };
                         }
                     }
                     col += 1;
@@ -394,8 +386,7 @@ impl BoardState {
             white_queen_side_castle: castling_privileges.find('Q') != None,
             black_king_side_castle: castling_privileges.find('k') != None,
             black_queen_side_castle: castling_privileges.find('q') != None,
-            black_total_piece_value: black_piece_values,
-            white_total_piece_value: white_piece_values,
+            mvv_lva: 0,
             last_move: None,
         })
     }
@@ -619,15 +610,6 @@ mod tests {
         for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], Square::from(Piece::pawn(White)));
         }
-
-        assert_eq!(
-            b.white_total_piece_value,
-            20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100
-        );
-        assert_eq!(
-            b.black_total_piece_value,
-            20000 + 900 + 2 * 500 + 2 * 330 + 2 * 320 + 8 * 100
-        );
     }
 
     #[test]

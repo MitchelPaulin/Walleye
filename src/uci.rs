@@ -37,7 +37,7 @@ pub fn play_game_uci(search_depth: u8) {
             // only play last move, the rest has been recorded in the board state
             let player_move = command.last().unwrap();
             log_info(player_move.to_string(), &log);
-            handle_player_move(&mut board, player_move, &log);
+            handle_opponent_move(&mut board, player_move, &log);
         } else if command[0] == "go" {
             board = find_best_move(&board, search_depth, &log);
         } else {
@@ -46,18 +46,39 @@ pub fn play_game_uci(search_depth: u8) {
     }
 }
 
-fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &File) {
+fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) {
     let start_pair: Point = (&player_move[0..2]).parse().unwrap();
     let end_pair: Point = (&player_move[2..4]).parse().unwrap();
-    if let Square::Full(Piece { kind, color }) = board.board[end_pair.0][end_pair.1] {
-        if color == White {
-            board.white_total_piece_value -= kind.value();
-        } else {
-            board.black_total_piece_value -= kind.value();
+
+    // update king location
+    if let Square::Full(Piece { kind, color }) = board.board[start_pair.0][start_pair.1] {
+        if kind == King {
+            if color == White {
+                board.white_king_location = end_pair;
+                board.white_king_side_castle = false;
+                board.white_king_side_castle = false;
+            } else {
+                board.black_king_location = end_pair;
+                board.black_king_side_castle = false;
+                board.black_queen_side_castle = false;
+            }
         }
     }
+
+    //deal with castling privileges related to the movement/capture of rooks
+    if player_move.contains("a8") || player_move.contains("h8") {
+        board.black_king_side_castle = false;
+        board.black_queen_side_castle = false;
+    } else if player_move.contains("a1") || player_move.contains("h1") {
+        board.white_king_side_castle = false;
+        board.white_king_side_castle = false;
+    }
+
+    //move piece
     board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
     board.board[start_pair.0][start_pair.1] = Square::Empty;
+
+    //deal with any pawn promotions
     if player_move.len() == 5 {
         let kind = match player_move.chars().nth(4).unwrap() {
             'q' => Queen,
@@ -77,12 +98,6 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &File) {
             kind,
         }
         .into();
-
-        if board.to_move == White {
-            board.white_total_piece_value += kind.value() - Pawn.value();
-        } else {
-            board.black_total_piece_value += kind.value() - Pawn.value();
-        }
     }
 
     //deal with castling
@@ -108,7 +123,11 @@ fn handle_player_move(board: &mut BoardState, player_move: &&str, log: &File) {
         board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
     }
 
+    if board.to_move == Black {
+        board.full_move_clock += 1;
+    }
     board.swap_color();
+    board.mvv_lva = 0;
     log_info(board.simple_board(), &log);
     send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
 }

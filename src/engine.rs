@@ -103,7 +103,7 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
             Bishop => BISHOP_WEIGHTS[row][col],
             Knight => KNIGHT_WEIGHTS[row][col],
             King => {
-                if is_end_game(board) {
+                if is_end_game(&board) {
                     KING_LATE_GAME[row][col]
                 } else {
                     KING_WEIGHTS[row][col]
@@ -116,8 +116,20 @@ fn get_pos_evaluation(row: usize, col: usize, board: &BoardState, color: PieceCo
     }
 }
 
+/*
+    A rough estimate of when we have entered the "end game"
+*/
 fn is_end_game(board: &BoardState) -> bool {
-    board.white_total_piece_value + board.black_total_piece_value < King.value() * 2 + 1600
+    let mut material_total = 0;
+    for row in BOARD_START..BOARD_END {
+        for col in BOARD_START..BOARD_END {
+            let square = board.board[row][col];
+            if let Square::Full(Piece { color: _, kind }) = square {
+                material_total += kind.value();
+            }
+        }
+    }
+    return material_total <= King.value() * 2 + Bishop.value() * 2 + Pawn.value() * 5;
 }
 
 /*
@@ -153,11 +165,7 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, depth: u32) -> i32 {
     }
 
     let mut moves = generate_only_captures(board);
-    if board.to_move == White {
-        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
-    } else {
-        moves.sort_by_key(|a| piece_value_differential(a));
-    }
+    moves.sort_by_key(|k| Reverse(k.mvv_lva));
     for mov in moves {
         let score = -quiesce(&mov, -beta, -alpha, depth - 1);
         if score >= beta {
@@ -186,12 +194,6 @@ fn alpha_beta_search(
         return quiesce(board, alpha, beta, 10);
     }
 
-    let mut moves = generate_moves(board);
-    if board.to_move == White {
-        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
-    } else {
-        moves.sort_by_key(|a| piece_value_differential(a));
-    }
     // Skip this position if a mating sequence has already been found earlier in
     // the search, which would be shorter than any mate we could find from here.
     alpha = cmp::max(alpha, -MATE_SCORE + ply_from_root);
@@ -200,6 +202,8 @@ fn alpha_beta_search(
         return alpha;
     }
 
+    let mut moves = generate_moves(board);
+    moves.sort_by_key(|k| Reverse(k.mvv_lva));
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -229,11 +233,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let beta = POS_INF;
 
     let mut moves = generate_moves(board);
-    if board.to_move == White {
-        moves.sort_by_key(|b| Reverse(piece_value_differential(b)))
-    } else {
-        moves.sort_by_key(|a| piece_value_differential(a));
-    }
+    moves.sort_by_key(|k| Reverse(k.mvv_lva));
 
     let mut best_move = None;
     for mov in moves {
@@ -248,10 +248,6 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     }
 
     best_move
-}
-
-fn piece_value_differential(board: &BoardState) -> i32 {
-    board.white_total_piece_value - board.black_total_piece_value
 }
 
 /*
