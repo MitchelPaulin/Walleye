@@ -1,7 +1,7 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
-pub use crate::move_generation::*;
 pub use crate::evaluation::*;
+pub use crate::move_generation::*;
 use std::cmp;
 use std::cmp::Reverse;
 
@@ -9,7 +9,14 @@ const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
 const NEG_INF: i32 = -POS_INF;
 
-fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, depth: u32) -> i32 {
+fn quiesce(
+    board: &BoardState,
+    mut alpha: i32,
+    beta: i32,
+    depth: u32,
+    nodes_searched: &mut u32,
+) -> i32 {
+    *nodes_searched += 1;
     let stand_pat = get_evaluation(board);
     if depth == 0 {
         return stand_pat;
@@ -24,7 +31,7 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, depth: u32) -> i32 {
     let mut moves = generate_only_captures(board);
     moves.sort_by_key(|k| Reverse(k.mvv_lva));
     for mov in moves {
-        let score = -quiesce(&mov, -beta, -alpha, depth - 1);
+        let score = -quiesce(&mov, -beta, -alpha, depth - 1, nodes_searched);
         if score >= beta {
             return beta;
         }
@@ -45,10 +52,13 @@ fn alpha_beta_search(
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
+    nodes_searched: &mut u32,
 ) -> i32 {
+    *nodes_searched += 1;
+
     if depth == 0 {
         // look 10 captures into the future
-        return quiesce(board, alpha, beta, 10);
+        return quiesce(board, alpha, beta, 10, nodes_searched);
     }
 
     // Skip this position if a mating sequence has already been found earlier in
@@ -72,10 +82,19 @@ fn alpha_beta_search(
     }
 
     for mov in moves {
-        let evaluation = -alpha_beta_search(&mov, depth - 1, ply_from_root + 1, -beta, -alpha);
+        let evaluation = -alpha_beta_search(
+            &mov,
+            depth - 1,
+            ply_from_root + 1,
+            -beta,
+            -alpha,
+            nodes_searched,
+        );
+
         if evaluation >= beta {
             return beta;
         }
+
         alpha = cmp::max(alpha, evaluation);
     }
 
@@ -92,15 +111,26 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let mut moves = generate_moves(board);
     moves.sort_by_key(|k| Reverse(k.mvv_lva));
 
-    let mut best_move = None;
+    let mut best_move: Option<BoardState> = None;
+    let mut nodes_searched = 0;
     for mov in moves {
-        let evaluation = -alpha_beta_search(&mov, depth - 1, 1, -beta, -alpha);
+        let evaluation = -alpha_beta_search(&mov, depth - 1, 1, -beta, -alpha, &mut nodes_searched);
+
         if evaluation >= beta {
             return Some(mov);
         }
         if evaluation > alpha {
             alpha = evaluation;
+            let ponder_move = format!(
+                "{}{}",
+                mov.last_move.unwrap().0.to_string(),
+                mov.last_move.unwrap().1.to_string()
+            );
             best_move = Some(mov);
+            println!(
+                "info pv {} depth {} nodes {} score cp {}",
+                ponder_move, depth, nodes_searched, evaluation
+            );
         }
     }
 

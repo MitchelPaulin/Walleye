@@ -135,7 +135,6 @@ fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) 
     board.swap_color();
     board.mvv_lva = 0;
     log_info(board.simple_board(), &log);
-    send_to_gui(format!("info score cp {}\n", get_evaluation(board)), &log);
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {
@@ -154,14 +153,6 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
     } else {
         send_to_gui(format!("bestmove {}{}\n", best_move.0, best_move.1), &log);
     }
-    send_to_gui(
-        format!(
-            "info score cp {} depth {}\n",
-            get_evaluation(&next_board),
-            search_depth
-        ),
-        &log,
-    );
     log_info(next_board.simple_board(), &log);
     next_board
 }
