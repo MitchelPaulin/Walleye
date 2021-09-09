@@ -1,7 +1,5 @@
 # Walleye
 
-Walleye is a chess engine written completely in rust.
-
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
 
 Walleye is a UCI-compatible engine written using the classical alpha-beta style AI. It supports loading board positions from arbitrary FEN strings, Unicode pretty printing to the console, and UCI communication logs to help with debugging.
