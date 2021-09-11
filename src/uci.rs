@@ -13,38 +13,30 @@ const BLACK_QUEEN_SIDE_CASTLE_STRING: &str = "e8c8";
 
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
-    let log = File::create("log.txt").expect("Could not create log file");
+    let log = File::create("walleye_log.txt").expect("Could not create log file");
     let buffer = read_from_gui(&log);
     if buffer != "uci" {
         log_error("Expected uci protocol but got ".to_string() + &buffer, &log);
         return;
     }
+
     send_to_gui("id name Walleye\n".to_string(), &log);
     send_to_gui("id author Mitchel Paulin\n".to_string(), &log);
     send_to_gui("uciok\n".to_string(), &log);
 
     loop {
         let buffer = read_from_gui(&log);
-        let command: Vec<&str> = buffer.split(' ').collect();
+        let commands: Vec<&str> = buffer.split(' ').collect();
 
-        if command[0] == "quit" {
+        if commands[0] == "quit" {
             break;
-        } else if command[0] == "isready" {
+        } else if commands[0] == "isready" {
             send_to_gui("readyok\n".to_string(), &log);
-        } else if command[0] == "ucinewgame" {
-            let buffer = read_from_gui(&log);
-            board = match setup_new_game(buffer, &log) {
-                Some(b) => b,
-                _ => {
-                    break;
-                }
-            }
-        } else if command[0] == "position" && command.contains(&"moves") {
-            // only play last move, the rest has been recorded in the board state
-            let player_move = command.last().unwrap();
-            log_info(player_move.to_string(), &log);
-            handle_opponent_move(&mut board, player_move, &log);
-        } else if command[0] == "go" {
+        } else if commands[0] == "ucinewgame" {
+            // we don't keep any internal state really so no need to reset anything here
+        } else if commands[0] == "position" {
+            board = play_out_position(commands, &log);
+        } else if commands[0] == "go" {
             board = find_best_move(&board, search_depth, &log);
         } else {
             log_error(format!("Unrecognized command: {}", buffer), &log);
@@ -52,7 +44,52 @@ pub fn play_game_uci(search_depth: u8) {
     }
 }
 
-fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) {
+fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
+    let mut board;
+    if commands[1] == "fen" {
+        let mut fen = "".to_string();
+        for c in commands.iter().take(7).skip(2) {
+            fen += &format!("{} ", c);
+        }
+        fen += commands[7];
+
+        board = match BoardState::from_fen(&fen) {
+            Ok(board) => board,
+            Err(err) => {
+                log_error(err.to_string(), &log);
+                panic!("Got bad fen string, cant continue")
+            }
+        };
+    } else {
+        board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
+    }
+
+    let mut moves_start_index = None;
+    for (i, command) in commands.iter().enumerate() {
+        if command == &"moves" {
+            moves_start_index = Some(i);
+            break;
+        }
+    }
+
+    let mut last_move = None;
+    if moves_start_index.is_some() {
+        let first_move_index = moves_start_index.unwrap() + 1;
+        for mov in commands.iter().skip(first_move_index) {
+            make_move(&mut board, &mov, &log);
+            last_move = Some(mov);
+        }
+    }
+
+    // only log the last move
+    match last_move {
+        Some(mov) => log_info(mov.to_string(), &log),
+        _ => ()
+    }
+    board
+}
+
+fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
     let start_pair: Point = (&player_move[0..2]).parse().unwrap();
     let end_pair: Point = (&player_move[2..4]).parse().unwrap();
 
@@ -72,11 +109,13 @@ fn handle_opponent_move(board: &mut BoardState, player_move: &&str, log: &File) 
     }
 
     //deal with castling privileges related to the movement/capture of rooks
-    if player_move.contains("a8") || player_move.contains("h8") {
-        board.black_king_side_castle = false;
+    if player_move.contains("a8") {
         board.black_queen_side_castle = false;
-    } else if player_move.contains("a1") || player_move.contains("h1") {
-        board.white_king_side_castle = false;
+    } else if player_move.contains("h8") {
+        board.black_king_side_castle = false;
+    } else if player_move.contains("a1") {
+        board.white_queen_side_castle = false;
+    } else if player_move.contains("h1") {
         board.white_king_side_castle = false;
     }
 
@@ -155,27 +194,6 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
     }
     log_info(next_board.simple_board(), &log);
     next_board
-}
-
-fn setup_new_game(buffer: String, log: &File) -> Option<BoardState> {
-    let command: Vec<&str> = buffer.split(' ').collect();
-    if command[1] == "startpos" {
-        return Some(BoardState::from_fen(DEFAULT_FEN_STRING).unwrap());
-    } else if command[1] == "fen" {
-        let mut fen = "".to_string();
-        for c in command.iter().take(7).skip(2) {
-            fen += &format!("{} ", c);
-        }
-        fen += command[7];
-        match BoardState::from_fen(&fen) {
-            Ok(b) => return Some(b),
-            Err(err) => {
-                log_error(format!("{} : {}", err, fen), &log);
-                return None;
-            }
-        }
-    }
-    None
 }
 
 fn log_info(message: String, mut log: &File) {

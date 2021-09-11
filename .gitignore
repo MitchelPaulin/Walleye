@@ -16,4 +16,4 @@ Cargo.lock
 
 # Custom
 callgrind*
-log.txt
+walleye_log.txt
