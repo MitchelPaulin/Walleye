@@ -1,19 +1,17 @@
 extern crate clap;
 use clap::{App, Arg};
 mod board;
+mod configs;
 mod engine;
 mod evaluation;
 mod move_generation;
 mod uci;
 mod utils;
 
-// During testing I found a depth of 5 to perform best on the optimized build, recommend depth 4 on debug build
-const DEFAULT_DEPTH: &str = "5";
-
 fn main() {
-    let matches = App::new("Chess Engine")
-        .version("1.0.0")
-        .author("Mitchel P. <mitchel0022@gmail.com>")
+    let matches = App::new(configs::ENGINE_NAME)
+        .version(configs::VERSION)
+        .author(configs::AUTHOR)
         .about("Plays Chess (Sometimes well)")
         .arg(
             Arg::with_name("fen")
@@ -45,7 +43,7 @@ fn main() {
         )
         .get_matches();
 
-    let depth_str = matches.value_of("depth").unwrap_or(DEFAULT_DEPTH);
+    let depth_str = matches.value_of("depth").unwrap_or(configs::DEFAULT_DEPTH);
     let depth = match depth_str.parse::<u8>() {
         Ok(d) => d,
         Err(_) => {

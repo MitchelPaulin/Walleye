@@ -1,10 +1,12 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
+pub use crate::configs::*;
 pub use crate::engine::*;
 pub use crate::move_generation::*;
 pub use crate::utils::*;
 use std::fs::File;
 use std::io::{self, BufRead, Write};
+use std::process;
 
 const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
 const WHITE_QUEEN_SIDE_CASTLE_STRING: &str = "e1c1";
@@ -13,15 +15,16 @@ const BLACK_QUEEN_SIDE_CASTLE_STRING: &str = "e8c8";
 
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
-    let log = File::create("walleye_log.txt").expect("Could not create log file");
+    let log = File::create(format!("walleye_log_{}.txt", process::id()))
+        .expect("Could not create log file");
     let buffer = read_from_gui(&log);
     if buffer != "uci" {
         log_error("Expected uci protocol but got ".to_string() + &buffer, &log);
         return;
     }
 
-    send_to_gui("id name Walleye\n".to_string(), &log);
-    send_to_gui("id author Mitchel Paulin\n".to_string(), &log);
+    send_to_gui(format!("id name {} {}\n", ENGINE_NAME, VERSION), &log);
+    send_to_gui(format!("id author {}\n", AUTHOR), &log);
     send_to_gui("uciok\n".to_string(), &log);
 
     loop {
@@ -36,8 +39,10 @@ pub fn play_game_uci(search_depth: u8) {
             // we don't keep any internal state really so no need to reset anything here
         } else if commands[0] == "position" {
             board = play_out_position(commands, &log);
+            log_info(board.simple_board(), &log);
         } else if commands[0] == "go" {
             board = find_best_move(&board, search_depth, &log);
+            log_info(board.simple_board(), &log);
         } else {
             log_error(format!("Unrecognized command: {}", buffer), &log);
         }
@@ -72,19 +77,11 @@ fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
         }
     }
 
-    let mut last_move = None;
     if moves_start_index.is_some() {
         let first_move_index = moves_start_index.unwrap() + 1;
         for mov in commands.iter().skip(first_move_index) {
             make_move(&mut board, &mov, &log);
-            last_move = Some(mov);
         }
-    }
-
-    // only log the last move
-    match last_move {
-        Some(mov) => log_info(mov.to_string(), &log),
-        _ => ()
     }
     board
 }
@@ -173,7 +170,6 @@ fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
     }
     board.swap_color();
     board.mvv_lva = 0;
-    log_info(board.simple_board(), &log);
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {
@@ -192,7 +188,6 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
     } else {
         send_to_gui(format!("bestmove {}{}\n", best_move.0, best_move.1), &log);
     }
-    log_info(next_board.simple_board(), &log);
     next_board
 }
 
