@@ -30,13 +30,7 @@ const BLACK_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), P
     Also sets appropriate variables for the board state
 */
 pub fn generate_moves(board: &BoardState, generate_only_captures: bool) -> Vec<BoardState> {
-    let mut new_moves: Vec<BoardState>;
-    if !generate_only_captures {
-        // chess has an estimated branching factor of 35, try to speed up memory allocation here by preallocating some space
-        new_moves = Vec::with_capacity(35);
-    } else {
-        new_moves = Vec::with_capacity(5);
-    }
+    let mut new_moves: Vec<BoardState> = Vec::new();
 
     for i in BOARD_START..BOARD_END {
         for j in BOARD_START..BOARD_END {
@@ -125,13 +119,11 @@ fn pawn_moves(
             }
 
             // check a normal push
-            if !only_captures {
-                if (board.board[row - 1][col]).is_empty() {
-                    moves.push(Point(row - 1, col));
-                    // check double push
-                    if row == 8 && (board.board[row - 2][col]).is_empty() {
-                        moves.push(Point(row - 2, col));
-                    }
+            if !only_captures && (board.board[row - 1][col]).is_empty() {
+                moves.push(Point(row - 1, col));
+                // check double push
+                if row == 8 && (board.board[row - 2][col]).is_empty() {
+                    moves.push(Point(row - 2, col));
                 }
             }
         }
@@ -148,13 +140,11 @@ fn pawn_moves(
             }
 
             // check a normal push
-            if !only_captures {
-                if (board.board[row + 1][col]).is_empty() {
-                    moves.push(Point(row + 1, col));
-                    // check double push
-                    if row == 3 && (board.board[row + 2][col]).is_empty() {
-                        moves.push(Point(row + 2, col));
-                    }
+            if !only_captures && (board.board[row + 1][col]).is_empty() {
+                moves.push(Point(row + 1, col));
+                // check double push
+                if row == 3 && (board.board[row + 2][col]).is_empty() {
+                    moves.push(Point(row + 2, col));
                 }
             }
         }
@@ -213,14 +203,10 @@ fn king_moves(
     only_captures: bool,
 ) {
     for i in 0..3 {
+        let row = row + i - 1;
         for j in 0..3 {
-            let row = row + i - 1;
             let col = col + j - 1;
             let square = board.board[row][col];
-
-            if !square.is_in_bounds() {
-                continue;
-            }
 
             if only_captures {
                 if square.is_color(piece.color.opposite()) {
@@ -340,6 +326,12 @@ fn get_moves(
 */
 fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) -> bool {
     let attacking_color = color.opposite();
+    let attacking_rook = Piece::rook(attacking_color);
+    let attacking_queen = Piece::queen(attacking_color);
+    let attacking_bishop = Piece::bishop(attacking_color);
+    let attacking_knight = Piece::knight(attacking_color);
+    let attacking_king = Piece::king(attacking_color);
+    let attacking_pawn = Piece::pawn(attacking_color);
 
     // Check from rook or queen
     for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
@@ -352,8 +344,6 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
             square = board.board[row as usize][col as usize];
         }
 
-        let attacking_rook = Piece::rook(attacking_color);
-        let attacking_queen = Piece::queen(attacking_color);
         if square == attacking_rook || square == attacking_queen {
             return true;
         }
@@ -370,8 +360,6 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
             square = board.board[row as usize][col as usize];
         }
 
-        let attacking_bishop = Piece::bishop(attacking_color);
-        let attacking_queen = Piece::queen(attacking_color);
         if square == attacking_bishop || square == attacking_queen {
             return true;
         }
@@ -383,7 +371,6 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
         let col = (square_cords.1 as i8 + mods.1) as usize;
         let square = board.board[row][col];
 
-        let attacking_knight = Piece::knight(attacking_color);
         if square == attacking_knight {
             return true;
         }
@@ -395,7 +382,6 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
         Black => square_cords.0 + 1,
     };
 
-    let attacking_pawn = Piece::pawn(attacking_color);
     if board.board[pawn_row][square_cords.1 - 1] == attacking_pawn
         || board.board[pawn_row][square_cords.1 + 1] == attacking_pawn
     {
@@ -404,15 +390,11 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
 
     // Check from king
     for i in 0..3 {
+        let row = square_cords.0 + i - 1;
         for j in 0..3 {
-            let row = square_cords.0 + i - 1;
             let col = square_cords.1 + j - 1;
             let square = board.board[row][col];
-            if !square.is_in_bounds() {
-                continue;
-            }
 
-            let attacking_king = Piece::king(attacking_color);
             if square == attacking_king {
                 return true;
             }
@@ -591,7 +573,7 @@ fn generate_move_for_piece(
         if let Square::Full(target_piece) = target_square {
             new_board.mvv_lva = target_piece.value() - piece.value();
         } else {
-            new_board.mvv_lva = 0;
+            new_board.mvv_lva = -9999;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
@@ -1378,14 +1360,14 @@ mod tests {
         assert_eq!(ret.len(), 1);
     }
 
-
     #[test]
     fn only_captures_correctly_counted() {
-
-        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
         assert_eq!(generate_moves(&b, true).len(), 0);
 
-        let b = BoardState::from_fen("rnbqkbnr/pppppppp/2N5/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/2N5/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
         assert_eq!(generate_moves(&b, true).len(), 4);
 
         let b = BoardState::from_fen("K1k4p/8/8/8/8/8/8/B6R w KQkq - 0 1").unwrap();

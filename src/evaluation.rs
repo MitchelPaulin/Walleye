@@ -93,8 +93,7 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     let mut total_piece_value = 0;
     for row in BOARD_START..BOARD_END {
         for col in BOARD_START..BOARD_END {
-            let square = board.board[row][col];
-            if let Square::Full(Piece { color, kind }) = square {
+            if let Square::Full(Piece { color, kind }) = board.board[row][col] {
                 total_piece_value += kind.value();
                 if color == board.to_move {
                     evaluation += get_pos_evaluation(row, col, color, kind) + kind.value();
