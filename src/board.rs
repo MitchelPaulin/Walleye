@@ -40,6 +40,18 @@ impl Square {
         matches!(self, Square::Empty)
     }
 
+    //p Check if a square is a certain color, return false if empty
+    pub fn is_color(&self, color: PieceColor) -> bool {
+        match self {
+            Square::Empty => false,
+            Square::Full(Piece {
+                color: square_color,
+                ..
+            }) => color == *square_color,
+            _ => false,
+        }
+    }
+
     // Check if this square is within the bounds of the board, out of bounds square are used to make move generation easier
     pub fn is_in_bounds(&self) -> bool {
         !matches!(self, Square::Boundary)
