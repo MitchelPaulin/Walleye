@@ -96,7 +96,7 @@ fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
             if color == White {
                 board.white_king_location = end_pair;
                 board.white_king_side_castle = false;
-                board.white_king_side_castle = false;
+                board.white_queen_side_castle = false;
             } else {
                 board.black_king_location = end_pair;
                 board.black_king_side_castle = false;

@@ -71,6 +71,15 @@ fn alpha_beta_search(
 
     let mut moves = generate_moves(board, false);
     moves.sort_by_key(|k| Reverse(k.mvv_lva));
+    if moves.is_empty() {
+        if is_check(board, board.to_move) {
+            // checkmate
+            let mate_score = MATE_SCORE - ply_from_root;
+            return -mate_score;
+        }
+        //stalemate
+        return 0;
+    }
     for mov in moves {
         let evaluation = -alpha_beta_search(
             &mov,
