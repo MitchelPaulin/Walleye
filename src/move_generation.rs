@@ -1,5 +1,6 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
+pub use crate::evaluation::*;
 
 const KNIGHT_CORDS: [(i8, i8); 8] = [
     (1, 2),
@@ -752,6 +753,34 @@ fn promote_pawn(
     }
 }
 
+/*
+    Generate all valid moves recursively given the current board state
+
+    Will generate up until cur_depth = depth
+*/
+pub fn generate_moves_test(
+    board: &BoardState,
+    cur_depth: usize,
+    depth: usize,
+    move_counts: &mut [u32],
+    should_evaluate: bool,
+) {
+    if cur_depth == depth {
+        if should_evaluate {
+            // we don't do anything with this score, we just calculate it at the leaf for
+            // performance testing purposes
+            get_evaluation(board);
+        }
+        return;
+    }
+
+    let moves = generate_moves(board, false);
+    move_counts[cur_depth] += moves.len() as u32;
+    for mov in moves {
+        generate_moves_test(&mov, cur_depth + 1, depth, move_counts, should_evaluate);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1374,28 +1403,6 @@ mod tests {
         assert_eq!(generate_moves(&b, true).len(), 2);
     }
 
-    /*
-        Generate all valid moves recursively given the current board state
-
-        Will generate up until cur_depth = depth
-    */
-    fn generate_moves_test(
-        board: &BoardState,
-        cur_depth: usize,
-        depth: usize,
-        move_counts: &mut [u32],
-    ) {
-        if cur_depth == depth {
-            return;
-        }
-
-        let moves = generate_moves(board, false);
-        move_counts[cur_depth] += moves.len() as u32;
-        for mov in moves {
-            generate_moves_test(&mov, cur_depth + 1, depth, move_counts);
-        }
-    }
-
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
 
     #[test]
@@ -1403,7 +1410,7 @@ mod tests {
         let mut moves_states = [0; 5];
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
-        generate_moves_test(&b, 0, 5, &mut moves_states);
+        generate_moves_test(&b, 0, 5, &mut moves_states, false);
         assert_eq!(moves_states[0], 20);
         assert_eq!(moves_states[1], 400);
         assert_eq!(moves_states[2], 8902);
@@ -1418,7 +1425,7 @@ mod tests {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states);
+        generate_moves_test(&b, 0, 4, &mut moves_states, false);
         assert_eq!(moves_states[0], 48);
         assert_eq!(moves_states[1], 2039);
         assert_eq!(moves_states[2], 97862);
@@ -1429,7 +1436,7 @@ mod tests {
     fn perft_test_position_3() {
         let mut moves_states = [0; 5];
         let b = BoardState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
-        generate_moves_test(&b, 0, 5, &mut moves_states);
+        generate_moves_test(&b, 0, 5, &mut moves_states, false);
         assert_eq!(moves_states[0], 14);
         assert_eq!(moves_states[1], 191);
         assert_eq!(moves_states[2], 2812);
@@ -1444,7 +1451,7 @@ mod tests {
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states);
+        generate_moves_test(&b, 0, 4, &mut moves_states, false);
         assert_eq!(moves_states[0], 6);
         assert_eq!(moves_states[1], 264);
         assert_eq!(moves_states[2], 9467);
@@ -1458,7 +1465,7 @@ mod tests {
             "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states);
+        generate_moves_test(&b, 0, 4, &mut moves_states, false);
         assert_eq!(moves_states[0], 6);
         assert_eq!(moves_states[1], 264);
         assert_eq!(moves_states[2], 9467);
@@ -1470,7 +1477,7 @@ mod tests {
         let mut moves_states = [0; 4];
         let b = BoardState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8")
             .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states);
+        generate_moves_test(&b, 0, 4, &mut moves_states, false);
         assert_eq!(moves_states[0], 44);
         assert_eq!(moves_states[1], 1486);
         assert_eq!(moves_states[2], 62379);
@@ -1484,7 +1491,7 @@ mod tests {
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states);
+        generate_moves_test(&b, 0, 4, &mut moves_states, false);
         assert_eq!(moves_states[0], 46);
         assert_eq!(moves_states[1], 2079);
         assert_eq!(moves_states[2], 89890);
