@@ -4,6 +4,7 @@ pub use crate::evaluation::*;
 pub use crate::move_generation::*;
 use std::cmp;
 use std::cmp::Reverse;
+use std::time::Instant;
 
 const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
@@ -112,6 +113,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
 
     let mut best_move: Option<BoardState> = None;
     let mut nodes_searched = 0;
+    let start = Instant::now();
     for mov in moves {
         let evaluation = -alpha_beta_search(&mov, depth - 1, 1, -beta, -alpha, &mut nodes_searched);
 
@@ -127,8 +129,12 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
             );
             best_move = Some(mov);
             println!(
-                "info pv {} depth {} nodes {} score cp {}",
-                ponder_move, depth, nodes_searched, evaluation
+                "info pv {} depth {} nodes {} score cp {} time {}",
+                ponder_move,
+                depth,
+                nodes_searched,
+                evaluation,
+                Instant::now().duration_since(start).as_millis()
             );
         }
     }
