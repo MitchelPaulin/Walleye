@@ -40,13 +40,15 @@ fn main() {
             Arg::with_name("test bench")
                 .short("T")
                 .long("test-bench")
-                .help("Evaluates <FEN STRING> to benchmark move generation - incompatible with play self"),
+                .help(
+                "Evaluates <FEN STRING> to benchmark move generation - incompatible with play self",
+            ),
         )
         .arg(
             Arg::with_name("simple print")
                 .short("S")
                 .long("simple-print")
-                .help("Does not use unicode or background coloring in the output, useful on windows OS"),
+                .help("Does not use unicode or background coloring in the output"),
         )
         .get_matches();
 
@@ -74,7 +76,8 @@ fn main() {
         move_generation::generate_moves_test(&board, 0, depth as usize, &mut moves_states, true);
         let nodes: u32 = moves_states.iter().sum();
         println!(
-            "Searched and evaluated {} nodes in {:?}",
+            "Searched to a depth of {} and evaluated {} nodes in {:?}",
+            depth,
             nodes,
             Instant::now().duration_since(start)
         );
