@@ -164,12 +164,8 @@ fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
         board.board[BOARD_START][BOARD_START] = Square::Empty;
         board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
     }
-
-    if board.to_move == Black {
-        board.full_move_clock += 1;
-    }
     board.swap_color();
-    board.mvv_lva = 0;
+    board.mvv_lva = i32::MIN;
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {

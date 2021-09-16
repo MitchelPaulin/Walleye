@@ -287,8 +287,6 @@ impl fmt::Display for Point {
 
 #[derive(Clone)]
 pub struct BoardState {
-    pub full_move_clock: u8, // The number of the full moves. It starts at 1, and is incremented after Black's move
-    pub half_move_clock: u8, // The number of half moves since the last capture or pawn advance, used for the fifty-move rule
     pub board: [[Square; 12]; 12],
     pub to_move: PieceColor,
     pub pawn_double_move: Option<Point>, // if a pawn, on the last move, made a double move, this is set, otherwise this is None
@@ -388,8 +386,6 @@ impl BoardState {
         }
 
         Ok(BoardState {
-            full_move_clock: full_move_clock.unwrap(),
-            half_move_clock: half_move_clock.unwrap(),
             board,
             to_move,
             white_king_location,
@@ -399,7 +395,7 @@ impl BoardState {
             white_queen_side_castle: castling_privileges.find('Q') != None,
             black_king_side_castle: castling_privileges.find('k') != None,
             black_queen_side_castle: castling_privileges.find('q') != None,
-            mvv_lva: 0,
+            mvv_lva: i32::MIN,
             last_move: None,
             pawn_promotion: None,
         })

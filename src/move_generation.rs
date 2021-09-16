@@ -31,7 +31,8 @@ const BLACK_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), P
     Also sets appropriate variables for the board state
 */
 pub fn generate_moves(board: &BoardState, generate_only_captures: bool) -> Vec<BoardState> {
-    let mut new_moves: Vec<BoardState> = Vec::new();
+    //usually there is at minimum 16 moves in a position, so it make sense to preallocate some space to avoid excessive reallocations
+    let mut new_moves: Vec<BoardState> = Vec::with_capacity(16);
 
     for i in BOARD_START..BOARD_END {
         for j in BOARD_START..BOARD_END {
@@ -558,9 +559,6 @@ fn generate_move_for_piece(
         let mut new_board = board.clone();
         new_board.pawn_promotion = None;
         new_board.swap_color();
-        if color == Black {
-            new_board.full_move_clock += 1;
-        }
 
         // update king location if we are moving the king
         if kind == King {
@@ -574,7 +572,7 @@ fn generate_move_for_piece(
         if let Square::Full(target_piece) = target_square {
             new_board.mvv_lva = target_piece.value() - piece.value();
         } else {
-            new_board.mvv_lva = -9999;
+            new_board.mvv_lva = i32::MIN;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
@@ -588,12 +586,14 @@ fn generate_move_for_piece(
         }
 
         // if the rook or king move, take away castling privileges
-        if color == White && kind == King {
-            new_board.white_king_side_castle = false;
-            new_board.white_queen_side_castle = false;
-        } else if color == Black && kind == King {
-            new_board.black_queen_side_castle = false;
-            new_board.black_king_side_castle = false;
+        if kind == King {
+            if color == White {
+                new_board.white_king_side_castle = false;
+                new_board.white_queen_side_castle = false;
+            } else {
+                new_board.black_queen_side_castle = false;
+                new_board.black_king_side_castle = false;
+            }
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_END - 1 {
             new_board.white_king_side_castle = false;
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_START {

@@ -30,7 +30,7 @@ fn quiesce(
     }
 
     let mut moves = generate_moves(board, true);
-    moves.sort_by_key(|k| Reverse(k.mvv_lva));
+    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
     for mov in moves {
         let score = -quiesce(&mov, -beta, -alpha, depth - 1, nodes_searched);
         if score >= beta {
@@ -71,7 +71,7 @@ fn alpha_beta_search(
     }
 
     let mut moves = generate_moves(board, false);
-    moves.sort_by_key(|k| Reverse(k.mvv_lva));
+    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -109,7 +109,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let beta = POS_INF;
 
     let mut moves = generate_moves(board, false);
-    moves.sort_by_key(|k| Reverse(k.mvv_lva));
+    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
 
     let mut best_move: Option<BoardState> = None;
     let mut nodes_searched = 0;
@@ -157,12 +157,14 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
     };
 
     show_board(simple_print, &board);
-    while board.full_move_clock < max_moves {
+    let mut moves = 0;
+    while moves < max_moves {
         let res = get_best_move(&board, depth);
         board = match res {
             Some(b) => b,
             _ => break,
         };
         show_board(simple_print, &board);
+        moves += 1;
     }
 }
