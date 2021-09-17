@@ -23,9 +23,9 @@ pub fn play_game_uci(search_depth: u8) {
         return;
     }
 
-    send_to_gui(format!("id name {} {}\n", ENGINE_NAME, VERSION), &log);
-    send_to_gui(format!("id author {}\n", AUTHOR), &log);
-    send_to_gui("uciok\n".to_string(), &log);
+    send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION), &log);
+    send_to_gui(format!("id author {}", AUTHOR), &log);
+    send_to_gui("uciok".to_string(), &log);
 
     loop {
         let buffer = read_from_gui(&log);
@@ -34,7 +34,7 @@ pub fn play_game_uci(search_depth: u8) {
         if commands[0] == "quit" {
             break;
         } else if commands[0] == "isready" {
-            send_to_gui("readyok\n".to_string(), &log);
+            send_to_gui("readyok".to_string(), &log);
         } else if commands[0] == "ucinewgame" {
             // we don't keep any internal state really so no need to reset anything here
         } else if commands[0] == "position" {
@@ -108,16 +108,13 @@ fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
     //deal with castling privileges related to the movement/capture of rooks
     if player_move.contains("a8") {
         board.black_queen_side_castle = false;
-    } 
-    
+    }
     if player_move.contains("h8") {
         board.black_king_side_castle = false;
-    } 
-    
+    }
     if player_move.contains("a1") {
         board.white_queen_side_castle = false;
-    } 
-    
+    }
     if player_move.contains("h1") {
         board.white_king_side_castle = false;
     }
@@ -148,23 +145,24 @@ fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
         .into();
     }
 
-    //deal with castling
-    if &player_move[0..4] == WHITE_KING_SIDE_CASTLE_STRING
+    // deal with castling, here we also make sure the right king is on the target square to
+    // distinguish between castling and normal moves
+    if player_move == WHITE_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
         board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
-    } else if &player_move[0..4] == WHITE_QUEEN_SIDE_CASTLE_STRING
+    } else if player_move == WHITE_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
         board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
-    } else if &player_move[0..4] == BLACK_KING_SIDE_CASTLE_STRING
+    } else if player_move == BLACK_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
-    } else if &player_move[0..4] == BLACK_QUEEN_SIDE_CASTLE_STRING
+    } else if player_move == BLACK_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_START] = Square::Empty;
@@ -180,7 +178,7 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
     if next_board.pawn_promotion.is_some() {
         send_to_gui(
             format!(
-                "bestmove {}{}{}\n",
+                "bestmove {}{}{}",
                 best_move.0,
                 best_move.1,
                 next_board.pawn_promotion.unwrap().kind.alg()
@@ -188,7 +186,7 @@ fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardStat
             &log,
         );
     } else {
-        send_to_gui(format!("bestmove {}{}\n", best_move.0, best_move.1), &log);
+        send_to_gui(format!("bestmove {}{}", best_move.0, best_move.1), &log);
     }
     next_board
 }
@@ -204,8 +202,8 @@ fn log_error(message: String, mut log: &File) {
 }
 
 fn send_to_gui(message: String, mut log: &File) {
-    print!("{}", message);
-    log.write_all(format!("ENGINE >> {}", message).as_bytes())
+    print!("{}\n", message);
+    log.write_all(format!("ENGINE >> {}\n", message).as_bytes())
         .expect("write failed");
 }
 

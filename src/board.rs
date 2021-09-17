@@ -65,7 +65,7 @@ impl Square {
     fn simple_char(&self) -> &'static str {
         match self {
             Square::Full(piece) => piece.simple_char(),
-            _ => " ",
+            _ => ".",
         }
     }
 }
