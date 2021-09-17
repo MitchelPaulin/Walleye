@@ -89,10 +89,10 @@ fn alpha_beta_search(
     }
 
     // rank killer moves
-    for m in 0..moves.len() {
+    for mov in &mut moves {
         for i in 0..KILLER_MOVE_PLY_SIZE {
-            if moves[m].last_move == killer_moves[ply_from_root as usize][i] {
-                moves[m].order_heuristic = KILLER_MOVE_SCORE;
+            if mov.last_move == killer_moves[ply_from_root as usize][i] {
+                mov.order_heuristic = KILLER_MOVE_SCORE;
             }
         }
     }
@@ -132,7 +132,8 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let mut alpha = NEG_INF;
     let beta = POS_INF;
     // assume we have a max depth of 100, moves are accessed via [ply][slot]
-    let mut killer_moves: [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100] = [[None; KILLER_MOVE_PLY_SIZE]; 100];
+    let mut killer_moves: [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100] =
+        [[None; KILLER_MOVE_PLY_SIZE]; 100];
     let mut moves = generate_moves(board, false);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 
@@ -190,14 +191,12 @@ pub fn play_game_against_self(b: &BoardState, depth: u8, max_moves: u8, simple_p
     };
 
     show_board(simple_print, &board);
-    let mut moves = 0;
-    while moves < max_moves {
+    for _ in 0..max_moves {
         let res = get_best_move(&board, depth);
         board = match res {
             Some(b) => b,
             _ => break,
         };
         show_board(simple_print, &board);
-        moves += 1;
     }
 }
