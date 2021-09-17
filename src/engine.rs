@@ -92,7 +92,8 @@ fn alpha_beta_search(
     for mov in &mut moves {
         for i in 0..KILLER_MOVE_PLY_SIZE {
             if mov.last_move == killer_moves[ply_from_root as usize][i] {
-                mov.order_heuristic = KILLER_MOVE_SCORE;
+                // if this move has a higher heuristic value already, we don't want to overwrite it
+                mov.order_heuristic = cmp::max(KILLER_MOVE_SCORE, mov.order_heuristic);
             }
         }
     }
