@@ -52,11 +52,6 @@ impl Square {
         }
     }
 
-    // Check if this square is within the bounds of the board, out of bounds square are used to make move generation easier
-    pub fn is_in_bounds(&self) -> bool {
-        !matches!(self, Square::Boundary)
-    }
-
     // Get the "fancy" character to represent the content of this square
     fn fancy_char(&self) -> &'static str {
         match self {
@@ -296,7 +291,7 @@ pub struct BoardState {
     pub white_queen_side_castle: bool,
     pub black_king_side_castle: bool,
     pub black_queen_side_castle: bool,
-    pub mvv_lva: i32, // value set to help order this board, see https://www.chessprogramming.org/MVV-LVA
+    pub order_heuristic: i32, // value set to help order this board, a higher value means this board state will be considered first
     pub last_move: Option<(Point, Point)>, // the start and last position of the last move made
     pub pawn_promotion: Option<Piece>, // set to the chosen pawn promotion type
 }
@@ -395,7 +390,7 @@ impl BoardState {
             white_queen_side_castle: castling_privileges.find('Q') != None,
             black_king_side_castle: castling_privileges.find('k') != None,
             black_queen_side_castle: castling_privileges.find('q') != None,
-            mvv_lva: i32::MIN,
+            order_heuristic: i32::MIN,
             last_move: None,
             pawn_promotion: None,
         })
@@ -525,10 +520,6 @@ mod tests {
 
         assert!(Square::Empty.is_empty());
         assert!(!Square::Full(Piece::king(White)).is_empty());
-
-        assert!(!Square::Boundary.is_in_bounds());
-        assert!(Square::Empty.is_in_bounds());
-        assert!(Square::Full(Piece::king(White)).is_in_bounds());
     }
 
     // Algebraic translation tests

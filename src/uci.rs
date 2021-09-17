@@ -165,7 +165,7 @@ fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
         board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
     }
     board.swap_color();
-    board.mvv_lva = i32::MIN;
+    board.order_heuristic = i32::MIN;
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {

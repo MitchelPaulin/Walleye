@@ -82,10 +82,6 @@ fn knight_moves(
         let col = (col as i8 + mods.1) as usize;
         let square = board.board[row][col];
 
-        if !square.is_in_bounds() {
-            continue;
-        }
-
         if only_captures {
             if square.is_color(piece.color.opposite()) {
                 moves.push(Point(row, col));
@@ -570,9 +566,10 @@ fn generate_move_for_piece(
 
         let target_square = new_board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
-            new_board.mvv_lva = target_piece.value() - piece.value();
+            // MMV-LVA score, see https://www.chessprogramming.org/MVV-LVA
+            new_board.order_heuristic = target_piece.value() - piece.value();
         } else {
-            new_board.mvv_lva = i32::MIN;
+            new_board.order_heuristic = i32::MIN;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant

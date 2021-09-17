@@ -9,6 +9,12 @@ use std::time::Instant;
 const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
 const NEG_INF: i32 = -POS_INF;
+/*
+we want killer moves to be ordered behind all captures, but still ahead of other moves
+so pick a very negative value but still larger than i32::Min
+*/
+const KILLER_MOVE_SCORE: i32 = i32::MIN + 1;
+const KILLER_MOVE_PLY_SIZE: usize = 2;
 
 fn quiesce(
     board: &BoardState,
@@ -30,7 +36,7 @@ fn quiesce(
     }
 
     let mut moves = generate_moves(board, true);
-    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
+    moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     for mov in moves {
         let score = -quiesce(&mov, -beta, -alpha, depth - 1, nodes_searched);
         if score >= beta {
@@ -53,6 +59,7 @@ fn alpha_beta_search(
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
+    killer_moves: &mut [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100],
     nodes_searched: &mut u32,
 ) -> i32 {
     *nodes_searched += 1;
@@ -71,7 +78,6 @@ fn alpha_beta_search(
     }
 
     let mut moves = generate_moves(board, false);
-    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -81,6 +87,17 @@ fn alpha_beta_search(
         //stalemate
         return 0;
     }
+
+    // rank killer moves
+    for m in 0..moves.len() {
+        for i in 0..KILLER_MOVE_PLY_SIZE {
+            if moves[m].last_move == killer_moves[ply_from_root as usize][i] {
+                moves[m].order_heuristic = KILLER_MOVE_SCORE;
+            }
+        }
+    }
+
+    moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     for mov in moves {
         let evaluation = -alpha_beta_search(
             &mov,
@@ -88,10 +105,17 @@ fn alpha_beta_search(
             ply_from_root + 1,
             -beta,
             -alpha,
+            killer_moves,
             nodes_searched,
         );
 
         if evaluation >= beta {
+            // beta cutoff, store the move for the "killer move" heuristic
+            let ply = ply_from_root as usize;
+            for i in 0..(KILLER_MOVE_PLY_SIZE - 1) {
+                killer_moves[ply][i + 1] = killer_moves[ply][i];
+            }
+            killer_moves[ply][0] = mov.last_move;
             return beta;
         }
 
@@ -107,15 +131,24 @@ fn alpha_beta_search(
 pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let mut alpha = NEG_INF;
     let beta = POS_INF;
-
+    // assume we have a max depth of 100, moves are accessed via [ply][slot]
+    let mut killer_moves: [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100] = [[None; KILLER_MOVE_PLY_SIZE]; 100];
     let mut moves = generate_moves(board, false);
-    moves.sort_unstable_by_key(|k| Reverse(k.mvv_lva));
+    moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 
     let mut best_move: Option<BoardState> = None;
     let mut nodes_searched = 0;
     let start = Instant::now();
     for mov in moves {
-        let evaluation = -alpha_beta_search(&mov, depth - 1, 1, -beta, -alpha, &mut nodes_searched);
+        let evaluation = -alpha_beta_search(
+            &mov,
+            depth - 1,
+            1,
+            -beta,
+            -alpha,
+            &mut killer_moves,
+            &mut nodes_searched,
+        );
 
         if evaluation >= beta {
             return Some(mov);
