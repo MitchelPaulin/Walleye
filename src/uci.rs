@@ -80,15 +80,15 @@ fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
     if moves_start_index.is_some() {
         let first_move_index = moves_start_index.unwrap() + 1;
         for mov in commands.iter().skip(first_move_index) {
-            make_move(&mut board, &mov, &log);
+            make_move(&mut board, *mov, &log);
         }
     }
     board
 }
 
-fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
-    let start_pair: Point = (&player_move[0..2]).parse().unwrap();
-    let end_pair: Point = (&player_move[2..4]).parse().unwrap();
+fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
+    let start_pair: Point = (player_move[0..2]).parse().unwrap();
+    let end_pair: Point = (player_move[2..4]).parse().unwrap();
 
     // update king location
     if let Square::Full(Piece { kind, color }) = board.board[start_pair.0][start_pair.1] {
@@ -108,11 +108,17 @@ fn make_move(board: &mut BoardState, player_move: &&str, log: &File) {
     //deal with castling privileges related to the movement/capture of rooks
     if player_move.contains("a8") {
         board.black_queen_side_castle = false;
-    } else if player_move.contains("h8") {
+    } 
+    
+    if player_move.contains("h8") {
         board.black_king_side_castle = false;
-    } else if player_move.contains("a1") {
+    } 
+    
+    if player_move.contains("a1") {
         board.white_queen_side_castle = false;
-    } else if player_move.contains("h1") {
+    } 
+    
+    if player_move.contains("h1") {
         board.white_king_side_castle = false;
     }
 
