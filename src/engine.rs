@@ -38,7 +38,7 @@ fn quiesce(
         alpha = stand_pat;
     }
 
-    let mut moves = generate_moves(board, true);
+    let mut moves = generate_moves(board, MoveGenerationMode::CapturesOnly);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     for mov in moves {
         let score = -quiesce(&mov, -beta, -alpha, depth - 1, nodes_searched);
@@ -80,7 +80,7 @@ fn alpha_beta_search(
         return alpha;
     }
 
-    let mut moves = generate_moves(board, false);
+    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -137,7 +137,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let beta = POS_INF;
     // assume we have a max depth of 100, moves are accessed via [ply][slot]
     let mut killer_moves: KillerMoveArray = [[None; KILLER_MOVE_PLY_SIZE]; 100];
-    let mut moves = generate_moves(board, false);
+    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 
     let mut best_move: Option<BoardState> = None;

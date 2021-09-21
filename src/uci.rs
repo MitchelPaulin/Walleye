@@ -63,7 +63,7 @@ fn parse_go_command(commands: &[&str]) -> GameTime {
     };
 
     let mut i = 0;
-    while i < commands.len() {
+    while i + 1 < commands.len() {
         match commands[i] {
             "wtime" => {
                 gt.wtime = commands[i + 1].parse().unwrap();
@@ -213,7 +213,6 @@ fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
         board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
     }
     board.swap_color();
-    board.order_heuristic = i32::MIN;
 }
 
 fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {

@@ -21,6 +21,12 @@ pub enum CastlingType {
     BlackQueenSide,
 }
 
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum MoveGenerationMode {
+    AllMoves,
+    CapturesOnly,
+}
+
 const WHITE_KING_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(9, 6), Point(9, 8)));
 const WHITE_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(9, 6), Point(9, 4)));
 const BLACK_KING_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), Point(2, 8)));
@@ -30,7 +36,7 @@ const BLACK_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), P
     Generate all possible *legal* moves from the given board
     Also sets appropriate variables for the board state
 */
-pub fn generate_moves(board: &BoardState, generate_only_captures: bool) -> Vec<BoardState> {
+pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> Vec<BoardState> {
     //usually there is at minimum 16 moves in a position, so it make sense to preallocate some space to avoid excessive reallocations
     let mut new_moves: Vec<BoardState> = Vec::with_capacity(16);
 
@@ -43,14 +49,14 @@ pub fn generate_moves(board: &BoardState, generate_only_captures: bool) -> Vec<B
                         board,
                         Point(i, j),
                         &mut new_moves,
-                        generate_only_captures,
+                        move_gen_mode,
                     );
                 }
             }
         }
     }
 
-    if !generate_only_captures {
+    if move_gen_mode == MoveGenerationMode::AllMoves {
         generate_castling_moves(board, &mut new_moves);
     }
     new_moves
@@ -75,14 +81,14 @@ fn knight_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     for mods in &KNIGHT_CORDS {
         let row = (row as i8 + mods.0) as usize;
         let col = (col as i8 + mods.1) as usize;
         let square = board.board[row][col];
 
-        if only_captures {
+        if move_generation_mode == MoveGenerationMode::CapturesOnly {
             if square.is_color(piece.color.opposite()) {
                 moves.push(Point(row, col));
             }
@@ -101,7 +107,7 @@ fn pawn_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     match piece.color {
         // white pawns move up board
@@ -117,7 +123,9 @@ fn pawn_moves(
             }
 
             // check a normal push
-            if !only_captures && (board.board[row - 1][col]).is_empty() {
+            if move_generation_mode == MoveGenerationMode::AllMoves
+                && (board.board[row - 1][col]).is_empty()
+            {
                 moves.push(Point(row - 1, col));
                 // check double push
                 if row == 8 && (board.board[row - 2][col]).is_empty() {
@@ -138,7 +146,9 @@ fn pawn_moves(
             }
 
             // check a normal push
-            if !only_captures && (board.board[row + 1][col]).is_empty() {
+            if move_generation_mode == MoveGenerationMode::AllMoves
+                && (board.board[row + 1][col]).is_empty()
+            {
                 moves.push(Point(row + 1, col));
                 // check double push
                 if row == 3 && (board.board[row + 2][col]).is_empty() {
@@ -198,7 +208,7 @@ fn king_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     for i in 0..3 {
         let row = row + i - 1;
@@ -206,7 +216,7 @@ fn king_moves(
             let col = col + j - 1;
             let square = board.board[row][col];
 
-            if only_captures {
+            if move_generation_mode == MoveGenerationMode::CapturesOnly {
                 if square.is_color(piece.color.opposite()) {
                     moves.push(Point(row, col));
                 }
@@ -226,14 +236,14 @@ fn rook_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
         let mut row = row as i8 + m.0;
         let mut col = col as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
-            if !only_captures {
+            if move_generation_mode == MoveGenerationMode::AllMoves {
                 moves.push(Point(row as usize, col as usize));
             }
             row += m.0;
@@ -256,14 +266,14 @@ fn bishop_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     for m in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
         let mut row = row as i8 + m.0;
         let mut col = col as i8 + m.1;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
-            if !only_captures {
+            if move_generation_mode == MoveGenerationMode::AllMoves {
                 moves.push(Point(row as usize, col as usize));
             }
             row += m.0;
@@ -286,10 +296,10 @@ fn queen_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
-    rook_moves(piece, row, col, board, moves, only_captures);
-    bishop_moves(piece, row, col, board, moves, only_captures);
+    rook_moves(piece, row, col, board, moves, move_generation_mode);
+    bishop_moves(piece, row, col, board, moves, move_generation_mode);
 }
 
 /*
@@ -301,16 +311,16 @@ fn get_moves(
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
-    generate_only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     if let Square::Full(piece) = board.board[row][col] {
         match piece.kind {
-            Pawn => pawn_moves(piece, row, col, board, moves, generate_only_captures),
-            Rook => rook_moves(piece, row, col, board, moves, generate_only_captures),
-            Bishop => bishop_moves(piece, row, col, board, moves, generate_only_captures),
-            Knight => knight_moves(piece, row, col, board, moves, generate_only_captures),
-            King => king_moves(piece, row, col, board, moves, generate_only_captures),
-            Queen => queen_moves(piece, row, col, board, moves, generate_only_captures),
+            Pawn => pawn_moves(piece, row, col, board, moves, move_generation_mode),
+            Rook => rook_moves(piece, row, col, board, moves, move_generation_mode),
+            Bishop => bishop_moves(piece, row, col, board, moves, move_generation_mode),
+            Knight => knight_moves(piece, row, col, board, moves, move_generation_mode),
+            King => king_moves(piece, row, col, board, moves, move_generation_mode),
+            Queen => queen_moves(piece, row, col, board, moves, move_generation_mode),
         }
     }
 }
@@ -538,7 +548,7 @@ fn generate_move_for_piece(
     board: &BoardState,
     square_cords: Point,
     new_moves: &mut Vec<BoardState>,
-    generate_only_captures: bool,
+    move_generation_mode: MoveGenerationMode,
 ) {
     let mut moves: Vec<Point> = Vec::new();
     let Piece { color, kind } = piece;
@@ -547,7 +557,7 @@ fn generate_move_for_piece(
         square_cords.1,
         &board,
         &mut moves,
-        generate_only_captures,
+        move_generation_mode,
     );
 
     // make all the valid moves of this piece
@@ -613,7 +623,7 @@ fn generate_move_for_piece(
         }
 
         // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
-        if !generate_only_captures {
+        if move_generation_mode == MoveGenerationMode::AllMoves {
             if kind == Pawn && (square_cords.0 as i8 - _move.0 as i8).abs() == 2 {
                 if color == White {
                     new_board.pawn_double_move = Some(Point(_move.0 + 1, _move.1));
@@ -771,7 +781,7 @@ pub fn generate_moves_test(
         return;
     }
 
-    let moves = generate_moves(board, false);
+    let moves = generate_moves(board, MoveGenerationMode::AllMoves);
     move_counts[cur_depth] += moves.len() as u32;
     for mov in moves {
         generate_moves_test(&mov, cur_depth + 1, depth, move_counts, should_evaluate);
@@ -920,7 +930,7 @@ mod tests {
     fn knight_moves_empty_board() {
         let b = BoardState::from_fen("8/8/8/8/3N4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        knight_moves(Piece::knight(White), 6, 5, &b, &mut ret, false);
+        knight_moves(Piece::knight(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 8);
     }
 
@@ -928,14 +938,14 @@ mod tests {
     fn knight_moves_corner() {
         let b = BoardState::from_fen("N7/8/8/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        knight_moves(Piece::knight(White), 2, 2, &b, &mut ret, false);
+        knight_moves(Piece::knight(White), 2, 2, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 2);
     }
     #[test]
     fn knight_moves_with_other_pieces_with_capture() {
         let b = BoardState::from_fen("8/8/5n2/3NQ3/2K2P2/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        knight_moves(Piece::knight(White), 5, 5, &b, &mut ret, false);
+        knight_moves(Piece::knight(White), 5, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 7);
     }
 
@@ -945,7 +955,7 @@ mod tests {
     fn white_pawn_double_push() {
         let b = BoardState::from_fen("8/8/8/8/8/8/P7/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 8, 2, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 8, 2, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 2);
     }
 
@@ -953,7 +963,7 @@ mod tests {
     fn white_pawn_has_moved() {
         let b = BoardState::from_fen("8/8/8/8/8/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 1);
     }
 
@@ -961,7 +971,7 @@ mod tests {
     fn white_pawn_cant_move_black_piece_block() {
         let b = BoardState::from_fen("8/8/8/8/3r4/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 0);
     }
 
@@ -969,7 +979,7 @@ mod tests {
     fn white_pawn_cant_move_white_piece_block() {
         let b = BoardState::from_fen("8/8/8/8/3K4/3P4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 7, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 0);
     }
 
@@ -977,7 +987,7 @@ mod tests {
     fn white_pawn_with_two_captures_and_start() {
         let b = BoardState::from_fen("8/8/8/8/8/n1q5/1P6/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 8, 3, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 8, 3, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 4);
     }
 
@@ -985,7 +995,7 @@ mod tests {
     fn white_pawn_with_one_capture() {
         let b = BoardState::from_fen("8/8/Q1b5/1P6/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 5, 3, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 5, 3, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 2);
     }
 
@@ -993,7 +1003,7 @@ mod tests {
     fn white_pawn_double_push_piece_in_front() {
         let b = BoardState::from_fen("8/8/8/8/8/b7/P7/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(White), 8, 2, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(White), 8, 2, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 0);
     }
 
@@ -1033,7 +1043,7 @@ mod tests {
     fn black_pawn_double_push() {
         let b = BoardState::from_fen("8/p7/8/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(Black), 3, 2, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(Black), 3, 2, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 2);
     }
 
@@ -1041,7 +1051,7 @@ mod tests {
     fn black_pawn_has_moved() {
         let b = BoardState::from_fen("8/8/8/3p4/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(Black), 5, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(Black), 5, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1049,7 +1059,7 @@ mod tests {
     fn black_pawn_cant_move_white_piece_block() {
         let b = BoardState::from_fen("8/3p4/3R4/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 0);
     }
 
@@ -1057,7 +1067,7 @@ mod tests {
     fn black_pawn_with_two_captures_and_start() {
         let b = BoardState::from_fen("8/3p4/2R1R3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 4);
     }
 
@@ -1065,7 +1075,7 @@ mod tests {
     fn black_pawn_with_one_capture() {
         let b = BoardState::from_fen("8/3p4/3qR3/8/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, false);
+        pawn_moves(Piece::pawn(Black), 3, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1099,7 +1109,7 @@ mod tests {
     fn king_empty_board_center() {
         let b = BoardState::from_fen("8/8/8/8/3K4/8/8/k7 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        king_moves(Piece::king(White), 6, 5, &b, &mut ret, false);
+        king_moves(Piece::king(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(dbg!(ret).len(), 8);
     }
 
@@ -1107,7 +1117,7 @@ mod tests {
     fn king_start_pos() {
         let b = BoardState::from_fen("8/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        king_moves(Piece::king(White), 9, 6, &b, &mut ret, false);
+        king_moves(Piece::king(White), 9, 6, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 5);
     }
 
@@ -1115,7 +1125,7 @@ mod tests {
     fn king_start_pos_other_pieces() {
         let b = BoardState::from_fen("8/8/8/8/8/8/3Pn3/3QKB2 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        king_moves(Piece::king(White), 9, 6, &b, &mut ret, false);
+        king_moves(Piece::king(White), 9, 6, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 2);
     }
 
@@ -1123,7 +1133,7 @@ mod tests {
     fn king_black_other_pieces() {
         let b = BoardState::from_fen("8/8/8/8/8/3Pn3/3QkB2/3R1q2 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        king_moves(Piece::king(Black), 8, 6, &b, &mut ret, false);
+        king_moves(Piece::king(Black), 8, 6, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 6);
     }
 
@@ -1133,7 +1143,7 @@ mod tests {
     fn rook_center_of_empty_board() {
         let b = BoardState::from_fen("8/8/8/8/3R4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, false);
+        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 14);
     }
 
@@ -1141,7 +1151,7 @@ mod tests {
     fn rook_center_of_board() {
         let b = BoardState::from_fen("8/8/8/3q4/2kRp3/3b4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, false);
+        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 4);
     }
 
@@ -1149,7 +1159,7 @@ mod tests {
     fn rook_center_of_board_with_white_pieces() {
         let b = BoardState::from_fen("7p/3N4/8/4n3/2kR4/3b4/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, false);
+        rook_moves(Piece::rook(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 8);
     }
 
@@ -1157,14 +1167,14 @@ mod tests {
     fn rook_corner() {
         let b = BoardState::from_fen("7p/3N4/K7/4n3/2kR4/3b4/8/7R w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(White), 9, 9, &b, &mut ret, false);
+        rook_moves(Piece::rook(White), 9, 9, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 14);
     }
     #[test]
     fn black_rook_center_of_board_with_white_pieces() {
         let b = BoardState::from_fen("7p/3N4/8/4n3/2kr4/3b4/8/K7 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(Black), 6, 5, &b, &mut ret, false);
+        rook_moves(Piece::rook(Black), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 7);
     }
 
@@ -1174,7 +1184,7 @@ mod tests {
     fn black_bishop_center_empty_board() {
         let b = BoardState::from_fen("8/8/8/3b4/8/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, false);
+        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 13);
     }
 
@@ -1182,7 +1192,7 @@ mod tests {
     fn black_bishop_center_with_captures() {
         let b = BoardState::from_fen("6P1/8/8/3b4/8/1R6/8/3Q4 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, false);
+        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 12);
     }
 
@@ -1190,7 +1200,7 @@ mod tests {
     fn black_bishop_center_with_captures_and_black_pieces() {
         let b = BoardState::from_fen("6P1/8/2Q5/3b4/2k1n3/1R6/8/b2Q4 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, false);
+        bishop_moves(Piece::bishop(Black), 5, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 4);
     }
 
@@ -1198,7 +1208,7 @@ mod tests {
     fn white_bishop_center_with_captures_and_white_pieces() {
         let b = BoardState::from_fen("8/8/8/4r3/5B2/8/3Q4/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        bishop_moves(Piece::bishop(White), 6, 7, &b, &mut ret, false);
+        bishop_moves(Piece::bishop(White), 6, 7, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 6);
     }
 
@@ -1208,7 +1218,7 @@ mod tests {
     fn white_queen_empty_board() {
         let b = BoardState::from_fen("8/8/8/8/3Q4/8/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, false);
+        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 27);
     }
 
@@ -1216,7 +1226,7 @@ mod tests {
     fn white_queen_cant_move() {
         let b = BoardState::from_fen("8/8/8/2NBR3/2PQR3/2RRR3/8/8 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, false);
+        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 0);
     }
 
@@ -1224,7 +1234,7 @@ mod tests {
     fn white_queen_with_other_piece() {
         let b = BoardState::from_fen("8/6r1/8/8/3Q4/5N2/8/6P1 w - - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, false);
+        queen_moves(Piece::queen(White), 6, 5, &b, &mut ret, MoveGenerationMode::AllMoves);
         assert_eq!(ret.len(), 25);
     }
 
@@ -1342,7 +1352,7 @@ mod tests {
     fn generate_only_captures_queen() {
         let b = BoardState::from_fen("q3b3/1Q3n2/8/8/1R6/8/8/p6b w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        queen_moves(Piece::queen(White), 3, 3, &b, &mut ret, true);
+        queen_moves(Piece::queen(White), 3, 3, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 3);
     }
 
@@ -1350,7 +1360,7 @@ mod tests {
     fn generate_only_captures_bishop() {
         let b = BoardState::from_fen("q3b3/1B6/8/8/R7/8/8/p6b w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        bishop_moves(Piece::bishop(White), 3, 3, &b, &mut ret, true);
+        bishop_moves(Piece::bishop(White), 3, 3, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 2);
     }
 
@@ -1358,7 +1368,7 @@ mod tests {
     fn generate_only_captures_rook() {
         let b = BoardState::from_fen("R3b3/8/8/8/R7/8/8/p7 w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        rook_moves(Piece::rook(White), 2, 2, &b, &mut ret, true);
+        rook_moves(Piece::rook(White), 2, 2, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1366,7 +1376,7 @@ mod tests {
     fn generate_only_captures_king() {
         let b = BoardState::from_fen("q3b3/1Kr2n2/1B6/8/1R6/8/8/p6b w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        king_moves(Piece::king(White), 3, 3, &b, &mut ret, true);
+        king_moves(Piece::king(White), 3, 3, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 2);
     }
 
@@ -1374,7 +1384,7 @@ mod tests {
     fn generate_only_captures_knight() {
         let b = BoardState::from_fen("q3b3/1Nr2n2/1B6/2b5/1R6/8/8/p7 w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        knight_moves(Piece::knight(White), 3, 3, &b, &mut ret, true);
+        knight_moves(Piece::knight(White), 3, 3, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1382,7 +1392,7 @@ mod tests {
     fn generate_only_captures_pawn() {
         let b = BoardState::from_fen("q3b3/1Pr2n2/1B6/2b5/1R6/8/8/p7 w KQkq - 0 1").unwrap();
         let mut ret: Vec<Point> = Vec::new();
-        pawn_moves(Piece::knight(White), 3, 3, &b, &mut ret, true);
+        pawn_moves(Piece::knight(White), 3, 3, &b, &mut ret, MoveGenerationMode::CapturesOnly);
         assert_eq!(ret.len(), 1);
     }
 
@@ -1390,14 +1400,14 @@ mod tests {
     fn only_captures_correctly_counted() {
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
-        assert_eq!(generate_moves(&b, true).len(), 0);
+        assert_eq!(generate_moves(&b, MoveGenerationMode::CapturesOnly).len(), 0);
 
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/2N5/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
-        assert_eq!(generate_moves(&b, true).len(), 4);
+        assert_eq!(generate_moves(&b, MoveGenerationMode::CapturesOnly).len(), 4);
 
         let b = BoardState::from_fen("K1k4p/8/8/8/8/8/8/B6R w KQkq - 0 1").unwrap();
-        assert_eq!(generate_moves(&b, true).len(), 2);
+        assert_eq!(generate_moves(&b, MoveGenerationMode::CapturesOnly).len(), 2);
     }
 
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
