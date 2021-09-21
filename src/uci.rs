@@ -53,7 +53,7 @@ pub fn play_game_uci(search_depth: u8) {
 }
 
 // parse the go command and get relevant info about the current game time
-fn parse_go_command(commands: &Vec<&str>) -> GameTime {
+fn parse_go_command(commands: &[&str]) -> GameTime {
     let mut gt = GameTime {
         wtime: 0,
         btime: 0,
@@ -121,12 +121,12 @@ fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
         }
     }
 
-    if moves_start_index.is_some() {
-        let first_move_index = moves_start_index.unwrap() + 1;
-        for mov in commands.iter().skip(first_move_index) {
+    if let Some(start_index) = moves_start_index {
+        for mov in commands.iter().skip(start_index + 1) {
             make_move(&mut board, *mov, &log);
         }
     }
+
     board
 }
 
@@ -246,7 +246,7 @@ fn log_error(message: String, mut log: &File) {
 }
 
 fn send_to_gui(message: String, mut log: &File) {
-    print!("{}\n", message);
+    println!("{}", message);
     log.write_all(format!("ENGINE >> {}\n", message).as_bytes())
         .expect("write failed");
 }
