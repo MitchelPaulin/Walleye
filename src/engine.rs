@@ -1,5 +1,6 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
+use crate::configs;
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
 use std::cmp;
@@ -15,6 +16,8 @@ so pick a very negative value but still larger than i32::Min
 */
 const KILLER_MOVE_SCORE: i32 = i32::MIN + 1;
 const KILLER_MOVE_PLY_SIZE: usize = 2;
+type KillerMoveArray =
+    [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
 
 fn quiesce(
     board: &BoardState,
@@ -59,7 +62,7 @@ fn alpha_beta_search(
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
-    killer_moves: &mut [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100],
+    killer_moves: &mut KillerMoveArray,
     nodes_searched: &mut u32,
 ) -> i32 {
     *nodes_searched += 1;
@@ -133,8 +136,7 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
     let mut alpha = NEG_INF;
     let beta = POS_INF;
     // assume we have a max depth of 100, moves are accessed via [ply][slot]
-    let mut killer_moves: [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; 100] =
-        [[None; KILLER_MOVE_PLY_SIZE]; 100];
+    let mut killer_moves: KillerMoveArray = [[None; KILLER_MOVE_PLY_SIZE]; 100];
     let mut moves = generate_moves(board, false);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 

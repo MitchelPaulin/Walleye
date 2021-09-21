@@ -6,6 +6,7 @@ mod configs;
 mod engine;
 mod evaluation;
 mod move_generation;
+mod time_control;
 mod uci;
 mod utils;
 

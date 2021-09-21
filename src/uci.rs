@@ -3,6 +3,7 @@ pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::configs::*;
 pub use crate::engine::*;
 pub use crate::move_generation::*;
+pub use crate::time_control::*;
 pub use crate::utils::*;
 use std::fs::File;
 use std::io::{self, BufRead, Write};
@@ -31,22 +32,65 @@ pub fn play_game_uci(search_depth: u8) {
         let buffer = read_from_gui(&log);
         let commands: Vec<&str> = buffer.split(' ').collect();
 
-        if commands[0] == "quit" {
-            break;
-        } else if commands[0] == "isready" {
-            send_to_gui("readyok".to_string(), &log);
-        } else if commands[0] == "ucinewgame" {
-            // we don't keep any internal state really so no need to reset anything here
-        } else if commands[0] == "position" {
-            board = play_out_position(commands, &log);
-            log_info(board.simple_board(), &log);
-        } else if commands[0] == "go" {
-            board = find_best_move(&board, search_depth, &log);
-            log_info(board.simple_board(), &log);
-        } else {
-            log_error(format!("Unrecognized command: {}", buffer), &log);
-        }
+        match commands[0] {
+            "isready" => send_to_gui("readyok".to_string(), &log),
+            "ucinewgame" => (), // we don't keep any internal state really so no need to reset anything here
+            "position" => {
+                board = play_out_position(commands, &log);
+                log_info(board.simple_board(), &log);
+            }
+            "go" => {
+                // todo, use this to control the search, need to make this multi threaded to accomplish this
+                let gt = parse_go_command(&commands);
+                let _ = gt.calculate_time_slice(board.to_move);
+                board = find_best_move(&board, search_depth, &log);
+                log_info(board.simple_board(), &log);
+            }
+            "quit" => process::exit(1),
+            _ => log_error(format!("Unrecognized command: {}", buffer), &log),
+        };
     }
+}
+
+// parse the go command and get relevant info about the current game time
+fn parse_go_command(commands: &Vec<&str>) -> GameTime {
+    let mut gt = GameTime {
+        wtime: 0,
+        btime: 0,
+        winc: 0,
+        binc: 0,
+        movestogo: None,
+    };
+
+    let mut i = 0;
+    while i < commands.len() {
+        match commands[i] {
+            "wtime" => {
+                gt.wtime = commands[i + 1].parse().unwrap();
+                i += 1;
+            }
+            "btime" => {
+                gt.btime = commands[i + 1].parse().unwrap();
+                i += 1;
+            }
+            "binc" => {
+                gt.binc = commands[i + 1].parse().unwrap();
+                i += 1;
+            }
+            "winc" => {
+                gt.winc = commands[i + 1].parse().unwrap();
+                i += 1;
+            }
+            "movestogo" => {
+                gt.movestogo = Some(commands[i + 1].parse().unwrap());
+                i += 1;
+            }
+            _ => (),
+        }
+        i += 1;
+    }
+
+    gt
 }
 
 fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
@@ -215,4 +259,44 @@ fn read_from_gui(mut log: &File) -> String {
     log.write_all(format!("ENGINE << {}\n", buffer).as_bytes())
         .expect("write failed");
     buffer
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn can_parse_go_command_no_inc() {
+        let buffer = "go wtime 12345 btime 300000 movestogo 40";
+        let commands: Vec<&str> = buffer.split(' ').collect();
+        let res = parse_go_command(&commands);
+        assert_eq!(res.winc, 0);
+        assert_eq!(res.binc, 0);
+        assert_eq!(res.wtime, 12345);
+        assert_eq!(res.btime, 300000);
+        assert_eq!(res.movestogo, Some(40));
+    }
+
+    #[test]
+    fn can_parse_go_command() {
+        let buffer = "go wtime 300000 btime 300000 winc 1 binc 2 movestogo 40";
+        let commands: Vec<&str> = buffer.split(' ').collect();
+        let res = parse_go_command(&commands);
+        assert_eq!(res.winc, 1);
+        assert_eq!(res.binc, 2);
+        assert_eq!(res.wtime, 300000);
+        assert_eq!(res.btime, 300000);
+        assert_eq!(res.movestogo, Some(40));
+    }
+
+    #[test]
+    fn can_parse_go_command_no_moves_to_go() {
+        let buffer = "go wtime 300000 btime 300000 winc 1 binc 2";
+        let commands: Vec<&str> = buffer.split(' ').collect();
+        let res = parse_go_command(&commands);
+        assert_eq!(res.winc, 1);
+        assert_eq!(res.binc, 2);
+        assert_eq!(res.wtime, 300000);
+        assert_eq!(res.btime, 300000);
+        assert_eq!(res.movestogo, None);
+    }
 }
