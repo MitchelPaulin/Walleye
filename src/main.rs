@@ -1,5 +1,6 @@
 extern crate clap;
 use clap::{App, Arg};
+use std::process;
 use std::time::Instant;
 mod board;
 mod configs;
@@ -52,6 +53,12 @@ fn main() {
                 .help("Does not use unicode or background coloring in the output"),
         )
         .get_matches();
+
+    // set up logging
+    let log_name = format!("walleye_{}.log", process::id());
+    if simple_logging::log_to_file(log_name, log::LevelFilter::Info).is_err() {
+        panic!("Something went wrong when trying to set up logs");
+    };
 
     let depth_str = matches.value_of("depth").unwrap_or(configs::DEFAULT_DEPTH);
     let depth = match depth_str.parse::<u8>() {

@@ -3,8 +3,8 @@ pub use crate::board::{PieceColor::*, PieceKind::*};
 use crate::configs;
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
-use std::cmp;
-use std::cmp::Reverse;
+pub use crate::uci::send_to_gui;
+use std::cmp::{max, min, Reverse};
 use std::time::Instant;
 
 const MATE_SCORE: i32 = 100000;
@@ -74,8 +74,8 @@ fn alpha_beta_search(
 
     // Skip this position if a mating sequence has already been found earlier in
     // the search, which would be shorter than any mate we could find from here.
-    alpha = cmp::max(alpha, -MATE_SCORE + ply_from_root);
-    beta = cmp::min(beta, MATE_SCORE - ply_from_root);
+    alpha = max(alpha, -MATE_SCORE + ply_from_root);
+    beta = min(beta, MATE_SCORE - ply_from_root);
     if alpha >= beta {
         return alpha;
     }
@@ -96,7 +96,7 @@ fn alpha_beta_search(
         for i in 0..KILLER_MOVE_PLY_SIZE {
             if mov.last_move == killer_moves[ply_from_root as usize][i] {
                 // if this move has a higher heuristic value already, we don't want to overwrite it
-                mov.order_heuristic = cmp::max(KILLER_MOVE_SCORE, mov.order_heuristic);
+                mov.order_heuristic = max(KILLER_MOVE_SCORE, mov.order_heuristic);
             }
         }
     }
@@ -123,7 +123,7 @@ fn alpha_beta_search(
             return beta;
         }
 
-        alpha = cmp::max(alpha, evaluation);
+        alpha = max(alpha, evaluation);
     }
 
     alpha
@@ -165,14 +165,14 @@ pub fn get_best_move(board: &BoardState, depth: u8) -> Option<BoardState> {
                 mov.last_move.unwrap().1.to_string()
             );
             best_move = Some(mov);
-            println!(
+            send_to_gui(format!(
                 "info pv {} depth {} nodes {} score cp {} time {}",
                 ponder_move,
                 depth,
                 nodes_searched,
                 evaluation,
                 Instant::now().duration_since(start).as_millis()
-            );
+            ));
         }
     }
 

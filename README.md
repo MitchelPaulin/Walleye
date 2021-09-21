@@ -40,7 +40,7 @@ Some resources and tools I found helpful when creating this engine.
 
 ## Issues
 
-If you find an issue with the engine please include the `walleye_log_{PID}.txt` file along with the report.
+If you find an issue with the engine please include the `walleye_{PID}.log` file along with the report. Usually found in the same directory the engine was invoked from.
 
 ## License
 

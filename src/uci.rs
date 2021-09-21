@@ -5,8 +5,8 @@ pub use crate::engine::*;
 pub use crate::move_generation::*;
 pub use crate::time_control::*;
 pub use crate::utils::*;
-use std::fs::File;
-use std::io::{self, BufRead, Write};
+use log::{error, info};
+use std::io::{self, BufRead};
 use std::process;
 
 const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
@@ -16,38 +16,36 @@ const BLACK_QUEEN_SIDE_CASTLE_STRING: &str = "e8c8";
 
 pub fn play_game_uci(search_depth: u8) {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
-    let log = File::create(format!("walleye_log_{}.txt", process::id()))
-        .expect("Could not create log file");
-    let buffer = read_from_gui(&log);
+    let buffer = read_from_gui();
     if buffer != "uci" {
-        log_error("Expected uci protocol but got ".to_string() + &buffer, &log);
+        error!("Expected uci protocol but got {}", buffer);
         return;
     }
 
-    send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION), &log);
-    send_to_gui(format!("id author {}", AUTHOR), &log);
-    send_to_gui("uciok".to_string(), &log);
+    send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION));
+    send_to_gui(format!("id author {}", AUTHOR));
+    send_to_gui("uciok".to_string());
 
     loop {
-        let buffer = read_from_gui(&log);
+        let buffer = read_from_gui();
         let commands: Vec<&str> = buffer.split(' ').collect();
 
         match commands[0] {
-            "isready" => send_to_gui("readyok".to_string(), &log),
+            "isready" => send_to_gui("readyok".to_string()),
             "ucinewgame" => (), // we don't keep any internal state really so no need to reset anything here
             "position" => {
-                board = play_out_position(commands, &log);
-                log_info(board.simple_board(), &log);
+                board = play_out_position(commands);
+                info!("{}", board.simple_board());
             }
             "go" => {
                 // todo, use this to control the search, need to make this multi threaded to accomplish this
                 let gt = parse_go_command(&commands);
                 let _ = gt.calculate_time_slice(board.to_move);
-                board = find_best_move(&board, search_depth, &log);
-                log_info(board.simple_board(), &log);
+                board = find_best_move(&board, search_depth);
+                info!("{}", board.simple_board());
             }
             "quit" => process::exit(1),
-            _ => log_error(format!("Unrecognized command: {}", buffer), &log),
+            _ => error!("Unrecognized command: {}", buffer),
         };
     }
 }
@@ -93,7 +91,7 @@ fn parse_go_command(commands: &[&str]) -> GameTime {
     gt
 }
 
-fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
+fn play_out_position(commands: Vec<&str>) -> BoardState {
     let mut board;
     if commands[1] == "fen" {
         let mut fen = "".to_string();
@@ -105,8 +103,8 @@ fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
         board = match BoardState::from_fen(&fen) {
             Ok(board) => board,
             Err(err) => {
-                log_error(err.to_string(), &log);
-                panic!("Got bad fen string, cant continue")
+                error!("{}", err);
+                panic!("Got bad fen string, cant continue");
             }
         };
     } else {
@@ -123,14 +121,14 @@ fn play_out_position(commands: Vec<&str>, log: &File) -> BoardState {
 
     if let Some(start_index) = moves_start_index {
         for mov in commands.iter().skip(start_index + 1) {
-            make_move(&mut board, *mov, &log);
+            make_move(&mut board, *mov);
         }
     }
 
     board
 }
 
-fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
+fn make_move(board: &mut BoardState, player_move: &str) {
     let start_pair: Point = (player_move[0..2]).parse().unwrap();
     let end_pair: Point = (player_move[2..4]).parse().unwrap();
 
@@ -175,10 +173,7 @@ fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
             'b' => Bishop,
             'r' => Rook,
             _ => {
-                log_error(
-                    "Could not recognize piece value, default to queen".to_string(),
-                    &log,
-                );
+                error!("Could not recognize piece value, default to queen");
                 Queen
             }
         };
@@ -215,48 +210,33 @@ fn make_move(board: &mut BoardState, player_move: &str, log: &File) {
     board.swap_color();
 }
 
-fn find_best_move(board: &BoardState, search_depth: u8, log: &File) -> BoardState {
+fn find_best_move(board: &BoardState, search_depth: u8) -> BoardState {
     let next_board = get_best_move(&board, search_depth).unwrap();
     let best_move = next_board.last_move.unwrap();
     if next_board.pawn_promotion.is_some() {
-        send_to_gui(
-            format!(
-                "bestmove {}{}{}",
-                best_move.0,
-                best_move.1,
-                next_board.pawn_promotion.unwrap().kind.alg()
-            ),
-            &log,
-        );
+        send_to_gui(format!(
+            "bestmove {}{}{}",
+            best_move.0,
+            best_move.1,
+            next_board.pawn_promotion.unwrap().kind.alg()
+        ));
     } else {
-        send_to_gui(format!("bestmove {}{}", best_move.0, best_move.1), &log);
+        send_to_gui(format!("bestmove {}{}", best_move.0, best_move.1));
     }
     next_board
 }
 
-fn log_info(message: String, mut log: &File) {
-    log.write_all(format!("<INFO> {}\n", message).as_bytes())
-        .expect("write failed");
-}
-
-fn log_error(message: String, mut log: &File) {
-    log.write_all(format!("<ERROR> {}\n", message).as_bytes())
-        .expect("write failed");
-}
-
-fn send_to_gui(message: String, mut log: &File) {
+pub fn send_to_gui(message: String) {
     println!("{}", message);
-    log.write_all(format!("ENGINE >> {}\n", message).as_bytes())
-        .expect("write failed");
+    info!("ENGINE >> {}", message);
 }
 
-fn read_from_gui(mut log: &File) -> String {
+pub fn read_from_gui() -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
     stdin.lock().read_line(&mut buffer).unwrap();
     buffer = clean_input(buffer);
-    log.write_all(format!("ENGINE << {}\n", buffer).as_bytes())
-        .expect("write failed");
+    info!("ENGINE << {}", buffer);
     buffer
 }
 
