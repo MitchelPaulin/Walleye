@@ -7,10 +7,10 @@ const NO_TIME: u128 = 0;
 
 pub struct GameTime {
     // all time is in ms unless otherwise specified
-    pub wtime: u128,
-    pub btime: u128,
-    pub winc: u128,
-    pub binc: u128,
+    pub wtime: i128,
+    pub btime: i128,
+    pub winc: i128,
+    pub binc: i128,
     pub movestogo: Option<usize>,
 }
 

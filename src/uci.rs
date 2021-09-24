@@ -8,13 +8,16 @@ pub use crate::utils::*;
 use log::{error, info};
 use std::io::{self, BufRead};
 use std::process;
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
 const WHITE_QUEEN_SIDE_CASTLE_STRING: &str = "e1c1";
 const BLACK_KING_SIDE_CASTLE_STRING: &str = "e8g8";
 const BLACK_QUEEN_SIDE_CASTLE_STRING: &str = "e8c8";
 
-pub fn play_game_uci(search_depth: u8) {
+pub fn play_game_uci() {
     let mut board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
     let buffer = read_from_gui();
     if buffer != "uci" {
@@ -38,10 +41,22 @@ pub fn play_game_uci(search_depth: u8) {
                 info!("{}", board.simple_board());
             }
             "go" => {
-                // todo, use this to control the search, need to make this multi threaded to accomplish this
+                let start = Instant::now();
                 let gt = parse_go_command(&commands);
-                let _ = gt.calculate_time_slice(board.to_move);
-                board = find_best_move(&board, search_depth);
+                let time_to_move = gt.calculate_time_slice(board.to_move);
+
+                let (tx, rx) = mpsc::channel();
+                let clone = board.clone();
+                thread::spawn(move || get_best_move(&clone, time_to_move, tx));
+
+                while Instant::now().duration_since(start).as_millis() < time_to_move {
+                    if let Ok(b) = rx.try_recv() {
+                        board = b;
+                    } else {
+                        thread::sleep(Duration::from_millis(1));
+                    }
+                }
+                send_best_move_to_gui(&board);
                 info!("{}", board.simple_board());
             }
             "quit" => process::exit(1),
@@ -210,20 +225,18 @@ fn make_move(board: &mut BoardState, player_move: &str) {
     board.swap_color();
 }
 
-fn find_best_move(board: &BoardState, search_depth: u8) -> BoardState {
-    let next_board = get_best_move(&board, search_depth).unwrap();
-    let best_move = next_board.last_move.unwrap();
-    if next_board.pawn_promotion.is_some() {
+fn send_best_move_to_gui(board: &BoardState) {
+    let best_move = board.last_move.unwrap();
+    if let Some(pawn_promotion) = board.pawn_promotion {
         send_to_gui(format!(
             "bestmove {}{}{}",
             best_move.0,
             best_move.1,
-            next_board.pawn_promotion.unwrap().kind.alg()
+            pawn_promotion.kind.alg()
         ));
     } else {
         send_to_gui(format!("bestmove {}{}", best_move.0, best_move.1));
     }
-    next_board
 }
 
 pub fn send_to_gui(message: String) {

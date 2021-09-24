@@ -94,9 +94,10 @@ fn main() {
 
     if matches.is_present("play self") {
         let simple_print = matches.is_present("simple print");
-        engine::play_game_against_self(&board, depth, 50, simple_print);
+        let max_moves = 100;
+        engine::play_game_against_self(&board, max_moves, depth, simple_print);
         return;
     }
 
-    uci::play_game_uci(depth);
+    uci::play_game_uci();
 }
