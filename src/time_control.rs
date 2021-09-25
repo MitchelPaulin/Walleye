@@ -43,7 +43,7 @@ impl GameTime {
     // Here we try to come up with some sort of sensible value for "moves
     // to go", if this value is not supplied.
     fn moves_to_go(&self) -> usize {
-        // If moves to go was supplied, then use this.
+        // Default to GAME_LENGTH moves if movestogo was not provided
         self.movestogo.unwrap_or(GAME_LENGTH)
     }
 }
