@@ -145,11 +145,7 @@ fn alpha_beta_search(
 /*
     Interface to the alpha_beta function, works very similarly but returns a board state at the end
 */
-pub fn get_best_move(
-    board: &BoardState,
-    time_to_move: u128,
-    tx: BoardSender,
-) -> Option<BoardState> {
+pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     let mut cur_depth = 1;
     let ply_from_root = 0;
     let start = Instant::now();
@@ -160,22 +156,16 @@ pub fn get_best_move(
     let mut pv_moves: PvMoveArray = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
-    for mov in &mut moves {
-        if mov.last_move == pv_moves[ply_from_root as usize] {
-            mov.order_heuristic = POS_INF;
-            break;
-        }
-    }
-    moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 
     while cur_depth < configs::MAX_DEPTH {
         let mut alpha = NEG_INF;
         let beta = POS_INF;
         let mut nodes_searched = 0;
+        moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
         for mov in &moves {
             // make an effort to exit once we are out of time
             if Instant::now().duration_since(start).as_millis() > time_to_move {
-                return best_move;
+                return;
             }
 
             let evaluation = -alpha_beta_search(
@@ -191,14 +181,17 @@ pub fn get_best_move(
 
             if evaluation > alpha {
                 alpha = evaluation;
+                best_move = Some(mov.clone());
+                pv_moves[ply_from_root as usize] = mov.last_move;
                 let mut ponder_move = "".to_string();
                 for mov in pv_moves {
                     if let Some(m) = mov {
                         ponder_move =
                             format!("{} {}{}", ponder_move, m.0.to_string(), m.1.to_string())
+                    } else {
+                        break;
                     }
                 }
-                best_move = Some(mov.clone());
                 send_to_gui(format!(
                     "info pv{} depth {} nodes {} score cp {} time {}",
                     ponder_move,
@@ -209,13 +202,17 @@ pub fn get_best_move(
                 ));
             }
         }
-        cur_depth += 1;
-        pv_moves[ply_from_root as usize] = best_move.clone().unwrap().last_move;
         if let Some(b) = best_move.clone() {
+            for mov in &mut moves {
+                if mov.last_move == b.last_move {
+                    mov.order_heuristic = POS_INF;
+                    break;
+                }
+            }
             tx.send(b).unwrap();
         }
+        cur_depth += 1;
     }
-    best_move
 }
 
 /*
@@ -234,12 +231,6 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
     let mut pv_moves: PvMoveArray = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
-    for mov in &mut moves {
-        if mov.last_move == pv_moves[ply_from_root as usize] {
-            mov.order_heuristic = POS_INF;
-            break;
-        }
-    }
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
 
     for mov in moves {
