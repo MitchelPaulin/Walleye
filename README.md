@@ -2,18 +2,16 @@
 
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
 
-Walleye is a UCI-compatible engine written using the classical alpha-beta style AI. It supports loading board positions from arbitrary FEN strings, Unicode pretty printing to the console, and utilizes quiescence search (capture extension) and MVV-LVA move ordering.
-
-Originally this project was meant as a first introduction to rust and chess programming, but it got a bit carried away.
+Walleye is a UCI-compatible chess engine written using the classic alpha-beta style AI.
 
 ## Example Usage
 
 By default, the engine launches in UCI mode and expects to be loaded into a chess GUI. \
-However, you can also run some commands from the terminal, such as `-P` to watch the engine play against itself or `-T` to benchmark move generation and evaluation. 
+However, you can run some commands from the terminal, such as `-P` to watch the engine play against itself or `-T` to benchmark move generation and evaluation. 
 
 
 ```sh
-# helpful when profiling, will also accept a FEN string
+# helpful when profiling, will accept a FEN string
 ./walleye -T --depth=5
 ```
 
@@ -28,7 +26,43 @@ Use `./walleye --help` for a complete list of commands.
 
 ## Play Against It
 
-The engine should be able to be loaded into any chess GUI that supports UCI, at this time though it has only been tested with [Cute Chess](https://cutechess.com/). It is recommended you compile the engine with the `--release` option for the best performance.
+The engine should work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/). It is recommended you compile the engine with `--release` for the best performance.
+
+## About
+
+### Board
+- Square Centric 12x12 Array
+
+Extra board squares are sentinel squares to make boundary checking easier.
+
+### Search
+- Alpha-Beta Pruning
+- Iterative Deepening
+- Capture Extension
+- Killer Moves
+- MVV-LVA
+
+### Evaluation
+- Piece Value
+- Piece Square Table
+
+### Other
+- Terminal based games with unicode chess boards
+- Robust logging
+
+## Tests
+
+Walleye comes with a suite of unit tests and [perft tests](https://www.chessprogramming.org/Perft_Results). It has been verified on a variety of positions to around depth 5.
+
+```sh
+# run perft tests
+cargo test perft
+```
+
+```sh
+# run all tests
+cargo test
+```
 
 ## Resources
 
@@ -44,4 +78,4 @@ If you find an issue with the engine please include the `walleye_{PID}.log` file
 
 ## License
 
-Walleye is under the MIT license.
+Walleye is under the [MIT license](./LICENSE).
