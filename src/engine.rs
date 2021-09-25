@@ -11,8 +11,8 @@ const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
 const NEG_INF: i32 = -POS_INF;
 /*
-we want killer moves to be ordered behind all captures, but still ahead of other moves
-so pick a very negative value but still larger than i32::Min
+    We want killer moves to be ordered behind all captures, but still ahead of other moves
+    so pick a very negative value but still larger than i32::Min
 */
 const KILLER_MOVE_SCORE: i32 = i32::MIN + 1;
 const KILLER_MOVE_PLY_SIZE: usize = 2;
@@ -22,6 +22,10 @@ type KillerMoveArray =
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
 type PvMoveArray = [Option<(Point, Point)>; configs::MAX_DEPTH as usize];
 
+/*
+    Capture extension, only search captures from here on to
+    find a "quite" position
+*/
 fn quiesce(
     board: &BoardState,
     mut alpha: i32,
@@ -56,7 +60,7 @@ fn quiesce(
 }
 
 /*
-    Run a standard alpha beta search to try and find the best move searching up to 'depth'
+    Run a standard alpha beta search to try and find the best move
     Orders moves by piece value to attempt to improve search efficiency
 */
 fn alpha_beta_search(
@@ -125,11 +129,7 @@ fn alpha_beta_search(
 
         if evaluation >= beta {
             // beta cutoff, store the move for the "killer move" heuristic
-            let ply = ply_from_root as usize;
-            for i in 0..(KILLER_MOVE_PLY_SIZE - 1) {
-                killer_moves[ply][i + 1] = killer_moves[ply][i];
-            }
-            killer_moves[ply][0] = mov.last_move;
+            insert_killer_move(killer_moves, ply_from_root, &mov);
             return beta;
         }
 
@@ -143,7 +143,20 @@ fn alpha_beta_search(
 }
 
 /*
+    Insert a killer move into the killer move array
+    Shifts all killer moves down by one and puts the next killer move at the front
+*/
+fn insert_killer_move(killer_moves: &mut KillerMoveArray, ply_from_root: i32, mov: &BoardState) {
+    let ply = ply_from_root as usize;
+    for i in 0..(KILLER_MOVE_PLY_SIZE - 1) {
+        killer_moves[ply][i + 1] = killer_moves[ply][i];
+    }
+    killer_moves[ply][0] = mov.last_move;
+}
+
+/*
     Interface to the alpha_beta function, works very similarly but returns a board state at the end
+    and also operates with a channel to send the best board state found so far
 */
 pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     let mut cur_depth = 1;
@@ -151,9 +164,9 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     let start = Instant::now();
     let mut best_move: Option<BoardState> = None;
 
-    // assume we have a max depth of 100, moves are accessed via [ply][slot]
-    let mut killer_moves: KillerMoveArray = [[None; KILLER_MOVE_PLY_SIZE]; 100];
-    let mut pv_moves: PvMoveArray = [None; configs::MAX_DEPTH as usize];
+    // moves are accessed via [ply][slot]
+    let mut killer_moves = [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
+    let mut pv_moves = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
 
@@ -199,6 +212,9 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     }
 }
 
+/*
+    Send information about the current search status to the GUI
+*/
 fn send_search_info(
     pv_moves: &PvMoveArray,
     depth: u8,
@@ -235,9 +251,8 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
     let mut nodes_searched = 0;
 
     // moves are accessed via [ply][slot]
-    let mut killer_moves: KillerMoveArray =
-        [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
-    let mut pv_moves: PvMoveArray = [None; configs::MAX_DEPTH as usize];
+    let mut killer_moves = [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
+    let mut pv_moves = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
