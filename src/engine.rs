@@ -183,23 +183,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
                 alpha = evaluation;
                 best_move = Some(mov.clone());
                 pv_moves[ply_from_root as usize] = mov.last_move;
-                let mut ponder_move = "".to_string();
-                for mov in pv_moves {
-                    if let Some(m) = mov {
-                        ponder_move =
-                            format!("{} {}{}", ponder_move, m.0.to_string(), m.1.to_string())
-                    } else {
-                        break;
-                    }
-                }
-                send_to_gui(format!(
-                    "info pv{} depth {} nodes {} score cp {} time {}",
-                    ponder_move,
-                    cur_depth,
-                    nodes_searched,
-                    evaluation,
-                    Instant::now().duration_since(start).as_millis()
-                ));
+                send_search_info(&pv_moves, cur_depth, nodes_searched, evaluation, start);
             }
         }
         if let Some(b) = best_move.clone() {
@@ -213,6 +197,31 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
         }
         cur_depth += 1;
     }
+}
+
+fn send_search_info(
+    pv_moves: &PvMoveArray,
+    depth: u8,
+    nodes_searched: u32,
+    eval: i32,
+    start: Instant,
+) {
+    let mut ponder_move = "".to_string();
+    for mov in pv_moves {
+        if let Some(m) = mov {
+            ponder_move = format!("{} {}{}", ponder_move, m.0.to_string(), m.1.to_string())
+        } else {
+            break;
+        }
+    }
+    send_to_gui(format!(
+        "info pv{} depth {} nodes {} score cp {} time {}",
+        ponder_move,
+        depth,
+        nodes_searched,
+        eval,
+        Instant::now().duration_since(start).as_millis()
+    ));
 }
 
 /*
