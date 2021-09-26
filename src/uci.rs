@@ -27,6 +27,9 @@ pub fn play_game_uci() {
 
     send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION));
     send_to_gui(format!("id author {}", AUTHOR));
+    send_to_gui(format!(
+        "option name DebugLogLevel type combo default None var Info var None"
+    ));
     send_to_gui("uciok".to_string());
 
     loop {
@@ -58,6 +61,15 @@ pub fn play_game_uci() {
                 }
                 send_best_move_to_gui(&board);
                 info!("{}", board.simple_board());
+            }
+            "setoption" => {
+                if commands.contains(&"DebugLogLevel") && commands.contains(&"Info") {
+                    // set up logging
+                    let log_name = format!("walleye_{}.log", process::id());
+                    if simple_logging::log_to_file(log_name, log::LevelFilter::Info).is_err() {
+                        panic!("Something went wrong when trying to set up logs");
+                    };
+                }
             }
             "quit" => process::exit(1),
             _ => error!("Unrecognized command: {}", buffer),

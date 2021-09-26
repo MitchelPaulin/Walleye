@@ -26,7 +26,8 @@ Use `./walleye --help` for a complete list of commands.
 
 ## Play Against It
 
-The engine should work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/). It is recommended you compile the engine with `--release` for the best performance.
+The engine should work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/). 
+It is recommended you compile the engine with `--release` for the best performance.
 
 ## About
 
@@ -52,7 +53,8 @@ Extra board squares are sentinel squares to make boundary checking easier.
 
 ## Tests
 
-Walleye comes with a suite of unit tests and [perft tests](https://www.chessprogramming.org/Perft_Results). It has been verified on a variety of positions to around depth 5.
+Walleye comes with a suite of unit tests and [perft tests](https://www.chessprogramming.org/Perft_Results). 
+It has been verified on a variety of positions to around depth 5.
 
 ```sh
 # run perft tests
@@ -74,7 +76,7 @@ Some resources and tools I found helpful when creating this engine.
 
 ## Issues
 
-If you find an issue with the engine please include the `walleye_{PID}.log` file along with the report. Usually found in the same directory the engine was invoked from.
+If you find an issue with the engine please include the `walleye_{PID}.log` file along with the report, you can enable this by setting `DebugLogLevel` to `Info` in the UCI options.
 
 ## License
 
