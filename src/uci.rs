@@ -44,23 +44,7 @@ pub fn play_game_uci() {
                 info!("{}", board.simple_board());
             }
             "go" => {
-                let start = Instant::now();
-                let gt = parse_go_command(&commands);
-                let time_to_move = gt.calculate_time_slice(board.to_move);
-
-                let (tx, rx) = mpsc::channel();
-                let clone = board.clone();
-                thread::spawn(move || get_best_move(&clone, time_to_move, tx));
-
-                while Instant::now().duration_since(start).as_millis() < time_to_move {
-                    if let Ok(b) = rx.try_recv() {
-                        board = b;
-                    } else {
-                        thread::sleep(Duration::from_millis(1));
-                    }
-                }
-                send_best_move_to_gui(&board);
-                info!("{}", board.simple_board());
+                board = find_and_play_best_move(&commands, &mut board);
             }
             "setoption" => {
                 if commands.contains(&"DebugLogLevel") && commands.contains(&"Info") {
@@ -75,6 +59,33 @@ pub fn play_game_uci() {
             _ => error!("Unrecognized command: {}", buffer),
         };
     }
+}
+
+/*
+    Finds an plays the best move and sends it to UCI
+    Returns the new board state with the best move played
+*/
+fn find_and_play_best_move(commands: &[&str], board: &mut BoardState) -> BoardState {
+    let start = Instant::now();
+    let time_to_move = parse_go_command(&commands).calculate_time_slice(board.to_move);
+    let mut best_move = None;
+
+    let (tx, rx) = mpsc::channel();
+    let clone = board.clone();
+    thread::spawn(move || get_best_move(&clone, time_to_move, tx));
+    // keep looking until we are out of time
+    // also add a guard to ensure we at least get a move from the search thread
+    while Instant::now().duration_since(start).as_millis() < time_to_move || best_move.is_none() {
+        if let Ok(b) = rx.try_recv() {
+            best_move = Some(b);
+        } else {
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+    let board = best_move.unwrap();
+    send_best_move_to_gui(&board);
+    info!("{}", board.simple_board());
+    board
 }
 
 // parse the go command and get relevant info about the current game time

@@ -178,6 +178,11 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
         for mov in &moves {
             // make an effort to exit once we are out of time
             if Instant::now().duration_since(start).as_millis() > time_to_move {
+                // if we have not found a move to send back, send back the best move as determined by the order_heuristic
+                // this can happen on very short time control situations
+                if best_move.is_none() {
+                    tx.send(moves[0].clone()).unwrap();
+                }
                 return;
             }
 
