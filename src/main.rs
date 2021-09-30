@@ -75,12 +75,14 @@ fn main() {
         let mut moves_states = [0; 15];
         let start = Instant::now();
         move_generation::generate_moves_test(&board, 0, depth as usize, &mut moves_states, true);
+        let time_to_run = Instant::now().duration_since(start).as_secs() as u32;
         let nodes: u32 = moves_states.iter().sum();
         println!(
-            "Searched to a depth of {} and evaluated {} nodes in {:?}",
+            "Searched to a depth of {} and evaluated {} nodes in {}s for a total speed of {} nps",
             depth,
             nodes,
-            Instant::now().duration_since(start)
+            time_to_run,
+            nodes / time_to_run
         );
         return;
     }
