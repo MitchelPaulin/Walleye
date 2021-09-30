@@ -27,9 +27,7 @@ pub fn play_game_uci() {
 
     send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION));
     send_to_gui(format!("id author {}", AUTHOR));
-    send_to_gui(format!(
-        "option name DebugLogLevel type combo default None var Info var None"
-    ));
+    send_to_gui("option name DebugLogLevel type combo default None var Info var None".to_string());
     send_to_gui("uciok".to_string());
 
     loop {

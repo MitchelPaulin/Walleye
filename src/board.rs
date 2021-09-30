@@ -280,7 +280,7 @@ impl fmt::Display for Point {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct BoardState {
     pub board: [[Square; 12]; 12],
     pub to_move: PieceColor,
