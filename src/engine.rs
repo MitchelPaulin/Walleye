@@ -20,7 +20,7 @@ type KillerMoveArray =
     [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
-type PvMoveArray = [Option<(Point, Point)>; configs::MAX_DEPTH as usize];
+type MoveArray = [Option<(Point, Point)>; configs::MAX_DEPTH as usize];
 
 /*
     Capture extension, only search captures from here on to
@@ -70,7 +70,8 @@ fn alpha_beta_search(
     mut alpha: i32,
     mut beta: i32,
     killer_moves: &mut KillerMoveArray,
-    pv_moves: &mut PvMoveArray,
+    pv_moves: &mut MoveArray,
+    cur_line: &mut MoveArray,
     nodes_searched: &mut u32,
 ) -> i32 {
     *nodes_searched += 1;
@@ -124,8 +125,11 @@ fn alpha_beta_search(
             -alpha,
             killer_moves,
             pv_moves,
+            cur_line,
             nodes_searched,
         );
+
+        cur_line[ply_from_root as usize] = mov.last_move;
 
         if evaluation >= beta {
             // beta cutoff, store the move for the "killer move" heuristic
@@ -134,7 +138,8 @@ fn alpha_beta_search(
         }
 
         if evaluation > alpha {
-            pv_moves[ply_from_root as usize] = mov.last_move;
+            //alpha raised, remember this line as the pv
+            pv_moves.clone_from_slice(cur_line);
             alpha = evaluation;
         }
     }
@@ -167,6 +172,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     // moves are accessed via [ply][slot]
     let mut killer_moves = [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
     let mut pv_moves = [None; configs::MAX_DEPTH as usize];
+    let mut current_line = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
 
@@ -181,7 +187,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
                 // if we have not found a move to send back, send back the best move as determined by the order_heuristic
                 // this can happen on very short time control situations
                 if best_move.is_none() {
-                    tx.send(moves[0].clone()).unwrap();
+                    tx.send(moves[0]).unwrap();
                 }
                 return;
             }
@@ -194,24 +200,29 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
                 -alpha,
                 &mut killer_moves,
                 &mut pv_moves,
+                &mut current_line,
                 &mut nodes_searched,
             );
 
+            current_line[ply_from_root as usize] = mov.last_move;
+
             if evaluation > alpha {
+                //alpha raised, remember this line as the pv
                 alpha = evaluation;
-                best_move = Some(mov.clone());
-                pv_moves[ply_from_root as usize] = mov.last_move;
+                best_move = Some(*mov);
+                tx.send(*mov).unwrap();
+                pv_moves.clone_from_slice(&current_line);
                 send_search_info(&pv_moves, cur_depth, nodes_searched, evaluation, start);
             }
         }
-        if let Some(b) = best_move.clone() {
+        moves = generate_moves(board, MoveGenerationMode::AllMoves);
+        if let Some(b) = best_move {
             for mov in &mut moves {
                 if mov.last_move == b.last_move {
                     mov.order_heuristic = POS_INF;
                     break;
                 }
             }
-            tx.send(b).unwrap();
         }
         cur_depth += 1;
     }
@@ -221,7 +232,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     Send information about the current search status to the GUI
 */
 fn send_search_info(
-    pv_moves: &PvMoveArray,
+    pv_moves: &MoveArray,
     depth: u8,
     nodes_searched: u32,
     eval: i32,
@@ -258,6 +269,7 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
     // moves are accessed via [ply][slot]
     let mut killer_moves = [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
     let mut pv_moves = [None; configs::MAX_DEPTH as usize];
+    let mut current_line = [None; configs::MAX_DEPTH as usize];
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
@@ -271,6 +283,7 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
             -alpha,
             &mut killer_moves,
             &mut pv_moves,
+            &mut current_line,
             &mut nodes_searched,
         );
 
