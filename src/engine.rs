@@ -20,7 +20,7 @@ const NEG_INF: i32 = -POS_INF;
 
     For this reason we give killer moves a zero, or the same as capturing a piece with a piece of the same value
 */
-const KILLER_MOVE_SCORE: i32 = 0;
+const KILLER_MOVE_SCORE: i32 = -999999;
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
 
@@ -106,8 +106,7 @@ fn alpha_beta_search(
         } else {
             for i in 0..KILLER_MOVE_PLY_SIZE {
                 if mov.last_move == search_info.killer_moves[ply_from_root as usize][i] {
-                    // if this move has a higher heuristic value already, we don't want to overwrite it
-                    mov.order_heuristic = max(KILLER_MOVE_SCORE, mov.order_heuristic);
+                    mov.order_heuristic = KILLER_MOVE_SCORE;
                 }
             }
         }
@@ -127,8 +126,10 @@ fn alpha_beta_search(
         search_info.insert_into_cur_line(ply_from_root, &mov);
 
         if evaluation >= beta {
-            // beta cutoff, store the move for the "killer move" heuristic
-            search_info.insert_killer_move(ply_from_root, &mov);
+            // beta cutoff, store the move for the "killer move" heuristic, only if the move was not a capture
+            if mov.order_heuristic == i32::MIN {
+                search_info.insert_killer_move(ply_from_root, &mov);
+            }
             return beta;
         }
 
