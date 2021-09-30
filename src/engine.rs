@@ -12,10 +12,15 @@ const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
 const NEG_INF: i32 = -POS_INF;
 /*
-    We want killer moves to be ordered behind all captures, but still ahead of other moves
-    so pick a very negative value but still larger than i32::Min
+    We want killer moves to be ordered behind all "good" captures, but still ahead of other moves
+    For our purposes a good capture is capturing any with a piece of lower value
+
+    Ex: capturing a pawn with a queen is a "bad" capture
+        capturing a queen with a pawn is a "good" capture
+
+    For this reason we give killer moves a zero, or the same as capturing a piece with a piece of the same value
 */
-const KILLER_MOVE_SCORE: i32 = i32::MIN + 1;
+const KILLER_MOVE_SCORE: i32 = 0;
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
 
@@ -27,7 +32,7 @@ fn quiesce(
     board: &BoardState,
     mut alpha: i32,
     beta: i32,
-    depth: u32,
+    depth: u8,
     search_info: &mut Search
 ) -> i32 {
     search_info.node_searched();
@@ -71,8 +76,7 @@ fn alpha_beta_search(
     search_info.node_searched();
 
     if depth == 0 {
-        // look 10 captures into the future
-        return quiesce(board, alpha, beta, 10, search_info);
+        return quiesce(board, alpha, beta, 20, search_info);
     }
 
     // Skip this position if a mating sequence has already been found earlier in
@@ -155,7 +159,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
     while cur_depth < configs::MAX_DEPTH {
         let mut alpha = NEG_INF;
         let beta = POS_INF;
-        search_info.nodes_searched = 0;
+        search_info.reset_search();
         moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
         for mov in &moves {
             // make an effort to exit once we are out of time

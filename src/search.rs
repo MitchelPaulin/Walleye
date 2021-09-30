@@ -45,4 +45,10 @@ impl Search {
     pub fn set_principle_variation(&mut self) {
         self.pv_moves.clone_from_slice(&self.cur_line);
     }
+
+    // reset the required data to search the next depth
+    pub fn reset_search(&mut self) {
+        self.nodes_searched = 0;
+        self.cur_line = [None; configs::MAX_DEPTH as usize];
+    }
 }
