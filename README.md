@@ -42,9 +42,9 @@ Extra board squares are sentinel squares to make boundary checking easier.
 - Capture Extension
 - Killer Moves
 - MVV-LVA
+- PV Search
 
 ### Evaluation
-- Piece Value
 - Piece Square Table
 
 ### Other
