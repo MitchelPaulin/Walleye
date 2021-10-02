@@ -10,7 +10,7 @@ use std::io::{self, BufRead};
 use std::process;
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
 const WHITE_QUEEN_SIDE_CASTLE_STRING: &str = "e1c1";
@@ -32,6 +32,7 @@ pub fn play_game_uci() {
 
     loop {
         let buffer = read_from_gui();
+        let start = Instant::now();
         let commands: Vec<&str> = buffer.split(' ').collect();
 
         match commands[0] {
@@ -42,7 +43,7 @@ pub fn play_game_uci() {
                 info!("{}", board.simple_board());
             }
             "go" => {
-                board = find_and_play_best_move(&commands, &mut board);
+                board = find_and_play_best_move(&commands, &mut board, start);
             }
             "setoption" => {
                 if commands.contains(&"DebugLogLevel") && commands.contains(&"Info") {
@@ -63,8 +64,11 @@ pub fn play_game_uci() {
     Finds an plays the best move and sends it to UCI
     Returns the new board state with the best move played
 */
-fn find_and_play_best_move(commands: &[&str], board: &mut BoardState) -> BoardState {
-    let start = Instant::now();
+fn find_and_play_best_move(
+    commands: &[&str],
+    board: &mut BoardState,
+    start: Instant,
+) -> BoardState {
     let time_to_move = parse_go_command(&commands).calculate_time_slice(board.to_move);
     let mut best_move = None;
 
@@ -76,8 +80,6 @@ fn find_and_play_best_move(commands: &[&str], board: &mut BoardState) -> BoardSt
     while Instant::now().duration_since(start).as_millis() < time_to_move || best_move.is_none() {
         if let Ok(b) = rx.try_recv() {
             best_move = Some(b);
-        } else {
-            thread::sleep(Duration::from_millis(1));
         }
     }
     let board = best_move.unwrap();
