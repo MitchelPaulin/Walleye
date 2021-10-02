@@ -1,9 +1,9 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::configs;
-pub use crate::search::{{Search, KILLER_MOVE_PLY_SIZE}};
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
+pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE};
 pub use crate::uci::send_to_gui;
 use std::cmp::{max, min, Reverse};
 use std::time::Instant;
@@ -33,7 +33,7 @@ fn quiesce(
     mut alpha: i32,
     beta: i32,
     depth: u8,
-    search_info: &mut Search
+    search_info: &mut Search,
 ) -> i32 {
     search_info.node_searched();
     let stand_pat = get_evaluation(board);
@@ -71,7 +71,7 @@ fn alpha_beta_search(
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
-    search_info: &mut Search
+    search_info: &mut Search,
 ) -> i32 {
     search_info.node_searched();
 
@@ -120,7 +120,7 @@ fn alpha_beta_search(
             ply_from_root + 1,
             -beta,
             -alpha,
-            search_info
+            search_info,
         );
 
         search_info.insert_into_cur_line(ply_from_root, &mov);
@@ -179,7 +179,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
                 ply_from_root + 1,
                 -beta,
                 -alpha,
-                &mut search_info
+                &mut search_info,
             );
 
             search_info.insert_into_cur_line(ply_from_root, &mov);
@@ -209,12 +209,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
 /*
     Send information about the current search status to the GUI
 */
-fn send_search_info(
-    search_info: &Search,
-    depth: u8,
-    eval: i32,
-    start: Instant,
-) {
+fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) {
     let mut ponder_move = "".to_string();
     for mov in search_info.pv_moves {
         if let Some(m) = mov {
@@ -254,7 +249,7 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
             ply_from_root + 1,
             -beta,
             -alpha,
-            &mut search_info
+            &mut search_info,
         );
 
         if evaluation > alpha {

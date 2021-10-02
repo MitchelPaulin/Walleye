@@ -15,7 +15,7 @@ fn main() {
     let matches = App::new(configs::ENGINE_NAME)
         .version(configs::VERSION)
         .author(configs::AUTHOR)
-        .about("Plays Chess (Sometimes well)")
+        .about("Plays Chess - Sometimes well")
         .arg(
             Arg::with_name("fen")
                 .short("f")

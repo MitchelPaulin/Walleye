@@ -129,6 +129,9 @@ fn parse_go_command(commands: &[&str]) -> GameTime {
     gt
 }
 
+/*
+    From the provided fen string set up the board state
+*/
 fn play_out_position(commands: Vec<&str>) -> BoardState {
     let mut board;
     if commands[1] == "fen" {
@@ -166,6 +169,9 @@ fn play_out_position(commands: Vec<&str>) -> BoardState {
     board
 }
 
+/*
+    Play the opponents move on the board
+*/
 fn make_move(board: &mut BoardState, player_move: &str) {
     let start_pair: Point = (player_move[0..2]).parse().unwrap();
     let end_pair: Point = (player_move[2..4]).parse().unwrap();

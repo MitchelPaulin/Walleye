@@ -541,7 +541,7 @@ fn can_castle_black_queen_side(board: &BoardState) -> bool {
 }
 
 /*
-    Given the coordinates of a piece and that pieces color, generate all possible pseudo *legal* moves for that piece
+    Given the coordinates of a piece and that pieces color, generate all possible pseudo-legal moves for that piece
 */
 fn generate_move_for_piece(
     piece: Piece,

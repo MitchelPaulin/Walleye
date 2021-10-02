@@ -254,7 +254,6 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
     (mg_score * mg_phase + eg_score * eg_phase) / 24
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
