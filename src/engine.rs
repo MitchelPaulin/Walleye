@@ -28,18 +28,9 @@ type BoardSender = std::sync::mpsc::Sender<BoardState>;
     Capture extension, only search captures from here on to
     find a "quite" position
 */
-fn quiesce(
-    board: &BoardState,
-    mut alpha: i32,
-    beta: i32,
-    depth: u8,
-    search_info: &mut Search,
-) -> i32 {
+fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, search_info: &mut Search) -> i32 {
     search_info.node_searched();
     let stand_pat = get_evaluation(board);
-    if depth == 0 {
-        return stand_pat;
-    }
     if stand_pat >= beta {
         return beta;
     }
@@ -50,7 +41,7 @@ fn quiesce(
     let mut moves = generate_moves(board, MoveGenerationMode::CapturesOnly);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     for mov in moves {
-        let score = -quiesce(&mov, -beta, -alpha, depth - 1, search_info);
+        let score = -quiesce(&mov, -beta, -alpha, search_info);
         if score >= beta {
             return beta;
         }
@@ -76,7 +67,7 @@ fn alpha_beta_search(
     search_info.node_searched();
 
     if depth == 0 {
-        return quiesce(board, alpha, beta, 20, search_info);
+        return quiesce(board, alpha, beta, search_info);
     }
 
     // Skip this position if a mating sequence has already been found earlier in
