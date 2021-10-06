@@ -67,8 +67,8 @@ pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> 
 */
 pub fn is_check(board: &BoardState, color: PieceColor) -> bool {
     match color {
-        Black => is_check_cords(board, Black, board.black_king_location),
         White => is_check_cords(board, White, board.white_king_location),
+        Black => is_check_cords(board, Black, board.black_king_location),
     }
 }
 
@@ -83,9 +83,9 @@ fn knight_moves(
     moves: &mut Vec<Point>,
     move_generation_mode: MoveGenerationMode,
 ) {
-    for mods in &KNIGHT_CORDS {
-        let row = (row as i8 + mods.0) as usize;
-        let col = (col as i8 + mods.1) as usize;
+    for (r, c) in &KNIGHT_CORDS {
+        let row = (row as i8 + r) as usize;
+        let col = (col as i8 + c) as usize;
         let square = board.board[row][col];
 
         if move_generation_mode == MoveGenerationMode::CapturesOnly {
@@ -173,27 +173,27 @@ fn pawn_moves_en_passant(
     col: usize,
     board: &BoardState,
 ) -> Option<Point> {
-    board.pawn_double_move?;
+    if let Some(double_moved_pawn) = board.pawn_double_move {
+        let left_cap;
+        let right_cap;
 
-    let left_cap;
-    let right_cap;
-
-    match piece.color {
-        White if row == BOARD_START + 3 => {
-            left_cap = Point(row - 1, col - 1);
-            right_cap = Point(row - 1, col + 1);
+        match piece.color {
+            White if row == BOARD_START + 3 => {
+                left_cap = Point(row - 1, col - 1);
+                right_cap = Point(row - 1, col + 1);
+            }
+            Black if row == BOARD_START + 4 => {
+                left_cap = Point(row + 1, col + 1);
+                right_cap = Point(row + 1, col - 1);
+            }
+            _ => return None,
         }
-        Black if row == BOARD_START + 4 => {
-            left_cap = Point(row + 1, col + 1);
-            right_cap = Point(row + 1, col - 1);
-        }
-        _ => return None,
-    }
 
-    if left_cap == board.pawn_double_move.unwrap() {
-        return Some(left_cap);
-    } else if right_cap == board.pawn_double_move.unwrap() {
-        return Some(right_cap);
+        if left_cap == double_moved_pawn {
+            return Some(left_cap);
+        } else if right_cap == double_moved_pawn {
+            return Some(right_cap);
+        }
     }
 
     None
@@ -238,16 +238,16 @@ fn rook_moves(
     moves: &mut Vec<Point>,
     move_generation_mode: MoveGenerationMode,
 ) {
-    for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
-        let mut row = row as i8 + m.0;
-        let mut col = col as i8 + m.1;
+    for (r, c) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+        let mut row = row as i8 + r;
+        let mut col = col as i8 + c;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
             if move_generation_mode == MoveGenerationMode::AllMoves {
                 moves.push(Point(row as usize, col as usize));
             }
-            row += m.0;
-            col += m.1;
+            row += r;
+            col += c;
             square = board.board[row as usize][col as usize];
         }
 
@@ -268,16 +268,16 @@ fn bishop_moves(
     moves: &mut Vec<Point>,
     move_generation_mode: MoveGenerationMode,
 ) {
-    for m in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
-        let mut row = row as i8 + m.0;
-        let mut col = col as i8 + m.1;
+    for (r, c) in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
+        let mut row = row as i8 + r;
+        let mut col = col as i8 + c;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
             if move_generation_mode == MoveGenerationMode::AllMoves {
                 moves.push(Point(row as usize, col as usize));
             }
-            row += m.0;
-            col += m.1;
+            row += r;
+            col += c;
             square = board.board[row as usize][col as usize];
         }
 
@@ -340,13 +340,13 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     let attacking_pawn = Piece::pawn(attacking_color);
 
     // Check from rook or queen
-    for m in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
-        let mut row = square_cords.0 as i8 + m.0;
-        let mut col = square_cords.1 as i8 + m.1;
+    for (r, c) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+        let mut row = square_cords.0 as i8 + r;
+        let mut col = square_cords.1 as i8 + c;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
-            row += m.0;
-            col += m.1;
+            row += r;
+            col += c;
             square = board.board[row as usize][col as usize];
         }
 
@@ -356,13 +356,13 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from bishop or queen
-    for m in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
-        let mut row = square_cords.0 as i8 + m.0;
-        let mut col = square_cords.1 as i8 + m.1;
+    for (r, c) in &[(1, -1), (1, 1), (-1, 1), (-1, -1)] {
+        let mut row = square_cords.0 as i8 + r;
+        let mut col = square_cords.1 as i8 + c;
         let mut square = board.board[row as usize][col as usize];
         while square.is_empty() {
-            row += m.0;
-            col += m.1;
+            row += r;
+            col += c;
             square = board.board[row as usize][col as usize];
         }
 
@@ -372,9 +372,9 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from knight
-    for mods in &KNIGHT_CORDS {
-        let row = (square_cords.0 as i8 + mods.0) as usize;
-        let col = (square_cords.1 as i8 + mods.1) as usize;
+    for (r, c) in &KNIGHT_CORDS {
+        let row = (square_cords.0 as i8 + r) as usize;
+        let col = (square_cords.1 as i8 + c) as usize;
         let square = board.board[row][col];
 
         if square == attacking_knight {
@@ -396,13 +396,8 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
 
     // Check from king
     // By using the king location here we can just check if they are within one square of each other
-    if (board.black_king_location.0 as i8 - board.white_king_location.0 as i8).abs() <= 1
+    (board.black_king_location.0 as i8 - board.white_king_location.0 as i8).abs() <= 1
         && (board.black_king_location.1 as i8 - board.white_king_location.1 as i8).abs() <= 1
-    {
-        return true;
-    }
-
-    false
 }
 
 /*
