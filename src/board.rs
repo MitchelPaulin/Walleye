@@ -37,7 +37,7 @@ impl Square {
 
     // Check if this square is empty
     pub fn is_empty(&self) -> bool {
-        matches!(self, Square::Empty)
+        *self == Square::Empty
     }
 
     //p Check if a square is a certain color, return false if empty

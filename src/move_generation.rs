@@ -44,7 +44,7 @@ pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> 
         for j in BOARD_START..BOARD_END {
             if let Square::Full(piece) = board.board[i][j] {
                 if piece.color == board.to_move {
-                    generate_move_for_piece(
+                    generate_moves_for_piece(
                         piece,
                         board,
                         Point(i, j),
@@ -307,21 +307,20 @@ fn queen_moves(
     This will not generate en passants and castling, these cases are handled separately
 */
 fn get_moves(
+    piece: Piece,
     row: usize,
     col: usize,
     board: &BoardState,
     moves: &mut Vec<Point>,
     move_generation_mode: MoveGenerationMode,
 ) {
-    if let Square::Full(piece) = board.board[row][col] {
-        match piece.kind {
-            Pawn => pawn_moves(piece, row, col, board, moves, move_generation_mode),
-            Rook => rook_moves(piece, row, col, board, moves, move_generation_mode),
-            Bishop => bishop_moves(piece, row, col, board, moves, move_generation_mode),
-            Knight => knight_moves(piece, row, col, board, moves, move_generation_mode),
-            King => king_moves(piece, row, col, board, moves, move_generation_mode),
-            Queen => queen_moves(piece, row, col, board, moves, move_generation_mode),
-        }
+    match piece.kind {
+        Pawn => pawn_moves(piece, row, col, board, moves, move_generation_mode),
+        Rook => rook_moves(piece, row, col, board, moves, move_generation_mode),
+        Bishop => bishop_moves(piece, row, col, board, moves, move_generation_mode),
+        Knight => knight_moves(piece, row, col, board, moves, move_generation_mode),
+        King => king_moves(piece, row, col, board, moves, move_generation_mode),
+        Queen => queen_moves(piece, row, col, board, moves, move_generation_mode),
     }
 }
 
@@ -537,7 +536,7 @@ fn can_castle_black_queen_side(board: &BoardState) -> bool {
 /*
     Given the coordinates of a piece and that pieces color, generate all possible pseudo-legal moves for that piece
 */
-fn generate_move_for_piece(
+fn generate_moves_for_piece(
     piece: Piece,
     board: &BoardState,
     square_cords: Point,
@@ -547,6 +546,7 @@ fn generate_move_for_piece(
     let mut moves: Vec<Point> = Vec::new();
     let Piece { color, kind } = piece;
     get_moves(
+        piece,
         square_cords.0,
         square_cords.1,
         &board,
