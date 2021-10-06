@@ -338,7 +338,6 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     let attacking_queen = Piece::queen(attacking_color);
     let attacking_bishop = Piece::bishop(attacking_color);
     let attacking_knight = Piece::knight(attacking_color);
-    let attacking_king = Piece::king(attacking_color);
     let attacking_pawn = Piece::pawn(attacking_color);
 
     // Check from rook or queen
@@ -397,16 +396,11 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     }
 
     // Check from king
-    for i in 0..3 {
-        let row = square_cords.0 + i - 1;
-        for j in 0..3 {
-            let col = square_cords.1 + j - 1;
-            let square = board.board[row][col];
-
-            if square == attacking_king {
-                return true;
-            }
-        }
+    // By using the king location here we can just check if they are within one square of each other
+    if (board.black_king_location.0 as i8 - board.white_king_location.0 as i8).abs() <= 1
+        && (board.black_king_location.1 as i8 - board.white_king_location.1 as i8).abs() <= 1
+    {
+        return true;
     }
 
     false
