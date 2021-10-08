@@ -565,9 +565,11 @@ fn generate_moves_for_piece(
 
         let target_square = new_board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
-            // MMV-LVA score, see https://www.chessprogramming.org/MVV-LVA
+            // MVV-LVA score, see https://www.chessprogramming.org/MVV-LVA
+            // winning captures have a position value, losing captures have a negative value
             new_board.order_heuristic = target_piece.value() - piece.value();
         } else {
+            // by default all moves are given a minimum score
             new_board.order_heuristic = i32::MIN;
         }
 
@@ -731,6 +733,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
 
     This function assumes that the board state is a valid pawn promotion and does not do additional checks
 */
+const PAWN_PROMOTION_SCORE: i32 = 800; // queen value - pawn value
 fn promote_pawn(
     board: &BoardState,
     color: PieceColor,
@@ -745,6 +748,7 @@ fn promote_pawn(
         new_board.board[target.0][target.1] = Square::Full(promotion_piece);
         new_board.last_move = Some((start, target));
         new_board.pawn_promotion = Some(promotion_piece);
+        new_board.order_heuristic = PAWN_PROMOTION_SCORE; // a pawn promotion is usually a good idea
         moves.push(new_board);
     }
 }

@@ -18,9 +18,9 @@ const NEG_INF: i32 = -POS_INF;
     Ex: capturing a pawn with a queen is a "bad" capture
         capturing a queen with a pawn is a "good" capture
 
-    For this reason we give killer moves a zero, or the same as capturing a piece with a piece of the same value
+    For this reason we give killer moves a -1, or ranked slightly below equal captures
 */
-const KILLER_MOVE_SCORE: i32 = -999999;
+const KILLER_MOVE_SCORE: i32 = -1;
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
 
@@ -79,8 +79,12 @@ fn alpha_beta_search(
         return alpha;
     }
 
-    // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
-    if allow_null && depth >= 3 && !is_check(board, board.to_move) {
+    // // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
+    if allow_null
+        && depth >= 3
+        && board.last_move != search_info.pv_moves[ply_from_root as usize] // not a pv move
+        && !is_check(board, board.to_move)
+    {
         // allow this player to go again
         let mut b = board.clone();
         b.to_move = board.to_move.opposite();
