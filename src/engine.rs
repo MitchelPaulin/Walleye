@@ -63,6 +63,7 @@ fn alpha_beta_search(
     mut alpha: i32,
     mut beta: i32,
     search_info: &mut Search,
+    allow_null: bool,
 ) -> i32 {
     search_info.node_searched();
 
@@ -76,6 +77,28 @@ fn alpha_beta_search(
     beta = min(beta, MATE_SCORE - ply_from_root);
     if alpha >= beta {
         return alpha;
+    }
+
+    // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
+    if allow_null && depth >= 3 && !is_check(board, board.to_move) {
+        // allow this player to go again
+        let mut b = board.clone();
+        b.to_move = board.to_move.opposite();
+        const R: u8 = 2;
+        let eval = -alpha_beta_search(
+            &b,
+            depth - R - 1,
+            ply_from_root,
+            -beta,
+            -beta + 1,
+            search_info,
+            false,
+        );
+
+        if eval >= beta {
+            // null move prune
+            return beta;
+        }
     }
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
@@ -112,6 +135,7 @@ fn alpha_beta_search(
             -beta,
             -alpha,
             search_info,
+            true,
         );
 
         search_info.insert_into_cur_line(ply_from_root, &mov);
@@ -171,6 +195,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
                 -beta,
                 -alpha,
                 &mut search_info,
+                true,
             );
 
             search_info.insert_into_cur_line(ply_from_root, &mov);
@@ -241,6 +266,7 @@ pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardS
             -beta,
             -alpha,
             &mut search_info,
+            true,
         );
 
         if evaluation > alpha {
