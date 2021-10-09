@@ -79,7 +79,7 @@ fn alpha_beta_search(
         return alpha;
     }
 
-    // // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
+    // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
     if allow_null
         && depth >= 3
         && board.last_move != search_info.pv_moves[ply_from_root as usize] // not a pv move
@@ -131,16 +131,42 @@ fn alpha_beta_search(
     }
 
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
-    for mov in moves {
-        let evaluation = -alpha_beta_search(
-            &mov,
-            depth - 1,
-            ply_from_root + 1,
-            -beta,
-            -alpha,
-            search_info,
-            true,
-        );
+    // https://en.wikipedia.org/wiki/Principal_variation_search
+    for (i, mov) in moves.iter().enumerate() {
+        let mut evaluation;
+        if i == 0 {
+            evaluation = -alpha_beta_search(
+                &mov,
+                depth - 1,
+                ply_from_root + 1,
+                -beta,
+                -alpha,
+                search_info,
+                true,
+            );
+        } else {
+            evaluation = -alpha_beta_search(
+                &mov,
+                depth - 1,
+                ply_from_root + 1,
+                -alpha - 1, //search with a null window
+                -alpha,
+                search_info,
+                true,
+            );
+            // we got en eval outside out window, we need to redo a search
+            if alpha < evaluation && evaluation < beta {
+                evaluation = -alpha_beta_search(
+                    &mov,
+                    depth - 1,
+                    ply_from_root + 1,
+                    -beta,
+                    -evaluation,
+                    search_info,
+                    true,
+                );
+            }
+        }
 
         search_info.insert_into_cur_line(ply_from_root, &mov);
 
