@@ -36,6 +36,10 @@ It is strongly recommended you compile the engine with `--release` for the best 
 cargo build --release
 ```
 
+### Portability
+
+In the [cargo/config](./.cargo/config) file the target CPU is set to `native`. During testing I saw modest performance improvements using this setting. If however you plan to compile Walleye and use the binary on multiple systems you should delete these lines before compiling.
+
 ## About
 
 ### Board
