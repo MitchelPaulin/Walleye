@@ -566,7 +566,7 @@ fn generate_moves_for_piece(
         let target_square = new_board.board[_move.0][_move.1];
         if let Square::Full(target_piece) = target_square {
             // MVV-LVA score, see https://www.chessprogramming.org/MVV-LVA
-            // winning captures have a position value, losing captures have a negative value
+            // winning captures have a positive value, losing captures have a negative value
             new_board.order_heuristic = target_piece.value() - piece.value();
         } else {
             // by default all moves are given a minimum score

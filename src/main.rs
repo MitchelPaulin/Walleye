@@ -23,16 +23,6 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-/*
-    Build this binary for the current CPU.
-    This provides better performance on modern CPUs taking
-    advantage of newer instruction sets at the cost of portability.
-    On my i5-8400 this resulted in a modest performance improvement.
-    If compiling for maximum portability remove the lines below.
-*/
-#[cfg(target_cpu = "native")]
-use std::cpu::native;
-
 fn main() {
     let matches = App::new(configs::ENGINE_NAME)
         .version(configs::VERSION)

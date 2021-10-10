@@ -1,0 +1,8 @@
+# Build this binary for the current CPU.
+# This provides better performance on modern CPUs taking
+# advantage of newer instruction sets at the cost of portability.
+# On my i5-8400 this resulted in a modest performance improvement.
+# If compiling for maximum portability remove the lines below.
+
+[build]
+rustflags = ["-C", "target-cpu=native"]
