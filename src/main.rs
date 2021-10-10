@@ -10,6 +10,22 @@ pub mod search;
 mod time_control;
 mod uci;
 mod utils;
+use mimalloc::MiMalloc;
+
+/* 
+A custom memory allocator with better performance characteristics than 
+rusts default at the cost of heap encryption, however 
+since this is a chess engine no sensitive data is stored on the heap.
+
+During testing this resulted in a ~20% speed up in move generation
+
+If you are having trouble compiling the engine for your target system
+you can try commenting the two lines below
+
+https://github.com/microsoft/mimalloc
+*/
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let matches = App::new(configs::ENGINE_NAME)
