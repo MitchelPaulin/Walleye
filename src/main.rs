@@ -12,20 +12,26 @@ mod uci;
 mod utils;
 use mimalloc::MiMalloc;
 
-/* 
-A custom memory allocator with better performance characteristics than 
-rusts default at the cost of heap encryption, however 
-since this is a chess engine no sensitive data is stored on the heap.
-
-During testing this resulted in a ~20% speed up in move generation
-
-If you are having trouble compiling the engine for your target system
-you can try commenting the two lines below
-
-https://github.com/microsoft/mimalloc
+/*
+    A custom memory allocator with better performance characteristics than
+    rusts default.
+    During testing this resulted in a ~20% speed up in move generation.
+    If you are having trouble compiling the engine for your target system
+    you can try removing the two lines below.
+    https://github.com/microsoft/mimalloc
 */
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
+
+/*
+    Build this binary for the current CPU.
+    This provides better performance on modern CPUs taking
+    advantage of newer instruction sets at the cost of portability.
+    On my i5-8400 this resulted in a modest performance improvement.
+    If compiling for maximum portability remove the lines below.
+*/
+#[cfg(target_cpu = "native")]
+use std::cpu::native;
 
 fn main() {
     let matches = App::new(configs::ENGINE_NAME)
@@ -92,14 +98,14 @@ fn main() {
         let mut moves_states = [0; 15];
         let start = Instant::now();
         move_generation::generate_moves_test(&board, 0, depth as usize, &mut moves_states, true);
-        let time_to_run = Instant::now().duration_since(start).as_secs() as u32;
+        let time_to_run = Instant::now().duration_since(start);
         let nodes: u32 = moves_states.iter().sum();
         println!(
-            "Searched to a depth of {} and evaluated {} nodes in {}s for a total speed of {} nps",
+            "Searched to a depth of {} and evaluated {} nodes in {:?} for a total speed of {} nps",
             depth,
             nodes,
             time_to_run,
-            nodes / time_to_run
+            nodes / time_to_run.as_secs() as u32
         );
         return;
     }

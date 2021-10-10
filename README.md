@@ -27,7 +27,14 @@ Use `./walleye --help` for a complete list of commands.
 ## Play Against It
 
 The engine should work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/). 
-It is recommended you compile the engine with `--release` for the best performance.
+
+## Building
+
+It is strongly recommended you compile the engine with `--release` for the best performance.
+
+```
+cargo build --release
+```
 
 ## About
 
