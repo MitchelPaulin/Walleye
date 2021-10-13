@@ -10,18 +10,17 @@ pub mod search;
 mod time_control;
 mod uci;
 mod utils;
-use mimalloc::MiMalloc;
 
 /*
-    A custom memory allocator with better performance characteristics than
-    rusts default.
+    A custom memory allocator with better performance
+    characteristics than rusts default.
     During testing this resulted in a ~20% speed up in move generation.
     If you are having trouble compiling the engine for your target system
     you can try removing the two lines below.
     https://github.com/microsoft/mimalloc
 */
 #[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
     let matches = App::new(configs::ENGINE_NAME)

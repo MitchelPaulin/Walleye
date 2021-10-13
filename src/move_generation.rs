@@ -639,7 +639,7 @@ fn generate_moves_for_piece(
     }
 
     // take care of en passant captures
-    if kind == Pawn {
+    if board.pawn_double_move.is_some() && kind == Pawn {
         let en_passant = pawn_moves_en_passant(piece, square_cords.0, square_cords.1, &board);
         if let Some(mov) = en_passant {
             let mut new_board = board.clone();

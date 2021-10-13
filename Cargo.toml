@@ -14,5 +14,5 @@ simple-logging = "2.0.2"
 log = "0.4"
 
 [profile.release]
-lto = "fat"
+lto = true
 codegen-units = 1

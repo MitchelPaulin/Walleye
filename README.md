@@ -2,7 +2,7 @@
 
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
 
-Walleye is a UCI-compatible chess engine written using the classic alpha-beta style AI.
+[Walleye](https://en.wikipedia.org/wiki/Walleye) is a UCI-compatible chess engine written using the classic alpha-beta style AI.
 
 ## Example Usage
 
