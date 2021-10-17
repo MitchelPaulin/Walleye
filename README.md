@@ -1,6 +1,11 @@
 # Walleye
 
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
+![elo](https://img.shields.io/badge/ELO-1408-blue)
+
+<p align="center">
+  <img src="img/walleye.png" width="200" />
+</p>
 
 [Walleye](https://en.wikipedia.org/wiki/Walleye) is a UCI-compatible chess engine written using the classic alpha-beta style AI.
 
@@ -20,7 +25,7 @@ However, you can run some commands from the terminal, such as `-P` to watch the 
 ./walleye --fen="r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" -P
 ```
 
-![demo](./demo/demo.png)
+![demo](./img/demo.png)
 
 Use `./walleye --help` for a complete list of commands.
 

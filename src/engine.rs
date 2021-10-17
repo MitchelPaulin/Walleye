@@ -192,7 +192,7 @@ fn alpha_beta_search(
     Interface to the alpha_beta function, works very similarly but returns a board state at the end
     and also operates with a channel to send the best board state found so far
 */
-pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: BoardSender) {
+pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
     let mut cur_depth = 1;
     let ply_from_root = 0;
     let start = Instant::now();
