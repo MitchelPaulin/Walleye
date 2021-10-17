@@ -1,7 +1,6 @@
 # Walleye
 
 ![tests](https://github.com/MitchelPaulin/ChessEngine/actions/workflows/rust.yml/badge.svg)
-![elo](https://img.shields.io/badge/ELO-1408-blue)
 
 <p align="center">
   <img src="img/walleye.png" width="200" />
