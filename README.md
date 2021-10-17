@@ -82,6 +82,16 @@ cargo test perft
 cargo test
 ```
 
+## Rating
+
+|    Version    |          ELO         |
+|:-------------:|:--------------------:|
+| 1.4.0         | To Be Tested         |
+| 1.3.0         | 1408                 |
+| 1.0.0 - 1.2.0 | Not Tournament Ready |
+
+*All rating was conducted by [CCRL](https://computerchess.org.uk/ccrl/404/) in Blitz time format*
+
 ## Resources
 
 Some resources and tools I found helpful when creating this engine.
