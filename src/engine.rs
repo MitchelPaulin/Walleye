@@ -264,7 +264,7 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
             break;
         }
     }
-    send_to_gui(format!(
+    send_to_gui(&format!(
         "info pv{} depth {} nodes {} score cp {} time {}",
         ponder_move,
         depth,

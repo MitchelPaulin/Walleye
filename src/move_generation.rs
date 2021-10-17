@@ -421,7 +421,7 @@ fn is_check_cords(board: &BoardState, color: PieceColor, square_cords: Point) ->
     Thus its the responsibility of other functions to update the castling privilege variables when the king or associated rook moves (including castling)
 
 */
-fn can_castle(board: &BoardState, castling_type: CastlingType) -> bool {
+fn can_castle(board: &BoardState, castling_type: &CastlingType) -> bool {
     match castling_type {
         CastlingType::WhiteKingSide => can_castle_white_king_side(board),
         CastlingType::WhiteQueenSide => can_castle_white_queen_side(board),
@@ -550,7 +550,7 @@ fn generate_moves_for_piece(
     );
 
     // make all the valid moves of this piece
-    for _move in moves {
+    for mov in moves {
         let mut new_board = board.clone();
         new_board.pawn_promotion = None;
         new_board.swap_color();
@@ -558,12 +558,12 @@ fn generate_moves_for_piece(
         // update king location if we are moving the king
         if kind == King {
             match color {
-                White => new_board.white_king_location = _move,
-                Black => new_board.black_king_location = _move,
+                White => new_board.white_king_location = mov,
+                Black => new_board.black_king_location = mov,
             }
         }
 
-        let target_square = new_board.board[_move.0][_move.1];
+        let target_square = new_board.board[mov.0][mov.1];
         if let Square::Full(target_piece) = target_square {
             // MVV-LVA score, see https://www.chessprogramming.org/MVV-LVA
             // winning captures have a positive value, losing captures have a negative value
@@ -574,9 +574,9 @@ fn generate_moves_for_piece(
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
-        new_board.board[_move.0][_move.1] = piece.into();
+        new_board.board[mov.0][mov.1] = piece.into();
         new_board.board[square_cords.0][square_cords.1] = Square::Empty;
-        new_board.last_move = Some((square_cords, _move));
+        new_board.last_move = Some((square_cords, mov));
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
@@ -603,33 +603,33 @@ fn generate_moves_for_piece(
         }
 
         // if the rook is captured, take away castling privileges
-        if _move.0 == BOARD_END - 1 && _move.1 == BOARD_END - 1 {
+        if mov.0 == BOARD_END - 1 && mov.1 == BOARD_END - 1 {
             new_board.white_king_side_castle = false;
-        } else if _move.0 == BOARD_END - 1 && _move.1 == BOARD_START {
+        } else if mov.0 == BOARD_END - 1 && mov.1 == BOARD_START {
             new_board.white_queen_side_castle = false;
-        } else if _move.0 == BOARD_START && _move.1 == BOARD_START {
+        } else if mov.0 == BOARD_START && mov.1 == BOARD_START {
             new_board.black_queen_side_castle = false;
-        } else if _move.0 == BOARD_START && _move.1 == BOARD_END - 1 {
+        } else if mov.0 == BOARD_START && mov.1 == BOARD_END - 1 {
             new_board.black_king_side_castle = false;
         }
 
         // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
         if move_generation_mode == MoveGenerationMode::AllMoves {
-            if kind == Pawn && (square_cords.0 as i8 - _move.0 as i8).abs() == 2 {
+            if kind == Pawn && (square_cords.0 as i8 - mov.0 as i8).abs() == 2 {
                 if color == White {
-                    new_board.pawn_double_move = Some(Point(_move.0 + 1, _move.1));
+                    new_board.pawn_double_move = Some(Point(mov.0 + 1, mov.1));
                 } else {
-                    new_board.pawn_double_move = Some(Point(_move.0 - 1, _move.1));
+                    new_board.pawn_double_move = Some(Point(mov.0 - 1, mov.1));
                 }
             } else {
                 // the most recent move was not a double pawn move, unset any possibly existing pawn double move
                 new_board.pawn_double_move = None;
             }
             // deal with pawn promotions
-            if _move.0 == BOARD_START && color == White && kind == Pawn {
-                promote_pawn(&new_board, White, square_cords, _move, new_moves);
-            } else if _move.0 == BOARD_END - 1 && color == Black && kind == Pawn {
-                promote_pawn(&new_board, Black, square_cords, _move, new_moves);
+            if mov.0 == BOARD_START && color == White && kind == Pawn {
+                promote_pawn(&new_board, White, square_cords, mov, new_moves);
+            } else if mov.0 == BOARD_END - 1 && color == Black && kind == Pawn {
+                promote_pawn(&new_board, Black, square_cords, mov, new_moves);
             } else {
                 new_moves.push(new_board);
             }
@@ -667,7 +667,7 @@ fn generate_moves_for_piece(
     Will also update appropriate castling variables if castling was successful
 */
 fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) {
-    if board.to_move == White && can_castle(&board, CastlingType::WhiteKingSide) {
+    if board.to_move == White && can_castle(&board, &CastlingType::WhiteKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -682,7 +682,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == White && can_castle(&board, CastlingType::WhiteQueenSide) {
+    if board.to_move == White && can_castle(&board, &CastlingType::WhiteQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -697,7 +697,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == Black && can_castle(&board, CastlingType::BlackKingSide) {
+    if board.to_move == Black && can_castle(&board, &CastlingType::BlackKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -712,7 +712,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == Black && can_castle(&board, CastlingType::BlackQueenSide) {
+    if board.to_move == Black && can_castle(&board, &CastlingType::BlackQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -1453,109 +1453,109 @@ mod tests {
     #[test]
     fn white_king_side_castle() {
         let mut b = BoardState::from_fen("8/8/8/8/8/8/8/4K2R w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(can_castle(&b, &CastlingType::WhiteKingSide));
 
         b = BoardState::from_fen("8/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(can_castle(&b, &CastlingType::WhiteKingSide));
 
         // Can't castle out of check
         b = BoardState::from_fen("4r3/8/2b5/8/8/6P1/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteKingSide));
 
         // Can't castle through check
         b = BoardState::from_fen("8/8/8/8/8/6Pb/5P1P/4K2R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteKingSide));
 
         // Can't castle with pieces in way
         b = BoardState::from_fen("8/8/8/8/8/6PN/5P1P/4KP1R w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteKingSide));
 
         // Can't castle with pieces in way 2
         b = BoardState::from_fen("8/8/8/8/8/6PN/5P1P/4K1PR w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteKingSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteKingSide));
     }
 
     #[test]
     fn white_queen_side_castle() {
         let mut b = BoardState::from_fen("8/8/8/8/8/8/8/R3K3 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(can_castle(&b, &CastlingType::WhiteQueenSide));
 
         b = BoardState::from_fen("8/8/8/8/8/2P5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(can_castle(&b, &CastlingType::WhiteQueenSide));
 
         // Can't castle out of check
         b = BoardState::from_fen("8/8/8/8/8/2P2n2/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteQueenSide));
 
         // Can't castle through check
         b = BoardState::from_fen("8/8/8/8/8/2n5/PP1P4/R3K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way
         b = BoardState::from_fen("8/8/8/8/8/2P5/PP1P4/R2QK1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way 2
         b = BoardState::from_fen("8/8/8/8/8/2P5/PP1P4/R1Q1K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteQueenSide));
 
         // Can't castle with pieces in way 3
         b = BoardState::from_fen("8/8/8/8/8/2P5/PP1P4/RQ2K1N1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::WhiteQueenSide));
+        assert!(!can_castle(&b, &CastlingType::WhiteQueenSide));
     }
 
     #[test]
     fn black_king_side_castle() {
         let mut b = BoardState::from_fen("1p2k2r/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BlackKingSide));
+        assert!(can_castle(&b, &CastlingType::BlackKingSide));
 
         b = BoardState::from_fen("1p2k2r/4bp1p/6p1/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BlackKingSide));
+        assert!(can_castle(&b, &CastlingType::BlackKingSide));
 
         // Can't castle out of check
         b = BoardState::from_fen("1p2k2r/4bp1p/6p1/8/B7/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackKingSide));
+        assert!(!can_castle(&b, &CastlingType::BlackKingSide));
 
         // Can't castle through check
         b = BoardState::from_fen("1p2k2r/4bp1p/6pB/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackKingSide));
+        assert!(!can_castle(&b, &CastlingType::BlackKingSide));
 
         // Can't castle with pieces in way
         b = BoardState::from_fen("1p2k1nr/4bp1p/6pn/8/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackKingSide));
+        assert!(!can_castle(&b, &CastlingType::BlackKingSide));
 
         // Can't castle with pieces in way 2
         b = BoardState::from_fen("1p2kN1r/4bp1p/6pn/3n4/8/8/8/1P4P1 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackKingSide));
+        assert!(!can_castle(&b, &CastlingType::BlackKingSide));
     }
 
     #[test]
     fn black_queen_side_castle() {
         let mut b = BoardState::from_fen("r3k3/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(can_castle(&b, &CastlingType::BlackQueenSide));
 
         b = BoardState::from_fen("r3k3/qpb5/3n4/8/8/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(can_castle(&b, &CastlingType::BlackQueenSide));
 
         // Can't castle out of check
         b = BoardState::from_fen("r3k3/qpb5/3n4/8/8/8/8/4Q3 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(!can_castle(&b, &CastlingType::BlackQueenSide));
 
         // Can't castle through check
         b = BoardState::from_fen("r3k3/qpb5/3n4/8/7Q/8/8/8 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(!can_castle(&b, &CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way
         b = BoardState::from_fen("r2Pk3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(!can_castle(&b, &CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way 2
         b = BoardState::from_fen("r1p1k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(!can_castle(&b, &CastlingType::BlackQueenSide));
 
         // Can't castle with pieces in way 3
         b = BoardState::from_fen("rn2k3/qpb5/3n4/8/8/8/8/P7 w KQkq - 0 1").unwrap();
-        assert!(!can_castle(&b, CastlingType::BlackQueenSide));
+        assert!(!can_castle(&b, &CastlingType::BlackQueenSide));
     }
 
     #[test]

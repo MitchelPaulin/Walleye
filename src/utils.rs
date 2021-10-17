@@ -12,7 +12,7 @@ pub fn trim_newline(s: &mut String) {
     }
 }
 
-pub fn clean_input(buffer: String) -> String {
+pub fn clean_input(buffer: &str) -> String {
     let mut cleaned = String::new();
     let mut prev_char = ' ';
     for c in buffer.chars() {
@@ -45,10 +45,7 @@ mod tests {
 
     #[test]
     fn clean_string() {
-        assert_eq!(clean_input("   debug     on  \n".to_string()), "debug on");
-        assert_eq!(
-            clean_input("\t  debug \t  \t\ton\t  \n".to_string()),
-            "debug on"
-        );
+        assert_eq!(clean_input("   debug     on  \n"), "debug on");
+        assert_eq!(clean_input("\t  debug \t  \t\ton\t  \n"), "debug on");
     }
 }

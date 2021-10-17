@@ -24,36 +24,35 @@ pub enum Square {
 impl Square {
     // Check if this square is empty or contains a piece of the given color (used in move
     // generation)
-    pub fn is_empty_or_color(&self, color: PieceColor) -> bool {
+    pub fn is_empty_or_color(self, color: PieceColor) -> bool {
         match self {
-            Square::Empty => true,
             Square::Full(Piece {
                 color: square_color,
                 ..
-            }) => color == *square_color,
+            }) => color == square_color,
+            Square::Empty => true,
             _ => false,
         }
     }
 
     // Check if this square is empty
-    pub fn is_empty(&self) -> bool {
-        *self == Square::Empty
+    pub fn is_empty(self) -> bool {
+        self == Square::Empty
     }
 
-    //p Check if a square is a certain color, return false if empty
-    pub fn is_color(&self, color: PieceColor) -> bool {
+    // Check if a square is a certain color, return false if empty
+    pub fn is_color(self, color: PieceColor) -> bool {
         match self {
-            Square::Empty => false,
             Square::Full(Piece {
                 color: square_color,
                 ..
-            }) => color == *square_color,
+            }) => color == square_color,
             _ => false,
         }
     }
 
     // Get the "fancy" character to represent the content of this square
-    fn fancy_char(&self) -> &'static str {
+    fn fancy_char(self) -> &'static str {
         match self {
             Square::Full(piece) => piece.fancy_char(),
             _ => " ",
@@ -62,7 +61,7 @@ impl Square {
 
     // Get the "simple" character to represent this content of this square (capitalized based on
     // the piece's color)
-    fn simple_char(&self) -> &'static str {
+    fn simple_char(self) -> &'static str {
         match self {
             Square::Full(piece) => piece.simple_char(),
             _ => ".",
@@ -94,7 +93,7 @@ pub struct Piece {
 
 impl Piece {
     // Get the value of this piece
-    pub fn value(&self) -> i32 {
+    pub fn value(self) -> i32 {
         self.kind.value()
     }
 
@@ -129,7 +128,7 @@ impl Piece {
     }
 
     // Get the "fancy" character for this piece
-    fn fancy_char(&self) -> &'static str {
+    fn fancy_char(self) -> &'static str {
         match self.kind {
             Pawn => "♟︎",
             Knight => "♞",
@@ -141,7 +140,7 @@ impl Piece {
     }
 
     // Get the "simple" character to represent this piece (capitalized based on the piece's color)
-    fn simple_char(&self) -> &'static str {
+    fn simple_char(self) -> &'static str {
         match (self.color, self.kind) {
             (White, Pawn) => "P",
             (White, Knight) => "N",
@@ -167,7 +166,7 @@ pub enum PieceColor {
 
 impl PieceColor {
     // Get the opposite color
-    pub fn opposite(&self) -> Self {
+    pub fn opposite(self) -> Self {
         match self {
             Black => White,
             White => Black,
@@ -187,7 +186,7 @@ pub enum PieceKind {
 
 impl PieceKind {
     // Get the value of this kind of piece
-    pub fn value(&self) -> i32 {
+    pub fn value(self) -> i32 {
         match self {
             Pawn => 100,
             Knight => 320,
@@ -199,7 +198,7 @@ impl PieceKind {
     }
 
     // Get the alg name for this kind of piece
-    pub fn alg(&self) -> &'static str {
+    pub fn alg(self) -> &'static str {
         match self {
             Pawn => "p",
             Knight => "n",
@@ -458,7 +457,7 @@ impl BoardState {
                 let cell = match square {
                     Square::Full(Piece { color: White, .. }) => cell.white(),
                     Square::Full(Piece { color: Black, .. }) => cell.black(),
-                    _ => cell.white(),
+                    _ => panic!("Trying to print an unprintable cell"),
                 };
 
                 let cell = if (i + j) % 2 != 0 {

@@ -25,10 +25,10 @@ pub fn play_game_uci() {
         return;
     }
 
-    send_to_gui(format!("id name {} {}", ENGINE_NAME, VERSION));
-    send_to_gui(format!("id author {}", AUTHOR));
-    send_to_gui("option name DebugLogLevel type combo default None var Info var None".to_string());
-    send_to_gui("uciok".to_string());
+    send_to_gui(&format!("id name {} {}", ENGINE_NAME, VERSION));
+    send_to_gui(&format!("id author {}", AUTHOR));
+    send_to_gui("option name DebugLogLevel type combo default None var Info var None");
+    send_to_gui("uciok");
 
     loop {
         let buffer = read_from_gui();
@@ -36,10 +36,10 @@ pub fn play_game_uci() {
         let commands: Vec<&str> = buffer.split(' ').collect();
 
         match commands[0] {
-            "isready" => send_to_gui("readyok".to_string()),
+            "isready" => send_to_gui("readyok"),
             "ucinewgame" => (), // we don't keep any internal state really so no need to reset anything here
             "position" => {
-                board = play_out_position(commands);
+                board = play_out_position(&commands);
                 info!("{}", board.simple_board());
             }
             "go" => {
@@ -74,7 +74,7 @@ fn find_and_play_best_move(
 
     let (tx, rx) = mpsc::channel();
     let clone = board.clone();
-    thread::spawn(move || get_best_move(&clone, time_to_move, tx));
+    thread::spawn(move || get_best_move(&clone, time_to_move, &tx));
     // keep looking until we are out of time
     // also add a guard to ensure we at least get a move from the search thread
     while Instant::now().duration_since(start).as_millis() < time_to_move || best_move.is_none() {
@@ -132,7 +132,7 @@ fn parse_go_command(commands: &[&str]) -> GameTime {
 /*
     From the provided fen string set up the board state
 */
-fn play_out_position(commands: Vec<&str>) -> BoardState {
+fn play_out_position(commands: &[&str]) -> BoardState {
     let mut board;
     if commands[1] == "fen" {
         let mut fen = "".to_string();
@@ -257,18 +257,18 @@ fn make_move(board: &mut BoardState, player_move: &str) {
 fn send_best_move_to_gui(board: &BoardState) {
     let best_move = board.last_move.unwrap();
     if let Some(pawn_promotion) = board.pawn_promotion {
-        send_to_gui(format!(
+        send_to_gui(&format!(
             "bestmove {}{}{}",
             best_move.0,
             best_move.1,
             pawn_promotion.kind.alg()
         ));
     } else {
-        send_to_gui(format!("bestmove {}{}", best_move.0, best_move.1));
+        send_to_gui(&format!("bestmove {}{}", best_move.0, best_move.1));
     }
 }
 
-pub fn send_to_gui(message: String) {
+pub fn send_to_gui(message: &str) {
     println!("{}", message);
     info!("ENGINE >> {}", message);
 }
@@ -277,7 +277,7 @@ pub fn read_from_gui() -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
     stdin.lock().read_line(&mut buffer).unwrap();
-    buffer = clean_input(buffer);
+    buffer = clean_input(&buffer);
     info!("ENGINE << {}", buffer);
     buffer
 }
