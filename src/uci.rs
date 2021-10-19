@@ -175,9 +175,10 @@ fn play_out_position(commands: &[&str]) -> BoardState {
 fn make_move(board: &mut BoardState, player_move: &str) {
     let start_pair: Point = (player_move[0..2]).parse().unwrap();
     let end_pair: Point = (player_move[2..4]).parse().unwrap();
+    board.pawn_double_move = None;
 
-    // update king location
     if let Square::Full(Piece { kind, color }) = board.board[start_pair.0][start_pair.1] {
+        // update king location
         if kind == King {
             if color == White {
                 board.white_king_location = end_pair;
@@ -187,6 +188,14 @@ fn make_move(board: &mut BoardState, player_move: &str) {
                 board.black_king_location = end_pair;
                 board.black_king_side_castle = false;
                 board.black_queen_side_castle = false;
+            }
+        } else if kind == Pawn {
+            if (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
+                // pawn made a double move, record space behind pawn for en passant
+                board.pawn_double_move = match color {
+                    White => Some(Point(start_pair.0 - 1, start_pair.1)),
+                    Black => Some(Point(start_pair.0 + 1, start_pair.1)),
+                };
             }
         }
     }

@@ -643,6 +643,7 @@ fn generate_moves_for_piece(
         let en_passant = pawn_moves_en_passant(piece, square_cords.0, square_cords.1, &board);
         if let Some(mov) = en_passant {
             let mut new_board = board.clone();
+            new_board.last_move = Some((square_cords, mov));
             new_board.swap_color();
             new_board.pawn_double_move = None;
             new_board.board[mov.0][mov.1] = piece.into();
