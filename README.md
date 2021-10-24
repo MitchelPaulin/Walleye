@@ -8,6 +8,12 @@
 
 [Walleye](https://en.wikipedia.org/wiki/Walleye) is a UCI-compatible chess engine written using the classic alpha-beta style AI.
 
+## Play Against It
+
+Challenge me on Lichess! https://lichess.org/@/Walleye_Bot
+
+The engine should also work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/).
+
 ## Example Usage
 
 By default, the engine launches in UCI mode and expects to be loaded into a chess GUI. \
@@ -27,10 +33,6 @@ However, you can run some commands from the terminal, such as `-P` to watch the 
 ![demo](./img/demo.png)
 
 Use `./walleye --help` for a complete list of commands.
-
-## Play Against It
-
-The engine should work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/). 
 
 ## Building
 
