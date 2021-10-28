@@ -10,7 +10,7 @@ use std::io::{self, BufRead};
 use std::process;
 use std::sync::mpsc;
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const WHITE_KING_SIDE_CASTLE_STRING: &str = "e1g1";
 const WHITE_QUEEN_SIDE_CASTLE_STRING: &str = "e1c1";
@@ -80,6 +80,8 @@ fn find_and_play_best_move(
     while Instant::now().duration_since(start).as_millis() < time_to_move || best_move.is_none() {
         if let Ok(b) = rx.try_recv() {
             best_move = Some(b);
+        } else {
+            thread::sleep(Duration::from_millis(1));
         }
     }
     let board = best_move.unwrap();
