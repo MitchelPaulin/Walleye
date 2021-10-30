@@ -457,7 +457,7 @@ impl BoardState {
                 let cell = match square {
                     Square::Full(Piece { color: White, .. }) => cell.white(),
                     Square::Full(Piece { color: Black, .. }) => cell.black(),
-                    _ => panic!("Trying to print an unprintable cell"),
+                    _ => cell.white(),
                 };
 
                 let cell = if (i + j) % 2 != 0 {
