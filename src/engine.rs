@@ -136,7 +136,7 @@ fn alpha_beta_search(
         let mut evaluation;
         if i == 0 {
             evaluation = -alpha_beta_search(
-                &mov,
+                mov,
                 depth - 1,
                 ply_from_root + 1,
                 -beta,
@@ -146,7 +146,7 @@ fn alpha_beta_search(
             );
         } else {
             evaluation = -alpha_beta_search(
-                &mov,
+                mov,
                 depth - 1,
                 ply_from_root + 1,
                 -alpha - 1, //search with a null window
@@ -157,7 +157,7 @@ fn alpha_beta_search(
             // we got en eval outside out window, we need to redo a search
             if alpha < evaluation && evaluation < beta {
                 evaluation = -alpha_beta_search(
-                    &mov,
+                    mov,
                     depth - 1,
                     ply_from_root + 1,
                     -beta,
@@ -168,12 +168,12 @@ fn alpha_beta_search(
             }
         }
 
-        search_info.insert_into_cur_line(ply_from_root, &mov);
+        search_info.insert_into_cur_line(ply_from_root, mov);
 
         if evaluation >= beta {
             // beta cutoff, store the move for the "killer move" heuristic, only if the move was not a capture
             if mov.order_heuristic == i32::MIN {
-                search_info.insert_killer_move(ply_from_root, &mov);
+                search_info.insert_killer_move(ply_from_root, mov);
             }
             return beta;
         }
@@ -219,7 +219,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
             }
 
             let evaluation = -alpha_beta_search(
-                &mov,
+                mov,
                 cur_depth - 1,
                 ply_from_root + 1,
                 -beta,
@@ -228,7 +228,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
                 true,
             );
 
-            search_info.insert_into_cur_line(ply_from_root, &mov);
+            search_info.insert_into_cur_line(ply_from_root, mov);
 
             if evaluation > alpha {
                 //alpha raised, remember this line as the pv

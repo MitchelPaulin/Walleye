@@ -69,7 +69,7 @@ fn find_and_play_best_move(
     board: &mut BoardState,
     start: Instant,
 ) -> BoardState {
-    let time_to_move = parse_go_command(&commands).calculate_time_slice(board.to_move);
+    let time_to_move = parse_go_command(commands).calculate_time_slice(board.to_move);
     let mut best_move = None;
 
     let (tx, rx) = mpsc::channel();
@@ -191,14 +191,12 @@ fn make_move(board: &mut BoardState, player_move: &str) {
                 board.black_king_side_castle = false;
                 board.black_queen_side_castle = false;
             }
-        } else if kind == Pawn {
-            if (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
-                // pawn made a double move, record space behind pawn for en passant
-                board.pawn_double_move = match color {
-                    White => Some(Point(start_pair.0 - 1, start_pair.1)),
-                    Black => Some(Point(start_pair.0 + 1, start_pair.1)),
-                };
-            }
+        } else if kind == Pawn && (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
+            // pawn made a double move, record space behind pawn for en passant
+            board.pawn_double_move = match color {
+                White => Some(Point(start_pair.0 - 1, start_pair.1)),
+                Black => Some(Point(start_pair.0 + 1, start_pair.1)),
+            };
         }
     }
 

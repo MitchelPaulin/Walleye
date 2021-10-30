@@ -544,7 +544,7 @@ fn generate_moves_for_piece(
         piece,
         square_cords.0,
         square_cords.1,
-        &board,
+        board,
         &mut moves,
         move_generation_mode,
     );
@@ -640,7 +640,7 @@ fn generate_moves_for_piece(
 
     // take care of en passant captures
     if board.pawn_double_move.is_some() && kind == Pawn {
-        let en_passant = pawn_moves_en_passant(piece, square_cords.0, square_cords.1, &board);
+        let en_passant = pawn_moves_en_passant(piece, square_cords.0, square_cords.1, board);
         if let Some(mov) = en_passant {
             let mut new_board = board.clone();
             new_board.last_move = Some((square_cords, mov));
@@ -668,7 +668,7 @@ fn generate_moves_for_piece(
     Will also update appropriate castling variables if castling was successful
 */
 fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) {
-    if board.to_move == White && can_castle(&board, &CastlingType::WhiteKingSide) {
+    if board.to_move == White && can_castle(board, &CastlingType::WhiteKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -683,7 +683,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == White && can_castle(&board, &CastlingType::WhiteQueenSide) {
+    if board.to_move == White && can_castle(board, &CastlingType::WhiteQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -698,7 +698,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == Black && can_castle(&board, &CastlingType::BlackKingSide) {
+    if board.to_move == Black && can_castle(board, &CastlingType::BlackKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
@@ -713,7 +713,7 @@ fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) 
         new_moves.push(new_board);
     }
 
-    if board.to_move == Black && can_castle(&board, &CastlingType::BlackQueenSide) {
+    if board.to_move == Black && can_castle(board, &CastlingType::BlackQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
         new_board.pawn_double_move = None;
