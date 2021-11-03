@@ -58,7 +58,7 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, search_info: &mut Sear
 */
 fn alpha_beta_search(
     board: &BoardState,
-    depth: u8,
+    mut depth: u8,
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
@@ -68,7 +68,12 @@ fn alpha_beta_search(
     search_info.node_searched();
 
     if depth == 0 {
-        return quiesce(board, alpha, beta, search_info);
+        // need to resolve check before we enter quiesce
+        if is_check(board, board.to_move) {
+            depth += 1;
+        } else {
+            return quiesce(board, alpha, beta, search_info);
+        }
     }
 
     // Skip this position if a mating sequence has already been found earlier in
@@ -92,7 +97,7 @@ fn alpha_beta_search(
         let eval = -alpha_beta_search(
             &b,
             depth - R - 1,
-            ply_from_root,
+            ply_from_root + 50,
             -beta,
             -beta + 1,
             search_info,
@@ -112,7 +117,7 @@ fn alpha_beta_search(
             let mate_score = MATE_SCORE - ply_from_root;
             return -mate_score;
         }
-        //stalemate
+        // stalemate
         return 0;
     }
 
@@ -131,11 +136,48 @@ fn alpha_beta_search(
     }
 
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
+    search_info.insert_into_cur_line(ply_from_root, &moves[0]);
+    search_info.set_principle_variation();
+
+    // do a full search with what we think is the best move
+    // which should be the first move in the array
+    let mut best_score = -alpha_beta_search(
+        &moves[0],
+        depth - 1,
+        ply_from_root + 1,
+        -beta,
+        -alpha,
+        search_info,
+        true,
+    );
+
+    if best_score > alpha {
+        if best_score >= beta {
+            search_info.insert_killer_move(ply_from_root, &moves[0]);
+            return best_score;
+        }
+        search_info.set_principle_variation();
+        alpha = best_score;
+    }
+
     // https://en.wikipedia.org/wiki/Principal_variation_search
-    for (i, mov) in moves.iter().enumerate() {
-        let mut evaluation;
-        if i == 0 {
-            evaluation = -alpha_beta_search(
+    // try out all remaining moves with a reduced window
+    for mov in moves.iter().skip(1) {
+        search_info.insert_into_cur_line(ply_from_root, mov);
+        // zero window search
+        let mut score = -alpha_beta_search(
+            mov,
+            depth - 1,
+            ply_from_root + 1,
+            -alpha - 1,
+            -alpha,
+            search_info,
+            true,
+        );
+
+        if score > alpha && score < beta {
+            // got a result outside our window, need to redo full search
+            score = -alpha_beta_search(
                 mov,
                 depth - 1,
                 ply_from_root + 1,
@@ -144,48 +186,25 @@ fn alpha_beta_search(
                 search_info,
                 true,
             );
-        } else {
-            evaluation = -alpha_beta_search(
-                mov,
-                depth - 1,
-                ply_from_root + 1,
-                -alpha - 1, //search with a null window
-                -alpha,
-                search_info,
-                true,
-            );
-            // we got en eval outside out window, we need to redo a search
-            if alpha < evaluation && evaluation < beta {
-                evaluation = -alpha_beta_search(
-                    mov,
-                    depth - 1,
-                    ply_from_root + 1,
-                    -beta,
-                    -evaluation,
-                    search_info,
-                    true,
-                );
+
+            if score > alpha {
+                alpha = score;
             }
         }
 
-        search_info.insert_into_cur_line(ply_from_root, mov);
-
-        if evaluation >= beta {
-            // beta cutoff, store the move for the "killer move" heuristic, only if the move was not a capture
-            if mov.order_heuristic == i32::MIN {
-                search_info.insert_killer_move(ply_from_root, mov);
+        if score > best_score {
+            if score >= beta {
+                if mov.order_heuristic == i32::MIN {
+                    search_info.insert_killer_move(ply_from_root, mov);
+                }
+                return score;
             }
-            return beta;
-        }
-
-        if evaluation > alpha {
-            //alpha raised, remember this line as the pv
             search_info.set_principle_variation();
-            alpha = evaluation;
+            best_score = score;
         }
     }
 
-    alpha
+    best_score
 }
 
 /*

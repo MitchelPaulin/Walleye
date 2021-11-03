@@ -9,6 +9,7 @@ type KillerMoveArray =
 /*
     Keep track of global information about the current search context
 */
+#[derive(Copy, Clone)]
 pub struct Search {
     pub killer_moves: KillerMoveArray, // the killer moves for this search
     pub pv_moves: MoveArray,           // the principle variation for this search
