@@ -85,19 +85,15 @@ fn alpha_beta_search(
     }
 
     // Null move pruning https://www.chessprogramming.org/Null_Move_Pruning
-    if allow_null
-        && depth >= 3
-        && board.last_move != search_info.pv_moves[ply_from_root as usize] // not a pv move
-        && !is_check(board, board.to_move)
-    {
+    // With R = 2
+    if allow_null && depth >= 3 && !is_check(board, board.to_move) {
         // allow this player to go again
         let mut b = board.clone();
         b.to_move = board.to_move.opposite();
-        const R: u8 = 2;
         let eval = -alpha_beta_search(
             &b,
-            depth - R - 1,
-            ply_from_root + 50,
+            depth - 3,
+            ply_from_root + 1,
             -beta,
             -beta + 1,
             search_info,
@@ -130,6 +126,7 @@ fn alpha_beta_search(
             for i in 0..KILLER_MOVE_PLY_SIZE {
                 if mov.last_move == search_info.killer_moves[ply_from_root as usize][i] {
                     mov.order_heuristic = KILLER_MOVE_SCORE;
+                    break;
                 }
             }
         }
@@ -137,7 +134,9 @@ fn alpha_beta_search(
 
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     search_info.insert_into_cur_line(ply_from_root, &moves[0]);
-    search_info.set_principle_variation();
+    if moves[0].order_heuristic != POS_INF {
+        search_info.set_principle_variation();
+    }
 
     // do a full search with what we think is the best move
     // which should be the first move in the array
@@ -153,7 +152,6 @@ fn alpha_beta_search(
 
     if best_score > alpha {
         if best_score >= beta {
-            search_info.insert_killer_move(ply_from_root, &moves[0]);
             return best_score;
         }
         search_info.set_principle_variation();
