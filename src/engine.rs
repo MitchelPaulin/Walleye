@@ -1,9 +1,8 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
-pub use crate::configs;
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
-pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE};
+pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
 pub use crate::uci::send_to_gui;
 use std::cmp::{max, min, Reverse};
 use std::time::Instant;
@@ -93,7 +92,7 @@ fn alpha_beta_search(
         let eval = -alpha_beta_search(
             &b,
             depth - 3,
-            ply_from_root + 1,
+            ply_from_root + 10, //hack for now but passing in a large ply ensures we don't overwrite the pv 
             -beta,
             -beta + 1,
             search_info,
@@ -219,7 +218,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
 
-    while cur_depth < configs::MAX_DEPTH {
+    while cur_depth < MAX_DEPTH {
         let mut alpha = NEG_INF;
         let beta = POS_INF;
         search_info.reset_search();

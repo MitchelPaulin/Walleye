@@ -1,10 +1,10 @@
 pub use crate::board::*;
-use crate::configs;
 
+pub const MAX_DEPTH: u8 = 100;
 pub const KILLER_MOVE_PLY_SIZE: usize = 2;
-type MoveArray = [Option<(Point, Point)>; configs::MAX_DEPTH as usize];
+type MoveArray = [Option<(Point, Point)>; MAX_DEPTH as usize];
 type KillerMoveArray =
-    [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize];
+    [[Option<(Point, Point)>; KILLER_MOVE_PLY_SIZE]; MAX_DEPTH as usize];
 
 /*
     Keep track of global information about the current search context
@@ -20,9 +20,9 @@ pub struct Search {
 impl Search {
     pub fn new_search() -> Search {
         Search {
-            killer_moves: [[None; KILLER_MOVE_PLY_SIZE]; configs::MAX_DEPTH as usize],
-            pv_moves: [None; configs::MAX_DEPTH as usize],
-            cur_line: [None; configs::MAX_DEPTH as usize],
+            killer_moves: [[None; KILLER_MOVE_PLY_SIZE]; MAX_DEPTH as usize],
+            pv_moves: [None; MAX_DEPTH as usize],
+            cur_line: [None; MAX_DEPTH as usize],
             nodes_searched: 0,
         }
     }
@@ -54,6 +54,6 @@ impl Search {
     // reset the required data to search the next depth
     pub fn reset_search(&mut self) {
         self.nodes_searched = 0;
-        self.cur_line = [None; configs::MAX_DEPTH as usize];
+        self.cur_line = [None; MAX_DEPTH as usize];
     }
 }

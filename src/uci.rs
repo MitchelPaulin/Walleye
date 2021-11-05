@@ -1,6 +1,5 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
-pub use crate::configs::*;
 pub use crate::engine::*;
 pub use crate::move_generation::*;
 pub use crate::time_control::*;
@@ -25,8 +24,8 @@ pub fn play_game_uci() {
         return;
     }
 
-    send_to_gui(&format!("id name {} {}", ENGINE_NAME, VERSION));
-    send_to_gui(&format!("id author {}", AUTHOR));
+    send_to_gui(&format!("id name {} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")));
+    send_to_gui(&format!("id author {}", env!("CARGO_PKG_AUTHORS")));
     send_to_gui("option name DebugLogLevel type combo default None var Info var None");
     send_to_gui("uciok");
 

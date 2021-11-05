@@ -2,7 +2,6 @@ extern crate clap;
 use clap::{App, Arg};
 use std::time::Instant;
 mod board;
-pub mod configs;
 mod engine;
 mod evaluation;
 mod move_generation;
@@ -23,9 +22,9 @@ mod utils;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
-    let matches = App::new(configs::ENGINE_NAME)
-        .version(configs::VERSION)
-        .author(configs::AUTHOR)
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .about("Plays Chess - Sometimes well")
         .arg(
             Arg::with_name("fen")
@@ -64,8 +63,9 @@ fn main() {
                 .help("Does not use unicode or background coloring in the output"),
         )
         .get_matches();
-
-    let depth_str = matches.value_of("depth").unwrap_or(configs::DEFAULT_DEPTH);
+    
+    const DEFAULT_DEPTH: &str = "6";
+    let depth_str = matches.value_of("depth").unwrap_or(DEFAULT_DEPTH);
     let depth = match depth_str.parse::<u8>() {
         Ok(d) => d,
         Err(_) => {
