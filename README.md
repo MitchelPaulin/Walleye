@@ -85,13 +85,7 @@ cargo test
 
 ## Rating
 
-|    Version    |          ELO         |
-|:-------------:|:--------------------:|
-| 1.4.0         | To Be Tested         |
-| 1.3.0         | 1408                 |
-| 1.0.0 - 1.2.0 | Not Tournament Ready |
-
-*All rating was conducted by [CCRL](https://computerchess.org.uk/ccrl/404/) in Blitz time format*
+Walleye was ranked by CCRL, you can find its rating between versions [here](https://computerchess.org.uk/ccrl/404/cgi/compare_engines.cgi?family=Walleye&print=Rating+list&print=Results+table&print=LOS+table&print=Ponder+hit+table&print=Eval+difference+table&print=Comopp+gamenum+table&print=Overlap+table&print=Score+with+common+opponents)
 
 ## Resources
 
