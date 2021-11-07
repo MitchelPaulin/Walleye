@@ -85,7 +85,7 @@ cargo test
 
 ## Rating
 
-Walleye was ranked by CCRL, you can find its rating between versions [here](https://computerchess.org.uk/ccrl/404/cgi/compare_engines.cgi?family=Walleye&print=Rating+list&print=Results+table&print=LOS+table&print=Ponder+hit+table&print=Eval+difference+table&print=Comopp+gamenum+table&print=Overlap+table&print=Score+with+common+opponents)
+Walleye was ranked by CCRL, you can find its rating between versions [here](https://computerchess.org.uk/ccrl/404/cgi/compare_engines.cgi?family=Walleye)
 
 ## Resources
 
