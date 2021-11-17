@@ -39,7 +39,7 @@ fn main() {
                 .short("d")
                 .long("depth")
                 .value_name("DEPTH")
-                .help("Set the depth the engine should search to")
+                .help("Set the depth the engine should search to, only used for profiling")
                 .takes_value(true),
         )
         .arg(
@@ -63,7 +63,6 @@ fn main() {
                 .help("Does not use unicode or background coloring in the output"),
         )
         .get_matches();
-    
     const DEFAULT_DEPTH: &str = "6";
     let depth_str = matches.value_of("depth").unwrap_or(DEFAULT_DEPTH);
     let depth = match depth_str.parse::<u8>() {
@@ -102,7 +101,7 @@ fn main() {
     if matches.is_present("play self") {
         let simple_print = matches.is_present("simple print");
         let max_moves = 100;
-        engine::play_game_against_self(&board, max_moves, depth, simple_print);
+        engine::play_game_against_self(&board, max_moves, 1000, simple_print);
         return;
     }
 

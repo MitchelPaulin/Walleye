@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 /*
     Remove new line characters from the end of a string
 
@@ -24,6 +26,13 @@ pub fn clean_input(buffer: &str) -> String {
         prev_char = c;
     }
     cleaned.trim().to_string()
+}
+
+/*
+    Helper function to determine if we are out of time for our search
+*/
+pub fn out_of_time(start: Instant, time_to_move_ms: u128) -> bool {
+    Instant::now().duration_since(start).as_millis() >= time_to_move_ms
 }
 
 #[cfg(test)]

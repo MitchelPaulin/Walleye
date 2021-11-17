@@ -4,8 +4,11 @@ pub use crate::evaluation::*;
 pub use crate::move_generation::*;
 pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
 pub use crate::uci::send_to_gui;
+pub use crate::utils::out_of_time;
 use std::cmp::{max, min, Reverse};
-use std::time::Instant;
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
@@ -56,6 +59,8 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, search_info: &mut Sear
     Orders moves by piece value to attempt to improve search efficiency
 */
 fn alpha_beta_search(
+    start: Instant,
+    time_to_move_ms: u128,
     board: &BoardState,
     mut depth: u8,
     ply_from_root: i32,
@@ -64,6 +69,11 @@ fn alpha_beta_search(
     search_info: &mut Search,
     allow_null: bool,
 ) -> i32 {
+    // we are out of time, exit the search
+    if out_of_time(start, time_to_move_ms) {
+        return NEG_INF;
+    }
+
     search_info.node_searched();
 
     if depth == 0 {
@@ -90,9 +100,11 @@ fn alpha_beta_search(
         let mut b = board.clone();
         b.to_move = board.to_move.opposite();
         let eval = -alpha_beta_search(
+            start,
+            time_to_move_ms,
             &b,
             depth - 3,
-            ply_from_root + 10, //hack for now but passing in a large ply ensures we don't overwrite the pv 
+            ply_from_root + 10, //hack for now but passing in a large ply ensures we don't overwrite the pv
             -beta,
             -beta + 1,
             search_info,
@@ -140,6 +152,8 @@ fn alpha_beta_search(
     // do a full search with what we think is the best move
     // which should be the first move in the array
     let mut best_score = -alpha_beta_search(
+        start,
+        time_to_move_ms,
         &moves[0],
         depth - 1,
         ply_from_root + 1,
@@ -163,6 +177,8 @@ fn alpha_beta_search(
         search_info.insert_into_cur_line(ply_from_root, mov);
         // zero window search
         let mut score = -alpha_beta_search(
+            start,
+            time_to_move_ms,
             mov,
             depth - 1,
             ply_from_root + 1,
@@ -175,6 +191,8 @@ fn alpha_beta_search(
         if score > alpha && score < beta {
             // got a result outside our window, need to redo full search
             score = -alpha_beta_search(
+                start,
+                time_to_move_ms,
                 mov,
                 depth - 1,
                 ply_from_root + 1,
@@ -208,10 +226,9 @@ fn alpha_beta_search(
     Interface to the alpha_beta function, works very similarly but returns a board state at the end
     and also operates with a channel to send the best board state found so far
 */
-pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
+pub fn get_best_move(board: &BoardState, start: Instant, time_to_move_ms: u128, tx: &BoardSender) {
     let mut cur_depth = 1;
     let ply_from_root = 0;
-    let start = Instant::now();
     let mut best_move: Option<BoardState> = None;
 
     let mut search_info = Search::new_search();
@@ -225,7 +242,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
         moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
         for mov in &moves {
             // make an effort to exit once we are out of time
-            if Instant::now().duration_since(start).as_millis() > time_to_move {
+            if out_of_time(start, time_to_move_ms) {
                 // if we have not found a move to send back, send back the best move as determined by the order_heuristic
                 // this can happen on very short time control situations
                 if best_move.is_none() {
@@ -235,6 +252,8 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
             }
 
             let evaluation = -alpha_beta_search(
+                start,
+                time_to_move_ms,
                 mov,
                 cur_depth - 1,
                 ply_from_root + 1,
@@ -246,7 +265,7 @@ pub fn get_best_move(board: &BoardState, time_to_move: u128, tx: &BoardSender) {
 
             search_info.insert_into_cur_line(ply_from_root, mov);
 
-            if evaluation > alpha {
+            if evaluation > alpha && !out_of_time(start, time_to_move_ms) {
                 //alpha raised, remember this line as the pv
                 alpha = evaluation;
                 best_move = Some(mov.clone());
@@ -291,45 +310,14 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
 }
 
 /*
-    A single threaded move generation function which will search to the desired depth
-*/
-pub fn get_best_move_synchronous(board: &BoardState, depth: u8) -> Option<BoardState> {
-    let mut alpha = NEG_INF;
-    let beta = POS_INF;
-    let ply_from_root = 0;
-    let mut best_move: Option<BoardState> = None;
-
-    let mut search_info = Search::new_search();
-
-    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
-    moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
-
-    for mov in moves {
-        let evaluation = -alpha_beta_search(
-            &mov,
-            depth - 1,
-            ply_from_root + 1,
-            -beta,
-            -alpha,
-            &mut search_info,
-            true,
-        );
-
-        if evaluation > alpha {
-            alpha = evaluation;
-            best_move = Some(mov);
-        }
-    }
-
-    best_move
-}
-
-/*
     Play a game in the terminal where the engine plays against itself
 */
-pub fn play_game_against_self(b: &BoardState, max_moves: u8, depth: u8, simple_print: bool) {
-    let mut board = b.clone();
-
+pub fn play_game_against_self(
+    b: &BoardState,
+    max_moves: u8,
+    time_to_move_ms: u128,
+    simple_print: bool,
+) {
     let show_board = |simple_print: bool, b: &BoardState| {
         if simple_print {
             b.simple_print_board()
@@ -338,13 +326,20 @@ pub fn play_game_against_self(b: &BoardState, max_moves: u8, depth: u8, simple_p
         }
     };
 
+    let mut board = b.clone();
     show_board(simple_print, &board);
     for _ in 0..max_moves {
-        let res = get_best_move_synchronous(&board, depth);
-        board = match res {
-            Some(b) => b,
-            _ => break,
-        };
+        let (tx, rx) = mpsc::channel();
+        let start = Instant::now();
+        let clone = board.clone();
+        thread::spawn(move || get_best_move(&clone, start, time_to_move_ms, &tx));
+        while !out_of_time(start, time_to_move_ms) {
+            if let Ok(b) = rx.try_recv() {
+                board = b;
+            } else {
+                thread::sleep(Duration::from_millis(1));
+            }
+        }
         show_board(simple_print, &board);
     }
 }

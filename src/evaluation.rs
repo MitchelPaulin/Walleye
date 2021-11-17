@@ -218,18 +218,15 @@ pub fn get_evaluation(board: &BoardState) -> i32 {
         for col in BOARD_START..BOARD_END {
             if let Square::Full(Piece { color, kind }) = board.board[row][col] {
                 game_phase += game_phase_val(kind);
-                match color {
-                    White => {
-                        white_mg += mg_table(kind)[row - BOARD_START][col - BOARD_START]
-                            + mg_piece_val(kind);
-                        white_eg += eg_table(kind)[row - BOARD_START][col - BOARD_START]
-                            + eg_piece_val(kind);
-                    }
-                    Black => {
-                        black_mg += mg_table(kind)[9 - row][col - BOARD_START] + mg_piece_val(kind);
-                        black_eg += eg_table(kind)[9 - row][col - BOARD_START] + eg_piece_val(kind);
-                    }
-                };
+                if color == White {
+                    white_mg +=
+                        mg_table(kind)[row - BOARD_START][col - BOARD_START] + mg_piece_val(kind);
+                    white_eg +=
+                        eg_table(kind)[row - BOARD_START][col - BOARD_START] + eg_piece_val(kind);
+                } else {
+                    black_mg += mg_table(kind)[9 - row][col - BOARD_START] + mg_piece_val(kind);
+                    black_eg += eg_table(kind)[9 - row][col - BOARD_START] + eg_piece_val(kind);
+                }
             }
         }
     }

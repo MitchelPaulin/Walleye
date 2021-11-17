@@ -68,15 +68,15 @@ fn find_and_play_best_move(
     board: &mut BoardState,
     start: Instant,
 ) -> BoardState {
-    let time_to_move = parse_go_command(commands).calculate_time_slice(board.to_move);
+    let time_to_move_ms = parse_go_command(commands).calculate_time_slice(board.to_move);
     let mut best_move = None;
 
     let (tx, rx) = mpsc::channel();
     let clone = board.clone();
-    thread::spawn(move || get_best_move(&clone, time_to_move, &tx));
+    thread::spawn(move || get_best_move(&clone, start, time_to_move_ms, &tx));
     // keep looking until we are out of time
     // also add a guard to ensure we at least get a move from the search thread
-    while Instant::now().duration_since(start).as_millis() < time_to_move || best_move.is_none() {
+    while !out_of_time(start, time_to_move_ms) || best_move.is_none() {
         if let Ok(b) = rx.try_recv() {
             best_move = Some(b);
         } else {
