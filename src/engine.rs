@@ -299,14 +299,38 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
             break;
         }
     }
-    send_to_gui(&format!(
-        "info pv{} depth {} nodes {} score cp {} time {}",
-        ponder_move,
-        depth,
-        search_info.nodes_searched,
-        eval,
-        Instant::now().duration_since(start).as_millis()
-    ));
+
+    let mate_window = 15;
+    if eval >= MATE_SCORE - mate_window {
+        // this player is threatening checkmate
+        send_to_gui(&format!(
+            "info pv{} depth {} nodes {} score mate {} time {}",
+            ponder_move,
+            depth,
+            search_info.nodes_searched,
+            MATE_SCORE - eval,
+            Instant::now().duration_since(start).as_millis()
+        ));
+    } else if eval <= -MATE_SCORE + mate_window {
+        // this player is getting matted
+        send_to_gui(&format!(
+            "info pv{} depth {} nodes {} score mate {} time {}",
+            ponder_move,
+            depth,
+            search_info.nodes_searched,
+            (MATE_SCORE + eval) * -1,
+            Instant::now().duration_since(start).as_millis()
+        ));
+    } else {
+        send_to_gui(&format!(
+            "info pv{} depth {} nodes {} score cp {} time {}",
+            ponder_move,
+            depth,
+            search_info.nodes_searched,
+            eval,
+            Instant::now().duration_since(start).as_millis()
+        ));
+    }
 }
 
 /*
