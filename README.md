@@ -56,7 +56,7 @@ Extra board squares are sentinel squares to make boundary checking easier.
 ### Search
 - Alpha-Beta Pruning
 - Iterative Deepening
-- Capture Extension
+- Capture/Check Extension
 - Killer Moves
 - MVV-LVA
 - PV Search
