@@ -101,7 +101,8 @@ fn main() {
     if matches.is_present("play self") {
         let simple_print = matches.is_present("simple print");
         let max_moves = 100;
-        engine::play_game_against_self(&board, max_moves, 1000, simple_print);
+        let time_per_move_ms = 1000;
+        engine::play_game_against_self(&board, max_moves, time_per_move_ms, simple_print);
         return;
     }
 

@@ -24,7 +24,11 @@ pub fn play_game_uci() {
         return;
     }
 
-    send_to_gui(&format!("id name {} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")));
+    send_to_gui(&format!(
+        "id name {} {}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    ));
     send_to_gui(&format!("id author {}", env!("CARGO_PKG_AUTHORS")));
     send_to_gui("option name DebugLogLevel type combo default None var Info var None");
     send_to_gui("uciok");
@@ -190,12 +194,19 @@ fn make_move(board: &mut BoardState, player_move: &str) {
                 board.black_king_side_castle = false;
                 board.black_queen_side_castle = false;
             }
-        } else if kind == Pawn && (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
-            // pawn made a double move, record space behind pawn for en passant
-            board.pawn_double_move = match color {
-                White => Some(Point(start_pair.0 - 1, start_pair.1)),
-                Black => Some(Point(start_pair.0 + 1, start_pair.1)),
-            };
+        } else if kind == Pawn {
+            if (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
+                // pawn made a double move, record space behind pawn for en passant
+                board.pawn_double_move = match color {
+                    White => Some(Point(start_pair.0 - 1, start_pair.1)),
+                    Black => Some(Point(start_pair.0 + 1, start_pair.1)),
+                };
+            }
+            // check for en passant captures
+            // if a pawn moves diagonally and no capture is made, it must be an en passant capture
+            if start_pair.1 != end_pair.1 && board.board[end_pair.0][end_pair.1] == Square::Empty {
+                board.board[start_pair.0][end_pair.1] = Square::Empty;
+            }
         }
     }
 
@@ -327,5 +338,58 @@ mod tests {
         assert_eq!(res.wtime, 300000);
         assert_eq!(res.btime, 300000);
         assert_eq!(res.movestogo, None);
+    }
+
+    #[test]
+    fn en_passant_capture_parsed_correctly_black() {
+        let mut board = BoardState::from_fen("8/1k6/8/8/7p/8/1K4P1/8 w - - 0 1").unwrap();
+        make_move(&mut board, "g2g4");
+        make_move(&mut board, "h4g3");
+        assert_eq!(board.board[7][8], Square::from(Piece::pawn(Black)));
+
+        let mut pawn_count = 0;
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
+                if let Square::Full(Piece { kind, .. }) = board.board[i][j] {
+                    if kind == Pawn {
+                        pawn_count += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(pawn_count, 1);
+    }
+
+    #[test]
+    fn en_passant_capture_parsed_correctly_white() {
+        let mut board = BoardState::from_fen("8/1k4p1/8/5P2/8/8/1K6/8 b - - 0 1").unwrap();
+        make_move(&mut board, "g7g5");
+        make_move(&mut board, "f5g6");
+        assert_eq!(board.board[4][8], Square::from(Piece::pawn(White)));
+
+        let mut pawn_count = 0;
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
+                if let Square::Full(Piece { kind, .. }) = board.board[i][j] {
+                    if kind == Pawn {
+                        pawn_count += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(pawn_count, 1);
+    }
+
+    #[test]
+    fn full_game_played_white_wins() {
+        let commands: Vec<&str> = "position startpos moves g1f3 g8f6 d2d4 d7d5 e2e3 e7e6 f1d3 b8c6 b1c3 f8e7 e1g1 e8g8 a2a3 h7h6 b2b4 a7a6 c1b2 e7d6 a1c1 b7b5 h2h3 c8b7 f1e1 f8e8 g2g3 d8d7 e3e4 e6e5 c3d5 f6d5 e4d5 c6d4 f3d4 e5d4 d1h5 d6e7 b2d4 d7d5 h5d5 b7d5 c2c4 b5c4 d3c4 d5c4 c1c4 e7d6 e1e8 a8e8 c4c6 e8e1 g1g2 e1d1 d4e3 d1a1 c6a6 d6b4 a3a4 h6h5 a6a8 g8h7 a8a7 h7g6 a7c7 a1a4 c7c4 g6f6 e3d2 b4d2 c4a4 d2c3 g2f3 f6e6 f3e4 f7f5 e4e3 e6f7 e3f4 c3e1 f2f3 g7g6 a4a7 f7e6 f4g5 e1g3 a7a6 e6e5 g5g6 e5d4 a6e6 h5h4 g6f5 d4c3 e6e8 g3f2 e8d8 c3c4 f5g4 f2e1 f3f4 c4b3 f4f5 e1c3 g4g5 c3a5 d8e8 a5d2 g5h4 d2c3 h4g5 b3c4 f5f6 c3b2 f6f7 b2a3 g5g6 c4d5 h3h4 d5c4 h4h5 a3d6 h5h6 d6f8 e8f8 c4d5 f8d8 d5e5 f7f8q e5e4 f8f2 e4e5 f2f5".split(' ').collect();
+        let board = play_out_position(&commands);
+        let end_board = BoardState::from_fen("3R4/8/6KP/4kQ2/8/8/8/8 b - - 4 66").unwrap();
+
+        for i in BOARD_START..BOARD_END {
+            for j in BOARD_START..BOARD_END {
+                assert_eq!(board.board[i][j], end_board.board[i][j]);
+            }
+        }
     }
 }
