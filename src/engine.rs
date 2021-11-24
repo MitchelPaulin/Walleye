@@ -308,7 +308,7 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
             ponder_move,
             depth,
             search_info.nodes_searched,
-            MATE_SCORE - eval,
+            (MATE_SCORE - eval + 1) / 2,
             Instant::now().duration_since(start).as_millis()
         ));
     } else if eval <= -MATE_SCORE + mate_window {
@@ -318,7 +318,7 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
             ponder_move,
             depth,
             search_info.nodes_searched,
-            (MATE_SCORE + eval) * -1,
+            (MATE_SCORE + eval) / -2,
             Instant::now().duration_since(start).as_millis()
         ));
     } else {
