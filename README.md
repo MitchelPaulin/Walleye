@@ -93,7 +93,8 @@ Some resources and tools I found helpful when creating this engine.
 
 - [Chess Programming Wiki](https://www.chessprogramming.org)
 - [UCI Protocol Spec](https://backscattering.de/chess/uci/)
-- [FEN String Generator](http://www.netreal.de/Forsyth-Edwards-Notation/index.php)
+- [FEN String Generator](http://www.netreal.de/Forsyth-Edwards-Notation/)
+- [Mediocre Chess Blog](https://mediocrechess.blogspot.com/)
 
 ## Issues
 
