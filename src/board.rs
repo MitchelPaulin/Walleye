@@ -92,9 +92,9 @@ pub struct Piece {
 }
 
 impl Piece {
-    // Get the value of this piece
-    pub fn value(self) -> i32 {
-        self.kind.value()
+
+    pub fn index(self) -> usize {
+        self.kind.index()
     }
 
     pub const fn pawn(color: PieceColor) -> Self {
@@ -185,15 +185,16 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    // Get the value of this kind of piece
-    pub fn value(self) -> i32 {
+
+    // get an index for a piece, helpful for arrays
+    pub fn index(self) -> usize {
         match self {
-            Pawn => 100,
-            Knight => 320,
-            Bishop => 330,
-            Rook => 500,
-            Queen => 900,
-            King => 20000,
+            King => 0,
+            Queen => 1,
+            Rook => 2,
+            Bishop => 3,
+            Knight => 4,
+            Pawn => 5
         }
     }
 
@@ -716,15 +717,5 @@ mod tests {
     fn bad_fen_string_too_many_chars() {
         BoardState::from_fen("rnbqkbnrrrrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
-    }
-
-    #[test]
-    fn right_values() {
-        assert_eq!(Pawn.value(), 100);
-        assert_eq!(Knight.value(), 320);
-        assert_eq!(Bishop.value(), 330);
-        assert_eq!(Rook.value(), 500);
-        assert_eq!(Queen.value(), 900);
-        assert_eq!(King.value(), 20000);
     }
 }

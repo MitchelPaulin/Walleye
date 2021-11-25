@@ -13,6 +13,19 @@ const KNIGHT_CORDS: [(i8, i8); 8] = [
     (-2, 1),
 ];
 
+// MVV-LVA score, see https://www.chessprogramming.org/MVV-LVA
+// addressed as [victim][attacker]
+#[rustfmt::skip]
+const MVV_LVA: [[i32; 7]; 7] = [
+    [0,  0,  0,  0,  0,  0,  0],
+    [50, 51, 52, 53, 54, 55, 0],
+    [40, 41, 42, 43, 44, 45, 0],
+    [30, 31, 32, 33, 34, 35, 0],
+    [20, 21, 22, 23, 24, 25, 0],
+    [10, 11, 12, 13, 14, 15, 0],
+    [ 0,  0,  0,  0,  0,  0, 0],
+];
+
 #[derive(PartialEq, Eq)]
 pub enum CastlingType {
     WhiteKingSide,
@@ -565,9 +578,7 @@ fn generate_moves_for_piece(
 
         let target_square = new_board.board[mov.0][mov.1];
         if let Square::Full(target_piece) = target_square {
-            // MVV-LVA score, see https://www.chessprogramming.org/MVV-LVA
-            // winning captures have a positive value, losing captures have a negative value
-            new_board.order_heuristic = target_piece.value() - piece.value();
+            new_board.order_heuristic = MVV_LVA[target_piece.index()][piece.index()];
         } else {
             // by default all moves are given a minimum score
             new_board.order_heuristic = i32::MIN;
@@ -1670,6 +1681,14 @@ mod tests {
             generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
             2
         );
+    }
+
+    #[test]
+    fn mvv_lva_sanity() {
+        assert!(MVV_LVA[Pawn.index()][Pawn.index()] > MVV_LVA[Pawn.index()][Bishop.index()]);
+        assert!(MVV_LVA[Rook.index()][Pawn.index()] > MVV_LVA[Knight.index()][Bishop.index()]);
+        assert!(MVV_LVA[Queen.index()][Knight.index()] > MVV_LVA[Rook.index()][Bishop.index()]);
+        assert!(MVV_LVA[Queen.index()][Queen.index()] > MVV_LVA[Rook.index()][Rook.index()]);
     }
 
     // Perft tests - move generation. Table of values taken from https://www.chessprogramming.org/Perft_Results
