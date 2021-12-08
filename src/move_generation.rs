@@ -101,12 +101,14 @@ fn knight_moves(
         let col = (col as i8 + c) as usize;
         let square = board.board[row][col];
 
-        if move_generation_mode == MoveGenerationMode::CapturesOnly {
-            if square.is_color(piece.color.opposite()) {
+        if square.is_empty_or_color(piece.color.opposite()) {
+            if move_generation_mode == MoveGenerationMode::CapturesOnly {
+                if !square.is_empty() {
+                    moves.push(Point(row, col));
+                }
+            } else {
                 moves.push(Point(row, col));
             }
-        } else if square.is_empty_or_color(piece.color.opposite()) {
-            moves.push(Point(row, col));
         }
     }
 }
@@ -229,12 +231,14 @@ fn king_moves(
             let col = col + j - 1;
             let square = board.board[row][col];
 
-            if move_generation_mode == MoveGenerationMode::CapturesOnly {
-                if square.is_color(piece.color.opposite()) {
+            if square.is_empty_or_color(piece.color.opposite()) {
+                if move_generation_mode == MoveGenerationMode::CapturesOnly {
+                    if !square.is_empty() {
+                        moves.push(Point(row, col));
+                    }
+                } else {
                     moves.push(Point(row, col));
                 }
-            } else if square.is_empty_or_color(piece.color.opposite()) {
-                moves.push(Point(row, col));
             }
         }
     }
