@@ -1685,6 +1685,12 @@ mod tests {
             generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
             2
         );
+
+        let b = BoardState::from_fen("5B2/8/8/2p4R/1PK5/3NQ3/8/2R5 w KQkq - 0 1").unwrap();
+        assert_eq!(
+            generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
+            6
+        );
     }
 
     #[test]
