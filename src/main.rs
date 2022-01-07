@@ -9,6 +9,7 @@ pub mod search;
 mod time_control;
 mod uci;
 mod utils;
+mod zobrist;
 
 /*
     A custom memory allocator with better performance
