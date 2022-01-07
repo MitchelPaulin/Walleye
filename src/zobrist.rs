@@ -26,8 +26,11 @@ impl ZobristHasher {
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(6 * 10 * 1837);
 
         let mut piece_square_table = [[[0; BOARD_SIZE]; BOARD_SIZE]; PIECE_TYPES];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..BOARD_SIZE {
+            #[allow(clippy::needless_range_loop)]
             for j in 0..BOARD_SIZE {
+                #[allow(clippy::needless_range_loop)]
                 for k in 0..PIECE_TYPES {
                     piece_square_table[i][j][k] = rng.next_u64();
                 }
@@ -35,6 +38,7 @@ impl ZobristHasher {
         }
 
         let mut en_passant_files = [0; BOARD_SIZE];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..PIECE_TYPES {
             en_passant_files[i] = rng.next_u64();
         }
@@ -76,7 +80,7 @@ impl ZobristHasher {
             CastlingType::WhiteKingSide => self.white_king_side_castle,
             CastlingType::WhiteQueenSide => self.white_queen_side_castle,
             CastlingType::BlackKingSide => self.black_king_side_castle,
-            CastlingType::BlackQueenSide => self.black_queen_side_castle
+            CastlingType::BlackQueenSide => self.black_queen_side_castle,
         }
     }
 

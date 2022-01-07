@@ -26,6 +26,7 @@ const MVV_LVA: [[i32; 7]; 7] = [
     [ 0,  0,  0,  0,  0,  0, 0],
 ];
 
+#[allow(clippy::enum_variant_names)]
 #[derive(PartialEq, Eq)]
 pub enum CastlingType {
     WhiteKingSide,
