@@ -1,5 +1,6 @@
 use crate::engine::*;
 use crate::utils::*;
+use crate::zobrist::ZobristHasher;
 use colored::*;
 use std::fmt;
 use std::str::FromStr;
@@ -92,7 +93,6 @@ pub struct Piece {
 }
 
 impl Piece {
-
     pub fn index(self) -> usize {
         self.kind.index()
     }
@@ -185,7 +185,6 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-
     // get an index for a piece, helpful for arrays
     pub fn index(self) -> usize {
         match self {
@@ -194,7 +193,7 @@ impl PieceKind {
             Rook => 2,
             Bishop => 3,
             Knight => 4,
-            Pawn => 5
+            Pawn => 5,
         }
     }
 
@@ -294,6 +293,7 @@ pub struct BoardState {
     pub order_heuristic: i32, // value set to help order this board, a higher value means this board state will be considered first
     pub last_move: Option<(Point, Point)>, // the start and last position of the last move made
     pub pawn_promotion: Option<Piece>, // set to the chosen pawn promotion type
+    pub zobrist_key: u64,
 }
 
 impl BoardState {
@@ -301,6 +301,8 @@ impl BoardState {
     pub fn from_fen(fen: &str) -> Result<BoardState, &str> {
         let mut board = [[Square::Boundary; 12]; 12];
         let mut fen = fen.to_string();
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let mut zobrist_key = 0;
         trim_newline(&mut fen);
         let fen_config: Vec<&str> = fen.split(' ').collect();
         if fen_config.len() != 6 {
@@ -312,6 +314,11 @@ impl BoardState {
             "b" => PieceColor::Black,
             _ => return Err("Could not parse fen string: Next player to move was not provided"),
         };
+
+        if to_move == PieceColor::Black {
+            zobrist_key = zobrist_hasher.get_black_to_move_val();
+        }
+
         let castling_privileges = fen_config[2];
         let en_passant = fen_config[3];
 
@@ -353,6 +360,8 @@ impl BoardState {
                     };
 
                     if let Square::Full(Piece { kind, color }) = board[row][col] {
+                        zobrist_key ^= zobrist_hasher
+                            .get_val_for_piece(Piece { kind, color }, Point(row - BOARD_START, col - BOARD_START));
                         if kind == King {
                             match color {
                                 White => white_king_location = Point(row, col),
@@ -378,9 +387,12 @@ impl BoardState {
             }
         } else {
             en_passant_pos = en_passant.parse().ok();
+            if let Some(point) = en_passant_pos {
+                zobrist_key ^= zobrist_hasher.get_val_for_en_passant(point.1 - BOARD_START);
+            }
         }
 
-        Ok(BoardState {
+        let mut board = BoardState {
             board,
             to_move,
             white_king_location,
@@ -393,7 +405,23 @@ impl BoardState {
             order_heuristic: i32::MIN,
             last_move: None,
             pawn_promotion: None,
-        })
+            zobrist_key,
+        };
+
+        if board.white_king_side_castle {
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide);
+        }
+        if board.white_queen_side_castle {
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
+        }
+        if board.black_king_side_castle {
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide)
+        }
+        if board.black_queen_side_castle {
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+        }
+
+        Ok(board)
     }
 
     fn piece_from_fen_string_char(piece: char) -> Option<Piece> {
@@ -568,12 +596,13 @@ mod tests {
 
     #[test]
     fn empty_board() {
-        let b = BoardState::from_fen("8/8/8/8/8/8/8/8 w KQkq - 0 1").unwrap();
+        let b = BoardState::from_fen("8/8/8/8/8/8/8/8 w - - 0 1").unwrap();
         for i in BOARD_START..BOARD_END {
             for j in BOARD_START..BOARD_END {
                 assert_eq!(b.board[i][j], Square::Empty);
             }
         }
+        assert_eq!(b.zobrist_key, 0);
     }
 
     #[test]
@@ -611,6 +640,8 @@ mod tests {
         for i in BOARD_START..BOARD_END {
             assert_eq!(b.board[8][i], Square::from(Piece::pawn(White)));
         }
+
+        assert_eq!(b.zobrist_key, 13551100241452378404);
     }
 
     #[test]

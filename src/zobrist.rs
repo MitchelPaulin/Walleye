@@ -8,7 +8,7 @@ const PIECE_TYPES: usize = 12;
 
 #[allow(dead_code)]
 pub struct ZobristHasher {
-    // indexed by [rank][file][piece]
+    // indexed by [piece][file][rank]
     piece_square_table: [[[u64; BOARD_SIZE]; BOARD_SIZE]; PIECE_TYPES],
     black_to_move: u64,
     white_king_side_castle: u64,
@@ -22,6 +22,7 @@ pub struct ZobristHasher {
 impl ZobristHasher {
     #[allow(dead_code)]
     pub fn create_zobrist_hasher() -> ZobristHasher {
+        // Here we use a seed so if you have to recreate the hasher you will always get the same values
         // Paul Morphy's birthday
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(6 * 10 * 1837);
 
@@ -32,14 +33,14 @@ impl ZobristHasher {
             for j in 0..BOARD_SIZE {
                 #[allow(clippy::needless_range_loop)]
                 for k in 0..PIECE_TYPES {
-                    piece_square_table[i][j][k] = rng.next_u64();
+                    piece_square_table[k][j][i] = rng.next_u64();
                 }
             }
         }
 
         let mut en_passant_files = [0; BOARD_SIZE];
         #[allow(clippy::needless_range_loop)]
-        for i in 0..PIECE_TYPES {
+        for i in 0..BOARD_SIZE {
             en_passant_files[i] = rng.next_u64();
         }
 
@@ -55,7 +56,7 @@ impl ZobristHasher {
     }
 
     #[allow(dead_code)]
-    pub fn get_val_for_piece(self, piece: Piece, point: Point) -> u64 {
+    pub fn get_val_for_piece(&self, piece: Piece, point: Point) -> u64 {
         let index = match (piece.color, piece.kind) {
             (White, Pawn) => 0,
             (White, Knight) => 1,
@@ -71,11 +72,11 @@ impl ZobristHasher {
             (Black, King) => 11,
         };
 
-        self.piece_square_table[point.0][point.1][index]
+        self.piece_square_table[index][point.1][point.0]
     }
 
     #[allow(dead_code)]
-    pub fn get_val_for_castling(self, castling_type: CastlingType) -> u64 {
+    pub fn get_val_for_castling(&self, castling_type: CastlingType) -> u64 {
         match castling_type {
             CastlingType::WhiteKingSide => self.white_king_side_castle,
             CastlingType::WhiteQueenSide => self.white_queen_side_castle,
@@ -85,12 +86,12 @@ impl ZobristHasher {
     }
 
     #[allow(dead_code)]
-    pub fn get_val_for_en_passant(self, file: usize) -> u64 {
+    pub fn get_val_for_en_passant(&self, file: usize) -> u64 {
         self.en_passant_files[file]
     }
 
     #[allow(dead_code)]
-    pub fn get_black_to_move_val(self) -> u64 {
+    pub fn get_black_to_move_val(&self) -> u64 {
         self.black_to_move
     }
 }
