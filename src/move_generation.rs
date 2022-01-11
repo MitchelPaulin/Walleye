@@ -1,6 +1,7 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 pub use crate::evaluation::*;
+use crate::zobrist::ZobristHasher;
 
 const KNIGHT_CORDS: [(i8, i8); 8] = [
     (1, 2),
@@ -50,7 +51,11 @@ const BLACK_QUEEN_SIDE_CASTLE_ALG: Option<(Point, Point)> = Some((Point(2, 6), P
     Generate all possible *legal* moves from the given board
     Also sets appropriate variables for the board state
 */
-pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> Vec<BoardState> {
+pub fn generate_moves(
+    board: &BoardState,
+    move_gen_mode: MoveGenerationMode,
+    zobrist_hasher: &ZobristHasher,
+) -> Vec<BoardState> {
     //usually there is at minimum 16 moves in a position, so it make sense to preallocate some space to avoid excessive reallocations
     let mut new_moves: Vec<BoardState> = Vec::with_capacity(16);
 
@@ -64,6 +69,7 @@ pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> 
                         Point(i, j),
                         &mut new_moves,
                         move_gen_mode,
+                        zobrist_hasher,
                     );
                 }
             }
@@ -71,7 +77,7 @@ pub fn generate_moves(board: &BoardState, move_gen_mode: MoveGenerationMode) -> 
     }
 
     if move_gen_mode == MoveGenerationMode::AllMoves {
-        generate_castling_moves(board, &mut new_moves);
+        generate_castling_moves(board, &mut new_moves, zobrist_hasher);
     }
     new_moves
 }
@@ -555,6 +561,7 @@ fn generate_moves_for_piece(
     square_cords: Point,
     new_moves: &mut Vec<BoardState>,
     move_generation_mode: MoveGenerationMode,
+    zobrist_hasher: &ZobristHasher,
 ) {
     let mut moves: Vec<Point> = Vec::new();
     let Piece { color, kind } = piece;
@@ -572,6 +579,7 @@ fn generate_moves_for_piece(
         let mut new_board = board.clone();
         new_board.pawn_promotion = None;
         new_board.swap_color();
+        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
 
         // update king location if we are moving the king
         if kind == King {
@@ -584,6 +592,8 @@ fn generate_moves_for_piece(
         let target_square = new_board.board[mov.0][mov.1];
         if let Square::Full(target_piece) = target_square {
             new_board.order_heuristic = MVV_LVA[target_piece.index()][piece.index()];
+            // erase captured piece
+            new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(target_piece, square_cords);
         } else {
             // by default all moves are given a minimum score
             new_board.order_heuristic = i32::MIN;
@@ -594,6 +604,10 @@ fn generate_moves_for_piece(
         new_board.board[square_cords.0][square_cords.1] = Square::Empty;
         new_board.last_move = Some((square_cords, mov));
 
+        // erase the piece and add it in its new location
+        new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, square_cords)
+            ^ zobrist_hasher.get_val_for_piece(piece, mov);
+
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
             continue;
@@ -602,50 +616,85 @@ fn generate_moves_for_piece(
         // if the rook or king move, take away castling privileges
         if kind == King {
             if color == White {
-                new_board.white_king_side_castle = false;
-                new_board.white_queen_side_castle = false;
+                take_away_castling_rights(
+                    &mut new_board,
+                    CastlingType::WhiteKingSide,
+                    zobrist_hasher,
+                );
+                take_away_castling_rights(
+                    &mut new_board,
+                    CastlingType::WhiteQueenSide,
+                    zobrist_hasher,
+                );
             } else {
-                new_board.black_queen_side_castle = false;
-                new_board.black_king_side_castle = false;
+                take_away_castling_rights(
+                    &mut new_board,
+                    CastlingType::BlackKingSide,
+                    zobrist_hasher,
+                );
+                take_away_castling_rights(
+                    &mut new_board,
+                    CastlingType::BlackQueenSide,
+                    zobrist_hasher,
+                );
             }
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_END - 1 {
-            new_board.white_king_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_START {
-            new_board.white_queen_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_START {
-            new_board.black_queen_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_END - 1 {
-            new_board.black_king_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
         }
 
         // if the rook is captured, take away castling privileges
         if mov.0 == BOARD_END - 1 && mov.1 == BOARD_END - 1 {
-            new_board.white_king_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
         } else if mov.0 == BOARD_END - 1 && mov.1 == BOARD_START {
-            new_board.white_queen_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
         } else if mov.0 == BOARD_START && mov.1 == BOARD_START {
-            new_board.black_queen_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
         } else if mov.0 == BOARD_START && mov.1 == BOARD_END - 1 {
-            new_board.black_king_side_castle = false;
+            take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
         }
 
         // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
         if move_generation_mode == MoveGenerationMode::AllMoves {
             if kind == Pawn && (square_cords.0 as i8 - mov.0 as i8).abs() == 2 {
-                if color == White {
-                    new_board.pawn_double_move = Some(Point(mov.0 + 1, mov.1));
-                } else {
-                    new_board.pawn_double_move = Some(Point(mov.0 - 1, mov.1));
-                }
+                let en_passant_square = match color {
+                    White => Point(mov.0 + 1, mov.1),
+                    Black => Point(mov.0 - 1, mov.1),
+                };
+
+                new_board.pawn_double_move = Some(en_passant_square);
+                new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(en_passant_square.1);
             } else {
                 // the most recent move was not a double pawn move, unset any possibly existing pawn double move
-                new_board.pawn_double_move = None;
+                if let Some(mov) = board.pawn_double_move {
+                    new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
+                    new_board.pawn_double_move = None;
+                }
             }
             // deal with pawn promotions
             if mov.0 == BOARD_START && color == White && kind == Pawn {
-                promote_pawn(&new_board, White, square_cords, mov, new_moves);
+                promote_pawn(
+                    &new_board,
+                    White,
+                    square_cords,
+                    mov,
+                    new_moves,
+                    zobrist_hasher,
+                );
             } else if mov.0 == BOARD_END - 1 && color == Black && kind == Pawn {
-                promote_pawn(&new_board, Black, square_cords, mov, new_moves);
+                promote_pawn(
+                    &new_board,
+                    Black,
+                    square_cords,
+                    mov,
+                    new_moves,
+                    zobrist_hasher,
+                );
             } else {
                 new_moves.push(new_board);
             }
@@ -661,13 +710,21 @@ fn generate_moves_for_piece(
             let mut new_board = board.clone();
             new_board.last_move = Some((square_cords, mov));
             new_board.swap_color();
+            new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
             new_board.pawn_double_move = None;
+            new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
             new_board.board[mov.0][mov.1] = piece.into();
             new_board.board[square_cords.0][square_cords.1] = Square::Empty;
+            new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, mov)
+                ^ zobrist_hasher.get_val_for_piece(piece, square_cords);
             if color == White {
                 new_board.board[mov.0 + 1][mov.1] = Square::Empty;
+                new_board.zobrist_key ^=
+                    zobrist_hasher.get_val_for_piece(Piece::pawn(Black), Point(mov.0 + 1, mov.1));
             } else {
                 new_board.board[mov.0 - 1][mov.1] = Square::Empty;
+                new_board.zobrist_key ^=
+                    zobrist_hasher.get_val_for_piece(Piece::pawn(White), Point(mov.0 - 1, mov.1));
             }
 
             // if you make a move, and you do not end up in check, then this move is valid
@@ -683,64 +740,107 @@ fn generate_moves_for_piece(
     If castling is possible add the move the the list of possible moves
     Will also update appropriate castling variables if castling was successful
 */
-fn generate_castling_moves(board: &BoardState, new_moves: &mut Vec<BoardState>) {
+fn generate_castling_moves(
+    board: &BoardState,
+    new_moves: &mut Vec<BoardState>,
+    zobrist_hasher: &ZobristHasher,
+) {
     if board.to_move == White && can_castle(board, &CastlingType::WhiteKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
-        new_board.pawn_double_move = None;
-        new_board.white_king_side_castle = false;
-        new_board.white_queen_side_castle = false;
+        unset_pawn_double_move(&mut new_board, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
         new_board.white_king_location = Point(BOARD_END - 1, BOARD_END - 2);
         new_board.board[BOARD_END - 1][BOARD_START + 4] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_END - 2] = Piece::king(White).into();
         new_board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
         new_board.last_move = WHITE_KING_SIDE_CASTLE_ALG;
+
+        // update the zobrist key to represent the new position of the king and rook
+        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), new_board.white_king_location)
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), board.white_king_location)
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 1))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 3));
+
         new_moves.push(new_board);
     }
 
     if board.to_move == White && can_castle(board, &CastlingType::WhiteQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
-        new_board.pawn_double_move = None;
-        new_board.white_king_side_castle = false;
-        new_board.white_queen_side_castle = false;
+        unset_pawn_double_move(&mut new_board, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
         new_board.white_king_location = Point(BOARD_END - 1, BOARD_START + 2);
         new_board.board[BOARD_END - 1][BOARD_START + 4] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
         new_board.board[BOARD_END - 1][BOARD_START + 2] = Piece::king(White).into();
         new_board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
         new_board.last_move = WHITE_QUEEN_SIDE_CASTLE_ALG;
+
+        // update the zobrist key to represent the new position of the king and rook
+        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), new_board.white_king_location)
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), board.white_king_location)
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START + 3));
+
         new_moves.push(new_board);
     }
 
     if board.to_move == Black && can_castle(board, &CastlingType::BlackKingSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
-        new_board.pawn_double_move = None;
-        new_board.black_king_side_castle = false;
-        new_board.black_queen_side_castle = false;
+        unset_pawn_double_move(&mut new_board, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
         new_board.black_king_location = Point(BOARD_START, BOARD_END - 2);
         new_board.board[BOARD_START][BOARD_START + 4] = Square::Empty;
         new_board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
         new_board.board[BOARD_START][BOARD_END - 2] = Piece::king(Black).into();
         new_board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
         new_board.last_move = BLACK_KING_SIDE_CASTLE_ALG;
+
+        // update the zobrist key to represent the new position of the king and rook
+        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), new_board.black_king_location)
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), board.black_king_location)
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 1))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 3));
+
         new_moves.push(new_board);
     }
 
     if board.to_move == Black && can_castle(board, &CastlingType::BlackQueenSide) {
         let mut new_board = board.clone();
         new_board.swap_color();
-        new_board.pawn_double_move = None;
-        new_board.black_king_side_castle = false;
-        new_board.black_queen_side_castle = false;
+        unset_pawn_double_move(&mut new_board, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
+        take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
         new_board.black_king_location = Point(BOARD_START, BOARD_START + 2);
         new_board.board[BOARD_START][BOARD_START + 4] = Square::Empty;
         new_board.board[BOARD_START][BOARD_START] = Square::Empty;
         new_board.board[BOARD_START][BOARD_START + 2] = Piece::king(Black).into();
         new_board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
         new_board.last_move = BLACK_QUEEN_SIDE_CASTLE_ALG;
+
+        // update the zobrist key to represent the new position of the king and rook
+        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), new_board.black_king_location)
+            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), board.black_king_location)
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START + 3));
+
         new_moves.push(new_board);
     }
 }
@@ -757,15 +857,20 @@ fn promote_pawn(
     start: Point,
     target: Point,
     moves: &mut Vec<BoardState>,
+    zobrist_hasher: &ZobristHasher,
 ) {
     for kind in &[Queen, Knight, Bishop, Rook] {
         let mut new_board = board.clone();
-        new_board.pawn_double_move = None;
+        unset_pawn_double_move(&mut new_board, zobrist_hasher);
         let promotion_piece = Piece { color, kind: *kind };
         new_board.board[target.0][target.1] = Square::Full(promotion_piece);
         new_board.last_move = Some((start, target));
         new_board.pawn_promotion = Some(promotion_piece);
         new_board.order_heuristic = PAWN_PROMOTION_SCORE; // a pawn promotion is usually a good idea
+
+        // erase pawn and add the promotion piece
+        new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(promotion_piece, target)
+            ^ zobrist_hasher.get_val_for_piece(Piece::pawn(color), target);
         moves.push(new_board);
     }
 }
@@ -781,6 +886,7 @@ pub fn generate_moves_test(
     depth: usize,
     move_counts: &mut [u32],
     should_evaluate: bool,
+    zobrist_hasher: &ZobristHasher,
 ) {
     if cur_depth == depth {
         if should_evaluate {
@@ -790,11 +896,59 @@ pub fn generate_moves_test(
         }
         return;
     }
-
-    let moves = generate_moves(board, MoveGenerationMode::AllMoves);
+    let moves = generate_moves(board, MoveGenerationMode::AllMoves, zobrist_hasher);
     move_counts[cur_depth] += moves.len() as u32;
     for mov in moves {
-        generate_moves_test(&mov, cur_depth + 1, depth, move_counts, should_evaluate);
+        generate_moves_test(
+            &mov,
+            cur_depth + 1,
+            depth,
+            move_counts,
+            should_evaluate,
+            zobrist_hasher,
+        );
+    }
+}
+
+/*
+    Helper function to clear the pawn double move condition and update
+    the zobrist key if required
+*/
+fn unset_pawn_double_move(board: &mut BoardState, zobrist_hasher: &ZobristHasher) {
+    if let Some(en_passant_target) = board.pawn_double_move {
+        board.pawn_double_move = None;
+        board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(en_passant_target.1);
+    }
+}
+
+/*
+    Helper function to take away castling rights, updates the zobrist as well if required
+*/
+fn take_away_castling_rights(
+    board: &mut BoardState,
+    castling_type: CastlingType,
+    zobrist_hasher: &ZobristHasher,
+) {
+    if castling_type == CastlingType::WhiteKingSide {
+        if board.white_king_side_castle {
+            board.white_king_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
+        }
+    } else if castling_type == CastlingType::WhiteQueenSide {
+        if board.white_queen_side_castle {
+            board.white_queen_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
+        }
+    } else if castling_type == CastlingType::BlackKingSide {
+        if board.black_king_side_castle {
+            board.black_king_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
+        }
+    } else if castling_type == CastlingType::BlackQueenSide {
+        if board.black_queen_side_castle {
+            board.black_queen_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+        }
     }
 }
 
@@ -1667,29 +1821,31 @@ mod tests {
 
     #[test]
     fn only_captures_correctly_counted() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
         assert_eq!(
-            generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
+            generate_moves(&b, MoveGenerationMode::CapturesOnly, &zobrist_hasher).len(),
             0
         );
 
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/2N5/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
         assert_eq!(
-            generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
+            generate_moves(&b, MoveGenerationMode::CapturesOnly, &zobrist_hasher).len(),
             4
         );
 
         let b = BoardState::from_fen("K1k4p/8/8/8/8/8/8/B6R w KQkq - 0 1").unwrap();
         assert_eq!(
-            generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
+            generate_moves(&b, MoveGenerationMode::CapturesOnly, &zobrist_hasher).len(),
             2
         );
 
         let b = BoardState::from_fen("5B2/8/8/2p4R/1PK5/3NQ3/8/2R5 w KQkq - 0 1").unwrap();
         assert_eq!(
-            generate_moves(&b, MoveGenerationMode::CapturesOnly).len(),
+            generate_moves(&b, MoveGenerationMode::CapturesOnly, &zobrist_hasher).len(),
             6
         );
     }
@@ -1709,7 +1865,8 @@ mod tests {
         let mut moves_states = [0; 5];
         let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .unwrap();
-        generate_moves_test(&b, 0, 5, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 5, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 20);
         assert_eq!(moves_states[1], 400);
         assert_eq!(moves_states[2], 8902);
@@ -1724,7 +1881,8 @@ mod tests {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 4, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 48);
         assert_eq!(moves_states[1], 2039);
         assert_eq!(moves_states[2], 97862);
@@ -1735,7 +1893,8 @@ mod tests {
     fn perft_test_position_3() {
         let mut moves_states = [0; 5];
         let b = BoardState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
-        generate_moves_test(&b, 0, 5, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 5, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 14);
         assert_eq!(moves_states[1], 191);
         assert_eq!(moves_states[2], 2812);
@@ -1750,7 +1909,8 @@ mod tests {
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 4, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 6);
         assert_eq!(moves_states[1], 264);
         assert_eq!(moves_states[2], 9467);
@@ -1764,7 +1924,8 @@ mod tests {
             "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 4, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 6);
         assert_eq!(moves_states[1], 264);
         assert_eq!(moves_states[2], 9467);
@@ -1776,7 +1937,8 @@ mod tests {
         let mut moves_states = [0; 4];
         let b = BoardState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8")
             .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 4, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 44);
         assert_eq!(moves_states[1], 1486);
         assert_eq!(moves_states[2], 62379);
@@ -1790,7 +1952,8 @@ mod tests {
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
         )
         .unwrap();
-        generate_moves_test(&b, 0, 4, &mut moves_states, false);
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        generate_moves_test(&b, 0, 4, &mut moves_states, false, &zobrist_hasher);
         assert_eq!(moves_states[0], 46);
         assert_eq!(moves_states[1], 2079);
         assert_eq!(moves_states[2], 89890);

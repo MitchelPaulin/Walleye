@@ -361,7 +361,7 @@ impl BoardState {
 
                     if let Square::Full(Piece { kind, color }) = board[row][col] {
                         zobrist_key ^= zobrist_hasher
-                            .get_val_for_piece(Piece { kind, color }, Point(row - BOARD_START, col - BOARD_START));
+                            .get_val_for_piece(Piece { kind, color }, Point(row, col));
                         if kind == King {
                             match color {
                                 White => white_king_location = Point(row, col),
@@ -388,7 +388,7 @@ impl BoardState {
         } else {
             en_passant_pos = en_passant.parse().ok();
             if let Some(point) = en_passant_pos {
-                zobrist_key ^= zobrist_hasher.get_val_for_en_passant(point.1 - BOARD_START);
+                zobrist_key ^= zobrist_hasher.get_val_for_en_passant(point.1);
             }
         }
 
@@ -641,7 +641,7 @@ mod tests {
             assert_eq!(b.board[8][i], Square::from(Piece::pawn(White)));
         }
 
-        assert_eq!(b.zobrist_key, 13551100241452378404);
+        assert_eq!(b.zobrist_key, 321564624691785580);
     }
 
     #[test]

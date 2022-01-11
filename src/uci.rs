@@ -4,6 +4,7 @@ pub use crate::engine::*;
 pub use crate::move_generation::*;
 pub use crate::time_control::*;
 pub use crate::utils::*;
+use crate::zobrist::ZobristHasher;
 use log::{error, info};
 use std::io::{self, BufRead};
 use std::process;
@@ -33,6 +34,7 @@ pub fn play_game_uci() {
     send_to_gui("option name DebugLogLevel type combo default None var Info var None");
     send_to_gui("uciok");
 
+    let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
     loop {
         let buffer = read_from_gui();
         let start = Instant::now();
@@ -42,7 +44,7 @@ pub fn play_game_uci() {
             "isready" => send_to_gui("readyok"),
             "ucinewgame" => (), // we don't keep any internal state really so no need to reset anything here
             "position" => {
-                board = play_out_position(&commands);
+                board = play_out_position(&commands, &zobrist_hasher);
                 info!("{}", board.simple_board());
             }
             "go" => {
@@ -137,7 +139,7 @@ fn parse_go_command(commands: &[&str]) -> GameTime {
 /*
     From the provided fen string set up the board state
 */
-fn play_out_position(commands: &[&str]) -> BoardState {
+fn play_out_position(commands: &[&str], zobrist_hasher: &ZobristHasher) -> BoardState {
     let mut board;
     if commands[1] == "fen" {
         let mut fen = "".to_string();
@@ -167,7 +169,7 @@ fn play_out_position(commands: &[&str]) -> BoardState {
 
     if let Some(start_index) = moves_start_index {
         for mov in commands.iter().skip(start_index + 1) {
-            make_move(&mut board, *mov);
+            make_move(&mut board, *mov, zobrist_hasher);
         }
     }
 
@@ -177,51 +179,99 @@ fn play_out_position(commands: &[&str]) -> BoardState {
 /*
     Play the opponents move on the board
 */
-fn make_move(board: &mut BoardState, player_move: &str) {
+fn make_move(board: &mut BoardState, player_move: &str, zobrist_hasher: &ZobristHasher) {
     let start_pair: Point = (player_move[0..2]).parse().unwrap();
     let end_pair: Point = (player_move[2..4]).parse().unwrap();
-    board.pawn_double_move = None;
+    if let Some(mov) = board.pawn_double_move {
+        board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
+        board.pawn_double_move = None;
+    }
 
-    if let Square::Full(Piece { kind, color }) = board.board[start_pair.0][start_pair.1] {
+    if let Square::Full(piece) = board.board[start_pair.0][start_pair.1] {
         // update king location
-        if kind == King {
-            if color == White {
+        if piece.kind == King {
+            if piece.color == White {
                 board.white_king_location = end_pair;
-                board.white_king_side_castle = false;
-                board.white_queen_side_castle = false;
+                if board.white_king_side_castle {
+                    board.white_king_side_castle = false;
+                    board.zobrist_key ^=
+                        zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide);
+                }
+                if board.white_queen_side_castle {
+                    board.white_queen_side_castle = false;
+                    board.zobrist_key ^=
+                        zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
+                }
             } else {
                 board.black_king_location = end_pair;
-                board.black_king_side_castle = false;
-                board.black_queen_side_castle = false;
+                if board.black_king_side_castle {
+                    board.black_king_side_castle = false;
+                    board.zobrist_key ^=
+                        zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
+                }
+                if board.black_queen_side_castle {
+                    board.black_queen_side_castle = false;
+                    board.zobrist_key ^=
+                        zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+                }
             }
-        } else if kind == Pawn {
+        } else if piece.kind == Pawn {
             if (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
                 // pawn made a double move, record space behind pawn for en passant
-                board.pawn_double_move = match color {
-                    White => Some(Point(start_pair.0 - 1, start_pair.1)),
-                    Black => Some(Point(start_pair.0 + 1, start_pair.1)),
+                let target = match piece.color {
+                    White => Point(start_pair.0 - 1, start_pair.1),
+                    Black => Point(start_pair.0 + 1, start_pair.1),
                 };
+                board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(target.1);
+                board.pawn_double_move = Some(target);
             }
             // check for en passant captures
             // if a pawn moves diagonally and no capture is made, it must be an en passant capture
             if start_pair.1 != end_pair.1 && board.board[end_pair.0][end_pair.1] == Square::Empty {
                 board.board[start_pair.0][end_pair.1] = Square::Empty;
+                board.zobrist_key ^= zobrist_hasher.get_val_for_piece(
+                    Piece::pawn(board.to_move.opposite()),
+                    Point(start_pair.0, end_pair.1),
+                );
             }
         }
+
+        // update location of moved piece in zobrist key
+        board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, start_pair)
+            ^ zobrist_hasher.get_val_for_piece(piece, end_pair);
+    } else {
+        panic!("UCI Error: Trying to move a piece that does not exist");
     }
 
     //deal with castling privileges related to the movement/capture of rooks
     if player_move.contains("a8") {
-        board.black_queen_side_castle = false;
+        if board.black_queen_side_castle {
+            board.black_queen_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+        }
     }
     if player_move.contains("h8") {
-        board.black_king_side_castle = false;
+        if board.black_king_side_castle {
+            board.black_king_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
+        }
     }
     if player_move.contains("a1") {
-        board.white_queen_side_castle = false;
+        if board.white_queen_side_castle {
+            board.white_queen_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
+        }
     }
     if player_move.contains("h1") {
-        board.white_king_side_castle = false;
+        if board.white_king_side_castle {
+            board.white_king_side_castle = false;
+            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide);
+        }
+    }
+
+    // update zobrist key
+    if let Square::Full(target_piece) = board.board[end_pair.0][end_pair.1] {
+        board.zobrist_key ^= zobrist_hasher.get_val_for_piece(target_piece, end_pair);
     }
 
     //move piece
@@ -240,11 +290,13 @@ fn make_move(board: &mut BoardState, player_move: &str) {
                 Queen
             }
         };
-        board.board[end_pair.0][end_pair.1] = Piece {
+        let promotion_piece = Piece {
             color: board.to_move,
             kind,
-        }
-        .into();
+        };
+        board.zobrist_key ^= zobrist_hasher.get_val_for_piece(Piece::pawn(board.to_move), end_pair)
+            ^ zobrist_hasher.get_val_for_piece(promotion_piece, end_pair);
+        board.board[end_pair.0][end_pair.1] = promotion_piece.into();
     }
 
     // deal with castling, here we also make sure the right king is on the target square to
@@ -254,23 +306,41 @@ fn make_move(board: &mut BoardState, player_move: &str) {
     {
         board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
+        board.zobrist_key ^= zobrist_hasher
+            .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 1))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 3))
     } else if player_move == WHITE_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
         board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
         board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
+        board.zobrist_key ^= zobrist_hasher
+            .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START + 3))
     } else if player_move == BLACK_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
         board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
+        board.zobrist_key ^= zobrist_hasher
+            .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 1))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 3))
     } else if player_move == BLACK_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
         board.board[BOARD_START][BOARD_START] = Square::Empty;
         board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
+        board.zobrist_key ^= zobrist_hasher
+            .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START))
+            ^ zobrist_hasher
+                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START + 3))
     }
+
     board.swap_color();
+    board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
 }
 
 fn send_best_move_to_gui(board: &BoardState) {
@@ -343,8 +413,9 @@ mod tests {
     #[test]
     fn en_passant_capture_parsed_correctly_black() {
         let mut board = BoardState::from_fen("8/1k6/8/8/7p/8/1K4P1/8 w - - 0 1").unwrap();
-        make_move(&mut board, "g2g4");
-        make_move(&mut board, "h4g3");
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        make_move(&mut board, "g2g4", &zobrist_hasher);
+        make_move(&mut board, "h4g3", &zobrist_hasher);
         assert_eq!(board.board[7][8], Square::from(Piece::pawn(Black)));
 
         let mut pawn_count = 0;
@@ -363,8 +434,9 @@ mod tests {
     #[test]
     fn en_passant_capture_parsed_correctly_white() {
         let mut board = BoardState::from_fen("8/1k4p1/8/5P2/8/8/1K6/8 b - - 0 1").unwrap();
-        make_move(&mut board, "g7g5");
-        make_move(&mut board, "f5g6");
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        make_move(&mut board, "g7g5", &zobrist_hasher);
+        make_move(&mut board, "f5g6", &zobrist_hasher);
         assert_eq!(board.board[4][8], Square::from(Piece::pawn(White)));
 
         let mut pawn_count = 0;
@@ -382,8 +454,9 @@ mod tests {
 
     #[test]
     fn full_game_played_white_wins() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
         let commands: Vec<&str> = "position startpos moves g1f3 g8f6 d2d4 d7d5 e2e3 e7e6 f1d3 b8c6 b1c3 f8e7 e1g1 e8g8 a2a3 h7h6 b2b4 a7a6 c1b2 e7d6 a1c1 b7b5 h2h3 c8b7 f1e1 f8e8 g2g3 d8d7 e3e4 e6e5 c3d5 f6d5 e4d5 c6d4 f3d4 e5d4 d1h5 d6e7 b2d4 d7d5 h5d5 b7d5 c2c4 b5c4 d3c4 d5c4 c1c4 e7d6 e1e8 a8e8 c4c6 e8e1 g1g2 e1d1 d4e3 d1a1 c6a6 d6b4 a3a4 h6h5 a6a8 g8h7 a8a7 h7g6 a7c7 a1a4 c7c4 g6f6 e3d2 b4d2 c4a4 d2c3 g2f3 f6e6 f3e4 f7f5 e4e3 e6f7 e3f4 c3e1 f2f3 g7g6 a4a7 f7e6 f4g5 e1g3 a7a6 e6e5 g5g6 e5d4 a6e6 h5h4 g6f5 d4c3 e6e8 g3f2 e8d8 c3c4 f5g4 f2e1 f3f4 c4b3 f4f5 e1c3 g4g5 c3a5 d8e8 a5d2 g5h4 d2c3 h4g5 b3c4 f5f6 c3b2 f6f7 b2a3 g5g6 c4d5 h3h4 d5c4 h4h5 a3d6 h5h6 d6f8 e8f8 c4d5 f8d8 d5e5 f7f8q e5e4 f8f2 e4e5 f2f5".split(' ').collect();
-        let board = play_out_position(&commands);
+        let board = play_out_position(&commands, &zobrist_hasher);
         let end_board = BoardState::from_fen("3R4/8/6KP/4kQ2/8/8/8/8 b - - 4 66").unwrap();
 
         for i in BOARD_START..BOARD_END {

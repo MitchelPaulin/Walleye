@@ -2,11 +2,18 @@ pub use crate::board::{Piece, PieceColor::*, PieceKind::*, Point};
 pub use crate::move_generation::CastlingType;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 
-const BOARD_SIZE: usize = 8;
+/*
+    For simplicity use a 12x12 board so we do not
+    need to convert between an 8x8 and 12x12 board
+    coordinate system
+
+    Since this array is not initialized very often it
+    should have a negligible performance impact
+*/
+const BOARD_SIZE: usize = 12;
 // 6 pieces * 2 colors
 const PIECE_TYPES: usize = 12;
 
-#[allow(dead_code)]
 pub struct ZobristHasher {
     // indexed by [piece][file][rank]
     piece_square_table: [[[u64; BOARD_SIZE]; BOARD_SIZE]; PIECE_TYPES],
@@ -20,7 +27,6 @@ pub struct ZobristHasher {
 }
 
 impl ZobristHasher {
-    #[allow(dead_code)]
     pub fn create_zobrist_hasher() -> ZobristHasher {
         // Here we use a seed so if you have to recreate the hasher you will always get the same values
         // Paul Morphy's birthday
@@ -55,7 +61,6 @@ impl ZobristHasher {
         }
     }
 
-    #[allow(dead_code)]
     pub fn get_val_for_piece(&self, piece: Piece, point: Point) -> u64 {
         let index = match (piece.color, piece.kind) {
             (White, Pawn) => 0,
@@ -75,7 +80,6 @@ impl ZobristHasher {
         self.piece_square_table[index][point.1][point.0]
     }
 
-    #[allow(dead_code)]
     pub fn get_val_for_castling(&self, castling_type: CastlingType) -> u64 {
         match castling_type {
             CastlingType::WhiteKingSide => self.white_king_side_castle,
@@ -85,12 +89,10 @@ impl ZobristHasher {
         }
     }
 
-    #[allow(dead_code)]
     pub fn get_val_for_en_passant(&self, file: usize) -> u64 {
         self.en_passant_files[file]
     }
 
-    #[allow(dead_code)]
     pub fn get_black_to_move_val(&self) -> u64 {
         self.black_to_move
     }

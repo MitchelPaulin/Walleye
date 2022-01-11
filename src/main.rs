@@ -86,7 +86,15 @@ fn main() {
     if matches.is_present("test bench") {
         let mut moves_states = [0; 15];
         let start = Instant::now();
-        move_generation::generate_moves_test(&board, 0, depth as usize, &mut moves_states, true);
+        let zobrist_hasher = zobrist::ZobristHasher::create_zobrist_hasher();
+        move_generation::generate_moves_test(
+            &board,
+            0,
+            depth as usize,
+            &mut moves_states,
+            true,
+            &zobrist_hasher,
+        );
         let time_to_run = Instant::now().duration_since(start);
         let nodes: u32 = moves_states.iter().sum();
         println!(

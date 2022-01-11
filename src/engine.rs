@@ -5,6 +5,7 @@ pub use crate::move_generation::*;
 pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
 pub use crate::uci::send_to_gui;
 pub use crate::utils::out_of_time;
+use crate::zobrist::ZobristHasher;
 use std::cmp::{max, min, Reverse};
 use std::sync::mpsc;
 use std::thread;
@@ -30,7 +31,13 @@ type BoardSender = std::sync::mpsc::Sender<BoardState>;
     Capture extension, only search captures from here on to
     find a "quite" position
 */
-fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, search_info: &mut Search) -> i32 {
+fn quiesce(
+    board: &BoardState,
+    mut alpha: i32,
+    beta: i32,
+    search_info: &mut Search,
+    zobrist_hasher: &ZobristHasher,
+) -> i32 {
     search_info.node_searched();
     let stand_pat = get_evaluation(board);
     if stand_pat >= beta {
@@ -40,10 +47,10 @@ fn quiesce(board: &BoardState, mut alpha: i32, beta: i32, search_info: &mut Sear
         alpha = stand_pat;
     }
 
-    let mut moves = generate_moves(board, MoveGenerationMode::CapturesOnly);
+    let mut moves = generate_moves(board, MoveGenerationMode::CapturesOnly, zobrist_hasher);
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     for mov in moves {
-        let score = -quiesce(&mov, -beta, -alpha, search_info);
+        let score = -quiesce(&mov, -beta, -alpha, search_info, zobrist_hasher);
         if score >= beta {
             return beta;
         }
@@ -68,6 +75,7 @@ fn alpha_beta_search(
     mut beta: i32,
     search_info: &mut Search,
     allow_null: bool,
+    zobrist_hasher: &ZobristHasher,
 ) -> i32 {
     // we are out of time, exit the search
     if out_of_time(start, time_to_move_ms) {
@@ -81,7 +89,7 @@ fn alpha_beta_search(
         if is_check(board, board.to_move) {
             depth += 1;
         } else {
-            return quiesce(board, alpha, beta, search_info);
+            return quiesce(board, alpha, beta, search_info, zobrist_hasher);
         }
     }
 
@@ -109,6 +117,7 @@ fn alpha_beta_search(
             -beta + 1,
             search_info,
             false,
+            zobrist_hasher,
         );
 
         if eval >= beta {
@@ -117,7 +126,7 @@ fn alpha_beta_search(
         }
     }
 
-    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
+    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves, zobrist_hasher);
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -161,6 +170,7 @@ fn alpha_beta_search(
         -alpha,
         search_info,
         true,
+        zobrist_hasher,
     );
 
     if best_score > alpha {
@@ -186,6 +196,7 @@ fn alpha_beta_search(
             -alpha,
             search_info,
             true,
+            zobrist_hasher,
         );
 
         if score > alpha && score < beta {
@@ -200,6 +211,7 @@ fn alpha_beta_search(
                 -alpha,
                 search_info,
                 true,
+                zobrist_hasher,
             );
 
             if score > alpha {
@@ -232,8 +244,9 @@ pub fn get_best_move(board: &BoardState, start: Instant, time_to_move_ms: u128, 
     let mut best_move: Option<BoardState> = None;
 
     let mut search_info = Search::new_search();
+    let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
 
-    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves);
+    let mut moves = generate_moves(board, MoveGenerationMode::AllMoves, &zobrist_hasher);
 
     while cur_depth < MAX_DEPTH {
         let mut alpha = NEG_INF;
@@ -261,6 +274,7 @@ pub fn get_best_move(board: &BoardState, start: Instant, time_to_move_ms: u128, 
                 -alpha,
                 &mut search_info,
                 true,
+                &zobrist_hasher,
             );
 
             search_info.insert_into_cur_line(ply_from_root, mov);
@@ -274,7 +288,7 @@ pub fn get_best_move(board: &BoardState, start: Instant, time_to_move_ms: u128, 
                 send_search_info(&search_info, cur_depth, evaluation, start);
             }
         }
-        moves = generate_moves(board, MoveGenerationMode::AllMoves);
+        moves = generate_moves(board, MoveGenerationMode::AllMoves, &zobrist_hasher);
         if let Some(b) = &best_move {
             for mov in &mut moves {
                 if mov.last_move == b.last_move {
