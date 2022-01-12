@@ -344,7 +344,6 @@ impl BoardState {
         let mut black_king_location = Point(0, 0);
         for fen_row in fen_rows {
             for square in fen_row.chars() {
-
                 if row >= BOARD_END || col >= BOARD_END {
                     return Err("Too many squares specified for board");
                 }
@@ -653,8 +652,160 @@ mod tests {
         assert_eq!(res, "e6");
     }
 
-    // Fen string tests
+    // Zobrist hashing tests
 
+    #[test]
+    fn zobrist_swap_color() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let mut b =
+            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap();
+        let old_zobrist_key = b.zobrist_key;
+        b.swap_color(&zobrist_hasher);
+        assert_eq!(
+            old_zobrist_key,
+            b.zobrist_key ^ zobrist_hasher.get_black_to_move_val()
+        );
+        b.swap_color(&zobrist_hasher);
+        assert_eq!(old_zobrist_key, b.zobrist_key);
+    }
+
+    #[test]
+    fn zobrist_move_piece_no_capture() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let mut b =
+            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap();
+
+        // move the black rook
+        let start = Point(BOARD_START, BOARD_START);
+        let end = Point(BOARD_START + 2, BOARD_START + 3);
+
+        let expected_result = b.zobrist_key
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), start)
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), end);
+
+        b.move_piece(start, end, &zobrist_hasher);
+        assert_eq!(expected_result, b.zobrist_key);
+    }
+
+    #[test]
+    fn zobrist_move_piece_with_capture() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let mut b =
+            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap();
+
+        // move the black rook to capture the white rook diagonally across the board
+        let start = Point(BOARD_START, BOARD_START);
+        let end = Point(BOARD_END - 1, BOARD_END - 1);
+
+        let expected_result = b.zobrist_key
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), start)
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), end)
+            ^ zobrist_hasher.get_val_for_piece(Piece::rook(White), end);
+
+        b.move_piece(start, end, &zobrist_hasher);
+        assert_eq!(expected_result, b.zobrist_key);
+    }
+
+    #[test]
+    fn zobrist_castling_white_king_side() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        let mut b_copy = b.clone();
+        b_copy.take_away_castling_rights(CastlingType::WhiteKingSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
+        );
+
+        // ensure that unsetting the same rights again doesn't cause the key to change
+        b_copy.take_away_castling_rights(CastlingType::WhiteKingSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
+        );
+    }
+
+    #[test]
+    fn zobrist_castling_white_queen_side() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        let mut b_copy = b.clone();
+        b_copy.take_away_castling_rights(CastlingType::WhiteQueenSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
+        );
+
+        // ensure that unsetting the same rights again doesn't cause the key to change
+        b_copy.take_away_castling_rights(CastlingType::WhiteQueenSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
+        );
+    }
+
+    #[test]
+    fn zobrist_castling_black_king_side() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        let mut b_copy = b.clone();
+        b_copy.take_away_castling_rights(CastlingType::BlackKingSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide)
+        );
+
+        // ensure that unsetting the same rights again doesn't cause the key to change
+        b_copy.take_away_castling_rights(CastlingType::BlackKingSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide)
+        );
+    }
+
+    #[test]
+    fn zobrist_castling_black_queen_side() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let b = BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap();
+        let mut b_copy = b.clone();
+        b_copy.take_away_castling_rights(CastlingType::BlackQueenSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide)
+        );
+
+        // ensure that unsetting the same rights again doesn't cause the key to change
+        b_copy.take_away_castling_rights(CastlingType::BlackQueenSide, &zobrist_hasher);
+        assert_eq!(
+            b.zobrist_key,
+            b_copy.zobrist_key ^ zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide)
+        );
+    }
+
+    #[test]
+    fn zobrist_unset_double_pawn_move() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let mut b =
+            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 0 1")
+                .unwrap();
+        let expected_result =
+            b.zobrist_key ^ zobrist_hasher.get_val_for_en_passant(b.pawn_double_move.unwrap().1);
+        b.unset_pawn_double_move(&zobrist_hasher);
+        assert_eq!(expected_result, b.zobrist_key);
+
+        // ensure that unsetting a double pawn move twice doesn't change the key
+        b.unset_pawn_double_move(&zobrist_hasher);
+        assert_eq!(expected_result, b.zobrist_key);
+    }
+
+    // Fen string tests
     #[test]
     fn empty_board() {
         let b = BoardState::from_fen("8/8/8/8/8/8/8/8 w - - 0 1").unwrap();

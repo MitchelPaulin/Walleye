@@ -418,5 +418,30 @@ mod tests {
                 assert_eq!(board.board[i][j], end_board.board[i][j]);
             }
         }
+        assert_eq!(board.white_queen_side_castle, end_board.white_queen_side_castle);
+        assert_eq!(board.white_king_side_castle, end_board.white_king_side_castle);
+        assert_eq!(board.black_king_side_castle, end_board.black_king_side_castle);
+        assert_eq!(board.black_queen_side_castle, end_board.black_queen_side_castle);
+    }
+
+    #[test]
+    fn zobrist_hash_full_game_played_white_wins() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        let commands: Vec<&str> = "position startpos moves g1f3 g8f6 d2d4 d7d5 e2e3 e7e6 f1d3 b8c6 b1c3 f8e7 e1g1 e8g8 a2a3 h7h6 b2b4 a7a6 c1b2 e7d6 a1c1 b7b5 h2h3 c8b7 f1e1 f8e8 g2g3 d8d7 e3e4 e6e5 c3d5 f6d5 e4d5 c6d4 f3d4 e5d4 d1h5 d6e7 b2d4 d7d5 h5d5 b7d5 c2c4 b5c4 d3c4 d5c4 c1c4 e7d6 e1e8 a8e8 c4c6 e8e1 g1g2 e1d1 d4e3 d1a1 c6a6 d6b4 a3a4 h6h5 a6a8 g8h7 a8a7 h7g6 a7c7 a1a4 c7c4 g6f6 e3d2 b4d2 c4a4 d2c3 g2f3 f6e6 f3e4 f7f5 e4e3 e6f7 e3f4 c3e1 f2f3 g7g6 a4a7 f7e6 f4g5 e1g3 a7a6 e6e5 g5g6 e5d4 a6e6 h5h4 g6f5 d4c3 e6e8 g3f2 e8d8 c3c4 f5g4 f2e1 f3f4 c4b3 f4f5 e1c3 g4g5 c3a5 d8e8 a5d2 g5h4 d2c3 h4g5 b3c4 f5f6 c3b2 f6f7 b2a3 g5g6 c4d5 h3h4 d5c4 h4h5 a3d6 h5h6 d6f8 e8f8 c4d5 f8d8 d5e5 f7f8q e5e4 f8f2 e4e5 f2f5".split(' ').collect();
+        let board = play_out_position(&commands, &zobrist_hasher);
+        let end_board = BoardState::from_fen("3R4/8/6KP/4kQ2/8/8/8/8 b - - 4 66").unwrap();
+
+        assert_eq!(board.zobrist_key, end_board.zobrist_key);
+    }
+
+    #[test]
+    fn zobrist_hash_full_game_played_white_wins_2() {
+        let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
+        // this game contains en-passant, castling and pawn promotion
+        let commands: Vec<&str> = "position startpos moves e2e4 d7d5 e4e5 f7f5 e5f6 b8c6 f6g7 c8e6 g7h8q d8d6 d2d3 e8c8 d1h5 c6a5 h8g8 e6d7 g8f8 a5c6 h5g4 h7h6 g4a4 c6d4 a4a7 h6h5 a7a8".split(' ').collect();
+        let board = play_out_position(&commands, &zobrist_hasher);
+        let end_board = BoardState::from_fen("Q1kr1Q2/1ppbp3/3q4/3p3p/3n4/3P4/PPP2PPP/RNB1KBNR b KQ - 1 13").unwrap();
+
+        assert_eq!(board.zobrist_key, end_board.zobrist_key);
     }
 }
