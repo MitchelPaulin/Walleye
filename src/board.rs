@@ -344,6 +344,11 @@ impl BoardState {
         let mut black_king_location = Point(0, 0);
         for fen_row in fen_rows {
             for square in fen_row.chars() {
+
+                if row >= BOARD_END || col >= BOARD_END {
+                    return Err("Too many squares specified for board");
+                }
+
                 if square.is_digit(10) {
                     let square_skip_count = square.to_digit(10).unwrap() as usize;
                     if square_skip_count + col > BOARD_END {
@@ -788,21 +793,23 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn bad_fen_string() {
-        BoardState::from_fen("this isn't a fen string").unwrap();
+        assert!(BoardState::from_fen("this isn't a fen string").is_err());
     }
 
     #[test]
-    #[should_panic]
     fn bad_fen_string_bad_char() {
-        BoardState::from_fen("rnbqkbnH/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert!(
+            BoardState::from_fen("rnbqkbnH/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .is_err()
+        );
     }
 
     #[test]
-    #[should_panic]
     fn bad_fen_string_too_many_chars() {
-        BoardState::from_fen("rnbqkbnrrrrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            .unwrap();
+        assert!(BoardState::from_fen(
+            "rnbqkbnrrrrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        )
+        .is_err());
     }
 }
