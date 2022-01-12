@@ -182,38 +182,19 @@ fn play_out_position(commands: &[&str], zobrist_hasher: &ZobristHasher) -> Board
 fn make_move(board: &mut BoardState, player_move: &str, zobrist_hasher: &ZobristHasher) {
     let start_pair: Point = (player_move[0..2]).parse().unwrap();
     let end_pair: Point = (player_move[2..4]).parse().unwrap();
-    if let Some(mov) = board.pawn_double_move {
-        board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
-        board.pawn_double_move = None;
-    }
+    board.unset_pawn_double_move(zobrist_hasher);
 
     if let Square::Full(piece) = board.board[start_pair.0][start_pair.1] {
         // update king location
         if piece.kind == King {
             if piece.color == White {
                 board.white_king_location = end_pair;
-                if board.white_king_side_castle {
-                    board.white_king_side_castle = false;
-                    board.zobrist_key ^=
-                        zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide);
-                }
-                if board.white_queen_side_castle {
-                    board.white_queen_side_castle = false;
-                    board.zobrist_key ^=
-                        zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
-                }
+                board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
+                board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
             } else {
                 board.black_king_location = end_pair;
-                if board.black_king_side_castle {
-                    board.black_king_side_castle = false;
-                    board.zobrist_key ^=
-                        zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
-                }
-                if board.black_queen_side_castle {
-                    board.black_queen_side_castle = false;
-                    board.zobrist_key ^=
-                        zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
-                }
+                board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
+                board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
             }
         } else if piece.kind == Pawn {
             if (start_pair.0 as i8 - end_pair.0 as i8).abs() == 2 {
@@ -235,48 +216,26 @@ fn make_move(board: &mut BoardState, player_move: &str, zobrist_hasher: &Zobrist
                 );
             }
         }
-
-        // update location of moved piece in zobrist key
-        board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, start_pair)
-            ^ zobrist_hasher.get_val_for_piece(piece, end_pair);
     } else {
         panic!("UCI Error: Trying to move a piece that does not exist");
     }
 
     //deal with castling privileges related to the movement/capture of rooks
     if player_move.contains("a8") {
-        if board.black_queen_side_castle {
-            board.black_queen_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
-        }
+        board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
     }
     if player_move.contains("h8") {
-        if board.black_king_side_castle {
-            board.black_king_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
-        }
+        board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
     }
     if player_move.contains("a1") {
-        if board.white_queen_side_castle {
-            board.white_queen_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide)
-        }
+        board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
     }
     if player_move.contains("h1") {
-        if board.white_king_side_castle {
-            board.white_king_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide);
-        }
-    }
-
-    // update zobrist key
-    if let Square::Full(target_piece) = board.board[end_pair.0][end_pair.1] {
-        board.zobrist_key ^= zobrist_hasher.get_val_for_piece(target_piece, end_pair);
+        board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
     }
 
     //move piece
-    board.board[end_pair.0][end_pair.1] = board.board[start_pair.0][start_pair.1];
-    board.board[start_pair.0][start_pair.1] = Square::Empty;
+    board.move_piece(start_pair, end_pair, zobrist_hasher);
 
     //deal with any pawn promotions
     if player_move.len() == 5 {
@@ -304,43 +263,38 @@ fn make_move(board: &mut BoardState, player_move: &str, zobrist_hasher: &Zobrist
     if player_move == WHITE_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
-        board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
-        board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
-        board.zobrist_key ^= zobrist_hasher
-            .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 1))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 3))
+        board.move_piece(
+            Point(BOARD_END - 1, BOARD_END - 1),
+            Point(BOARD_END - 1, BOARD_END - 3),
+            zobrist_hasher,
+        );
     } else if player_move == WHITE_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(White)
     {
-        board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
-        board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
-        board.zobrist_key ^= zobrist_hasher
-            .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START + 3))
+        board.move_piece(
+            Point(BOARD_END - 1, BOARD_START),
+            Point(BOARD_END - 1, BOARD_START + 3),
+            zobrist_hasher,
+        );
     } else if player_move == BLACK_KING_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
-        board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
-        board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
-        board.zobrist_key ^= zobrist_hasher
-            .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 1))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 3))
+        board.move_piece(
+            Point(BOARD_START, BOARD_END - 1),
+            Point(BOARD_START, BOARD_END - 3),
+            zobrist_hasher,
+        );
     } else if player_move == BLACK_QUEEN_SIDE_CASTLE_STRING
         && board.board[end_pair.0][end_pair.1] == Piece::king(Black)
     {
-        board.board[BOARD_START][BOARD_START] = Square::Empty;
-        board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
-        board.zobrist_key ^= zobrist_hasher
-            .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START + 3))
+        board.move_piece(
+            Point(BOARD_START, BOARD_START),
+            Point(BOARD_START, BOARD_START + 3),
+            zobrist_hasher,
+        );
     }
 
-    board.swap_color();
-    board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
+    board.swap_color(zobrist_hasher);
 }
 
 fn send_best_move_to_gui(board: &BoardState) {

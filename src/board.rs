@@ -477,6 +477,7 @@ impl BoardState {
             _ => None,
         }
     }
+
     pub fn pretty_print_board(&self) {
         println!("a b c d e f g h");
         for i in BOARD_START..BOARD_END {
@@ -516,10 +517,73 @@ impl BoardState {
         print!("{}", self.simple_board());
     }
 
-    pub fn swap_color(&mut self) {
+    pub fn swap_color(&mut self, zobrist_hasher: &ZobristHasher) {
         match self.to_move {
             PieceColor::White => self.to_move = PieceColor::Black,
             PieceColor::Black => self.to_move = PieceColor::White,
+        }
+        // the current play changed so we need to update the key
+        self.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
+    }
+
+    /*
+        Helper function to take away castling rights, updates the zobrist as well if required
+
+        Also protects against unsetting the castling rights more than once, which would mess
+        up the zobrist key
+    */
+    pub fn take_away_castling_rights(
+        &mut self,
+        castling_type: CastlingType,
+        zobrist_hasher: &ZobristHasher,
+    ) {
+        if castling_type == CastlingType::WhiteKingSide {
+            if self.white_king_side_castle {
+                self.white_king_side_castle = false;
+                self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
+            }
+        } else if castling_type == CastlingType::WhiteQueenSide {
+            if self.white_queen_side_castle {
+                self.white_queen_side_castle = false;
+                self.zobrist_key ^=
+                    zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
+            }
+        } else if castling_type == CastlingType::BlackKingSide {
+            if self.black_king_side_castle {
+                self.black_king_side_castle = false;
+                self.zobrist_key ^=
+                    zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
+            }
+        } else if castling_type == CastlingType::BlackQueenSide && self.black_queen_side_castle {
+            self.black_queen_side_castle = false;
+            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+        }
+    }
+
+    /*
+        Helper function to clear the pawn double move condition and update
+        the zobrist key if required
+    */
+    pub fn unset_pawn_double_move(&mut self, zobrist_hasher: &ZobristHasher) {
+        if let Some(en_passant_target) = self.pawn_double_move {
+            self.pawn_double_move = None;
+            self.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(en_passant_target.1);
+        }
+    }
+
+    /*
+        Helper function to move a piece on the board, will also update the zobrist
+        hash of the board correctly even with a capture
+    */
+    pub fn move_piece(&mut self, start: Point, end: Point, zobrist_hasher: &ZobristHasher) {
+        if let Square::Full(cur_piece) = self.board[start.0][start.1] {
+            self.board[start.0][start.1] = Square::Empty;
+            if let Square::Full(target_piece) = self.board[end.0][end.1] {
+                self.zobrist_key ^= zobrist_hasher.get_val_for_piece(target_piece, end);
+            }
+            self.board[end.0][end.1] = Square::Full(cur_piece);
+            self.zobrist_key ^= zobrist_hasher.get_val_for_piece(cur_piece, start)
+                ^ zobrist_hasher.get_val_for_piece(cur_piece, end);
         }
     }
 }

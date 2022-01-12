@@ -578,8 +578,7 @@ fn generate_moves_for_piece(
     for mov in moves {
         let mut new_board = board.clone();
         new_board.pawn_promotion = None;
-        new_board.swap_color();
-        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
+        new_board.swap_color(zobrist_hasher);
 
         // update king location if we are moving the king
         if kind == King {
@@ -592,21 +591,14 @@ fn generate_moves_for_piece(
         let target_square = new_board.board[mov.0][mov.1];
         if let Square::Full(target_piece) = target_square {
             new_board.order_heuristic = MVV_LVA[target_piece.index()][piece.index()];
-            // erase captured piece
-            new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(target_piece, square_cords);
         } else {
             // by default all moves are given a minimum score
             new_board.order_heuristic = i32::MIN;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
-        new_board.board[mov.0][mov.1] = piece.into();
-        new_board.board[square_cords.0][square_cords.1] = Square::Empty;
+        new_board.move_piece(square_cords, mov, zobrist_hasher);
         new_board.last_move = Some((square_cords, mov));
-
-        // erase the piece and add it in its new location
-        new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, square_cords)
-            ^ zobrist_hasher.get_val_for_piece(piece, mov);
 
         // if you make your move, and you are in check, this move is not valid
         if is_check(&new_board, color) {
@@ -616,47 +608,31 @@ fn generate_moves_for_piece(
         // if the rook or king move, take away castling privileges
         if kind == King {
             if color == White {
-                take_away_castling_rights(
-                    &mut new_board,
-                    CastlingType::WhiteKingSide,
-                    zobrist_hasher,
-                );
-                take_away_castling_rights(
-                    &mut new_board,
-                    CastlingType::WhiteQueenSide,
-                    zobrist_hasher,
-                );
+                new_board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
+                new_board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
             } else {
-                take_away_castling_rights(
-                    &mut new_board,
-                    CastlingType::BlackKingSide,
-                    zobrist_hasher,
-                );
-                take_away_castling_rights(
-                    &mut new_board,
-                    CastlingType::BlackQueenSide,
-                    zobrist_hasher,
-                );
+                new_board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
+                new_board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
             }
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_END - 1 {
-            take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_END - 1 && square_cords.1 == BOARD_START {
-            take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_START {
-            take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
         } else if square_cords.0 == BOARD_START && square_cords.1 == BOARD_END - 1 {
-            take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
         }
 
         // if the rook is captured, take away castling privileges
         if mov.0 == BOARD_END - 1 && mov.1 == BOARD_END - 1 {
-            take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
         } else if mov.0 == BOARD_END - 1 && mov.1 == BOARD_START {
-            take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
         } else if mov.0 == BOARD_START && mov.1 == BOARD_START {
-            take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
         } else if mov.0 == BOARD_START && mov.1 == BOARD_END - 1 {
-            take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
+            new_board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
         }
 
         // checks if the pawn has moved two spaces, if it has it can be captured en passant, record the space *behind* the pawn ie the valid capture square
@@ -671,10 +647,7 @@ fn generate_moves_for_piece(
                 new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(en_passant_square.1);
             } else {
                 // the most recent move was not a double pawn move, unset any possibly existing pawn double move
-                if let Some(mov) = board.pawn_double_move {
-                    new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
-                    new_board.pawn_double_move = None;
-                }
+                new_board.unset_pawn_double_move(zobrist_hasher);
             }
             // deal with pawn promotions
             if mov.0 == BOARD_START && color == White && kind == Pawn {
@@ -709,14 +682,9 @@ fn generate_moves_for_piece(
         if let Some(mov) = en_passant {
             let mut new_board = board.clone();
             new_board.last_move = Some((square_cords, mov));
-            new_board.swap_color();
-            new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val();
-            new_board.pawn_double_move = None;
-            new_board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(mov.1);
-            new_board.board[mov.0][mov.1] = piece.into();
-            new_board.board[square_cords.0][square_cords.1] = Square::Empty;
-            new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(piece, mov)
-                ^ zobrist_hasher.get_val_for_piece(piece, square_cords);
+            new_board.swap_color(zobrist_hasher);
+            new_board.unset_pawn_double_move(zobrist_hasher);
+            new_board.move_piece(square_cords, mov, zobrist_hasher);
             if color == White {
                 new_board.board[mov.0 + 1][mov.1] = Square::Empty;
                 new_board.zobrist_key ^=
@@ -747,99 +715,93 @@ fn generate_castling_moves(
 ) {
     if board.to_move == White && can_castle(board, &CastlingType::WhiteKingSide) {
         let mut new_board = board.clone();
-        new_board.swap_color();
-        unset_pawn_double_move(&mut new_board, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
+        new_board.swap_color(zobrist_hasher);
+        new_board.unset_pawn_double_move(zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
         new_board.white_king_location = Point(BOARD_END - 1, BOARD_END - 2);
-        new_board.board[BOARD_END - 1][BOARD_START + 4] = Square::Empty;
-        new_board.board[BOARD_END - 1][BOARD_END - 1] = Square::Empty;
-        new_board.board[BOARD_END - 1][BOARD_END - 2] = Piece::king(White).into();
-        new_board.board[BOARD_END - 1][BOARD_END - 3] = Piece::rook(White).into();
         new_board.last_move = WHITE_KING_SIDE_CASTLE_ALG;
 
-        // update the zobrist key to represent the new position of the king and rook
-        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), new_board.white_king_location)
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), board.white_king_location)
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 1))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_END - 3));
-
+        // move king and rook
+        new_board.move_piece(
+            board.white_king_location,
+            new_board.white_king_location,
+            zobrist_hasher,
+        );
+        new_board.move_piece(
+            Point(BOARD_END - 1, BOARD_END - 1),
+            Point(BOARD_END - 1, BOARD_END - 3),
+            zobrist_hasher,
+        );
         new_moves.push(new_board);
     }
 
     if board.to_move == White && can_castle(board, &CastlingType::WhiteQueenSide) {
         let mut new_board = board.clone();
-        new_board.swap_color();
-        unset_pawn_double_move(&mut new_board, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::WhiteKingSide, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::WhiteQueenSide, zobrist_hasher);
+        new_board.swap_color(zobrist_hasher);
+        new_board.unset_pawn_double_move(zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::WhiteKingSide, zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::WhiteQueenSide, zobrist_hasher);
         new_board.white_king_location = Point(BOARD_END - 1, BOARD_START + 2);
-        new_board.board[BOARD_END - 1][BOARD_START + 4] = Square::Empty;
-        new_board.board[BOARD_END - 1][BOARD_START] = Square::Empty;
-        new_board.board[BOARD_END - 1][BOARD_START + 2] = Piece::king(White).into();
-        new_board.board[BOARD_END - 1][BOARD_START + 3] = Piece::rook(White).into();
         new_board.last_move = WHITE_QUEEN_SIDE_CASTLE_ALG;
 
-        // update the zobrist key to represent the new position of the king and rook
-        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), new_board.white_king_location)
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(White), board.white_king_location)
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(White), Point(BOARD_END - 1, BOARD_START + 3));
-
+        // move king and rook
+        new_board.move_piece(
+            board.white_king_location,
+            new_board.white_king_location,
+            zobrist_hasher,
+        );
+        new_board.move_piece(
+            Point(BOARD_END - 1, BOARD_START),
+            Point(BOARD_END - 1, BOARD_START + 3),
+            zobrist_hasher,
+        );
         new_moves.push(new_board);
     }
 
     if board.to_move == Black && can_castle(board, &CastlingType::BlackKingSide) {
         let mut new_board = board.clone();
-        new_board.swap_color();
-        unset_pawn_double_move(&mut new_board, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
+        new_board.swap_color(zobrist_hasher);
+        new_board.unset_pawn_double_move(zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
         new_board.black_king_location = Point(BOARD_START, BOARD_END - 2);
-        new_board.board[BOARD_START][BOARD_START + 4] = Square::Empty;
-        new_board.board[BOARD_START][BOARD_END - 1] = Square::Empty;
-        new_board.board[BOARD_START][BOARD_END - 2] = Piece::king(Black).into();
-        new_board.board[BOARD_START][BOARD_END - 3] = Piece::rook(Black).into();
         new_board.last_move = BLACK_KING_SIDE_CASTLE_ALG;
-
-        // update the zobrist key to represent the new position of the king and rook
-        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), new_board.black_king_location)
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), board.black_king_location)
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 1))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_END - 3));
+        // move king and rook
+        new_board.move_piece(
+            board.black_king_location,
+            new_board.black_king_location,
+            zobrist_hasher,
+        );
+        new_board.move_piece(
+            Point(BOARD_START, BOARD_END - 1),
+            Point(BOARD_START, BOARD_END - 3),
+            zobrist_hasher,
+        );
 
         new_moves.push(new_board);
     }
 
     if board.to_move == Black && can_castle(board, &CastlingType::BlackQueenSide) {
         let mut new_board = board.clone();
-        new_board.swap_color();
-        unset_pawn_double_move(&mut new_board, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::BlackKingSide, zobrist_hasher);
-        take_away_castling_rights(&mut new_board, CastlingType::BlackQueenSide, zobrist_hasher);
+        new_board.swap_color(zobrist_hasher);
+        new_board.unset_pawn_double_move(zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::BlackKingSide, zobrist_hasher);
+        new_board.take_away_castling_rights(CastlingType::BlackQueenSide, zobrist_hasher);
         new_board.black_king_location = Point(BOARD_START, BOARD_START + 2);
-        new_board.board[BOARD_START][BOARD_START + 4] = Square::Empty;
-        new_board.board[BOARD_START][BOARD_START] = Square::Empty;
-        new_board.board[BOARD_START][BOARD_START + 2] = Piece::king(Black).into();
-        new_board.board[BOARD_START][BOARD_START + 3] = Piece::rook(Black).into();
         new_board.last_move = BLACK_QUEEN_SIDE_CASTLE_ALG;
 
-        // update the zobrist key to represent the new position of the king and rook
-        new_board.zobrist_key ^= zobrist_hasher.get_black_to_move_val()
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), new_board.black_king_location)
-            ^ zobrist_hasher.get_val_for_piece(Piece::king(Black), board.black_king_location)
-            ^ zobrist_hasher.get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START))
-            ^ zobrist_hasher
-                .get_val_for_piece(Piece::rook(Black), Point(BOARD_START, BOARD_START + 3));
+        // move king and rook
+        new_board.move_piece(
+            board.black_king_location,
+            new_board.black_king_location,
+            zobrist_hasher,
+        );
+        new_board.move_piece(
+            Point(BOARD_START, BOARD_START),
+            Point(BOARD_START, BOARD_START + 3),
+            zobrist_hasher,
+        );
 
         new_moves.push(new_board);
     }
@@ -861,7 +823,7 @@ fn promote_pawn(
 ) {
     for kind in &[Queen, Knight, Bishop, Rook] {
         let mut new_board = board.clone();
-        unset_pawn_double_move(&mut new_board, zobrist_hasher);
+        new_board.unset_pawn_double_move(zobrist_hasher);
         let promotion_piece = Piece { color, kind: *kind };
         new_board.board[target.0][target.1] = Square::Full(promotion_piece);
         new_board.last_move = Some((start, target));
@@ -907,48 +869,6 @@ pub fn generate_moves_test(
             should_evaluate,
             zobrist_hasher,
         );
-    }
-}
-
-/*
-    Helper function to clear the pawn double move condition and update
-    the zobrist key if required
-*/
-fn unset_pawn_double_move(board: &mut BoardState, zobrist_hasher: &ZobristHasher) {
-    if let Some(en_passant_target) = board.pawn_double_move {
-        board.pawn_double_move = None;
-        board.zobrist_key ^= zobrist_hasher.get_val_for_en_passant(en_passant_target.1);
-    }
-}
-
-/*
-    Helper function to take away castling rights, updates the zobrist as well if required
-*/
-fn take_away_castling_rights(
-    board: &mut BoardState,
-    castling_type: CastlingType,
-    zobrist_hasher: &ZobristHasher,
-) {
-    if castling_type == CastlingType::WhiteKingSide {
-        if board.white_king_side_castle {
-            board.white_king_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
-        }
-    } else if castling_type == CastlingType::WhiteQueenSide {
-        if board.white_queen_side_castle {
-            board.white_queen_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
-        }
-    } else if castling_type == CastlingType::BlackKingSide {
-        if board.black_king_side_castle {
-            board.black_king_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
-        }
-    } else if castling_type == CastlingType::BlackQueenSide {
-        if board.black_queen_side_castle {
-            board.black_queen_side_castle = false;
-            board.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
-        }
     }
 }
 
