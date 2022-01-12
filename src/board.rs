@@ -554,9 +554,12 @@ impl BoardState {
                 self.zobrist_key ^=
                     zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
             }
-        } else if castling_type == CastlingType::BlackQueenSide && self.black_queen_side_castle {
-            self.black_queen_side_castle = false;
-            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+        } else if castling_type == CastlingType::BlackQueenSide {
+            if self.black_queen_side_castle {
+                self.black_queen_side_castle = false;
+                self.zobrist_key ^=
+                    zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+            }
         }
     }
 
