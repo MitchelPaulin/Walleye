@@ -537,27 +537,18 @@ impl BoardState {
         castling_type: CastlingType,
         zobrist_hasher: &ZobristHasher,
     ) {
-        if castling_type == CastlingType::WhiteKingSide {
-            if self.white_king_side_castle {
-                self.white_king_side_castle = false;
-                self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
-            }
-        } else if castling_type == CastlingType::WhiteQueenSide {
-            if self.white_queen_side_castle {
-                self.white_queen_side_castle = false;
-                self.zobrist_key ^=
-                    zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
-            }
-        } else if castling_type == CastlingType::BlackKingSide {
-            if self.black_king_side_castle {
-                self.black_king_side_castle = false;
-                self.zobrist_key ^=
-                    zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
-            }
+        if castling_type == CastlingType::WhiteKingSide && self.white_king_side_castle {
+            self.white_king_side_castle = false;
+            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteKingSide)
+        } else if castling_type == CastlingType::WhiteQueenSide && self.white_queen_side_castle {
+            self.white_queen_side_castle = false;
+            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::WhiteQueenSide);
+        } else if castling_type == CastlingType::BlackKingSide && self.black_king_side_castle {
+            self.black_king_side_castle = false;
+            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackKingSide);
         } else if castling_type == CastlingType::BlackQueenSide && self.black_queen_side_castle {
             self.black_queen_side_castle = false;
-            self.zobrist_key ^=
-                zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
+            self.zobrist_key ^= zobrist_hasher.get_val_for_castling(CastlingType::BlackQueenSide);
         }
     }
 
