@@ -853,7 +853,7 @@ mod tests {
             assert_eq!(b.board[8][i], Square::from(Piece::pawn(White)));
         }
 
-        assert_eq!(b.zobrist_key, 321564624691785580);
+        assert_eq!(b.zobrist_key, 9731356503239323868);
     }
 
     #[test]

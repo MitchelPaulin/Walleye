@@ -5,7 +5,7 @@ mod board;
 mod engine;
 mod evaluation;
 mod move_generation;
-pub mod search;
+mod search;
 mod time_control;
 mod uci;
 mod utils;

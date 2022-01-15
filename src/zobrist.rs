@@ -62,20 +62,11 @@ impl ZobristHasher {
     }
 
     pub fn get_val_for_piece(&self, piece: Piece, point: Point) -> u64 {
-        let index = match (piece.color, piece.kind) {
-            (White, Pawn) => 0,
-            (White, Knight) => 1,
-            (White, Bishop) => 2,
-            (White, Rook) => 3,
-            (White, Queen) => 4,
-            (White, King) => 5,
-            (Black, Pawn) => 6,
-            (Black, Knight) => 7,
-            (Black, Bishop) => 8,
-            (Black, Rook) => 9,
-            (Black, Queen) => 10,
-            (Black, King) => 11,
-        };
+
+        // shift everything by 6 for black pieces
+        // ensures each piece,color pair gets a unique number in [0,11]
+        let index = piece.index() + if piece.color == White { 0 } else { 6 };
+
 
         self.piece_square_table[index][point.1][point.0]
     }
