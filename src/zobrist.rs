@@ -1,4 +1,4 @@
-pub use crate::board::{Piece, PieceColor::*, PieceKind::*, Point};
+use crate::board::{Piece, PieceColor::*, Point};
 pub use crate::move_generation::CastlingType;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 
@@ -14,16 +14,18 @@ const BOARD_SIZE: usize = 12;
 // 6 pieces * 2 colors
 const PIECE_TYPES: usize = 12;
 
+pub type ZobristKey = u64;
+
 pub struct ZobristHasher {
     // indexed by [piece][file][rank]
-    piece_square_table: [[[u64; BOARD_SIZE]; BOARD_SIZE]; PIECE_TYPES],
-    black_to_move: u64,
-    white_king_side_castle: u64,
-    white_queen_side_castle: u64,
-    black_king_side_castle: u64,
-    black_queen_side_castle: u64,
+    piece_square_table: [[[ZobristKey; BOARD_SIZE]; BOARD_SIZE]; PIECE_TYPES],
+    black_to_move: ZobristKey,
+    white_king_side_castle: ZobristKey,
+    white_queen_side_castle: ZobristKey,
+    black_king_side_castle: ZobristKey,
+    black_queen_side_castle: ZobristKey,
     // indexed by file
-    en_passant_files: [u64; BOARD_SIZE],
+    en_passant_files: [ZobristKey; BOARD_SIZE],
 }
 
 impl ZobristHasher {
@@ -61,17 +63,15 @@ impl ZobristHasher {
         }
     }
 
-    pub fn get_val_for_piece(&self, piece: Piece, point: Point) -> u64 {
-
+    pub fn get_val_for_piece(&self, piece: Piece, point: Point) -> ZobristKey {
         // shift everything by 6 for black pieces
         // ensures each piece,color pair gets a unique number in [0,11]
         let index = piece.index() + if piece.color == White { 0 } else { 6 };
 
-
         self.piece_square_table[index][point.1][point.0]
     }
 
-    pub fn get_val_for_castling(&self, castling_type: CastlingType) -> u64 {
+    pub fn get_val_for_castling(&self, castling_type: CastlingType) -> ZobristKey {
         match castling_type {
             CastlingType::WhiteKingSide => self.white_king_side_castle,
             CastlingType::WhiteQueenSide => self.white_queen_side_castle,
@@ -80,11 +80,11 @@ impl ZobristHasher {
         }
     }
 
-    pub fn get_val_for_en_passant(&self, file: usize) -> u64 {
+    pub fn get_val_for_en_passant(&self, file: usize) -> ZobristKey {
         self.en_passant_files[file]
     }
 
-    pub fn get_black_to_move_val(&self) -> u64 {
+    pub fn get_black_to_move_val(&self) -> ZobristKey {
         self.black_to_move
     }
 }
