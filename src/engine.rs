@@ -65,7 +65,7 @@ fn quiesce(
 
 fn remove_board_from_draw_table(board: &BoardState, draw_table: &mut DrawTable) {
     if let Some(&val) = draw_table.get(&board.zobrist_key) {
-        draw_table.insert(board.zobrist_key, if val > 0 { val - 1 } else { 0 });
+        draw_table.insert(board.zobrist_key, val - 1);
     }
 }
 
@@ -88,7 +88,6 @@ fn alpha_beta_search(
 ) -> i32 {
     // we are out of time, exit the search
     if out_of_time(start, time_to_move_ms) {
-        remove_board_from_draw_table(board, draw_table);
         return NEG_INF;
     }
 
