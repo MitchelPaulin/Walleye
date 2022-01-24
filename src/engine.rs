@@ -348,7 +348,7 @@ fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) 
     let mut ponder_move = "".to_string();
     for mov in &search_info.pv_moves {
         if let Some(m) = mov {
-            ponder_move = format!("{} {}{}", ponder_move, m.0.to_string(), m.1.to_string())
+            ponder_move = format!("{} {}{}", ponder_move, m.0, m.1)
         } else {
             break;
         }
