@@ -812,7 +812,8 @@ fn generate_castling_moves(
 
     This function assumes that the board state is a valid pawn promotion and does not do additional checks
 */
-const PAWN_PROMOTION_SCORE: i32 = 800; // queen value - pawn value
+const QUEEN_PROMOTION_SCORE: i32 = 800; // queen value - pawn value
+const UNDER_PROMOTION_SCORE: i32 = -999999999; // under promotions should be tried last
 fn promote_pawn(
     board: &BoardState,
     color: PieceColor,
@@ -821,14 +822,20 @@ fn promote_pawn(
     moves: &mut Vec<BoardState>,
     zobrist_hasher: &ZobristHasher,
 ) {
-    for kind in &[Queen, Knight, Bishop, Rook] {
+    for kind in [Queen, Knight, Bishop, Rook] {
         let mut new_board = board.clone();
         new_board.unset_pawn_double_move(zobrist_hasher);
-        let promotion_piece = Piece { color, kind: *kind };
+        let promotion_piece = Piece { color, kind };
         new_board.board[target.0][target.1] = Square::Full(promotion_piece);
         new_board.last_move = Some((start, target));
         new_board.pawn_promotion = Some(promotion_piece);
-        new_board.order_heuristic = PAWN_PROMOTION_SCORE; // a pawn promotion is usually a good idea
+        
+        // promoting to a piece that isn't a queen is rarely a good idea
+        new_board.order_heuristic = if kind == Queen {
+            QUEEN_PROMOTION_SCORE
+        } else {
+            UNDER_PROMOTION_SCORE
+        };
 
         // erase pawn and add the promotion piece
         new_board.zobrist_key ^= zobrist_hasher.get_val_for_piece(promotion_piece, target)
