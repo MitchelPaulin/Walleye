@@ -1,6 +1,6 @@
 extern crate clap;
 use clap::{App, Arg};
-use std::time::Instant;
+use std::{time::Instant, cmp::max};
 mod board;
 mod engine;
 mod evaluation;
@@ -74,6 +74,11 @@ fn main() {
         }
     };
 
+    if depth >= search::MAX_DEPTH {
+        println!("Can not have depth greater than {}", search::MAX_DEPTH - 1);
+        return;
+    }
+
     let fen = matches.value_of("fen").unwrap_or(board::DEFAULT_FEN_STRING);
     let board = match board::BoardState::from_fen(fen) {
         Ok(b) => b,
@@ -84,7 +89,7 @@ fn main() {
     };
 
     if matches.is_present("test bench") {
-        let mut moves_states = [0; 15];
+        let mut moves_states = [0; search::MAX_DEPTH as usize];
         let start = Instant::now();
         let zobrist_hasher = zobrist::ZobristHasher::create_zobrist_hasher();
         move_generation::generate_moves_test(
@@ -102,7 +107,7 @@ fn main() {
             depth,
             nodes,
             time_to_run,
-            nodes / time_to_run.as_secs() as u32
+            nodes / max(time_to_run.as_secs() as u32, 1)
         );
         return;
     }
