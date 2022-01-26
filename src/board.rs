@@ -406,7 +406,7 @@ impl BoardState {
             white_queen_side_castle: castling_privileges.find('Q') != None,
             black_king_side_castle: castling_privileges.find('k') != None,
             black_queen_side_castle: castling_privileges.find('q') != None,
-            order_heuristic: i32::MIN,
+            order_heuristic: 0,
             last_move: None,
             pawn_promotion: None,
             zobrist_key,

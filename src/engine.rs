@@ -1,13 +1,13 @@
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
+use crate::draw_table::DrawTable;
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
 pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
 pub use crate::uci::send_to_gui;
 pub use crate::utils::out_of_time;
-use crate::zobrist::{ZobristHasher, ZobristKey};
+use crate::zobrist::ZobristHasher;
 use std::cmp::{max, min, Reverse};
-use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -22,12 +22,11 @@ const NEG_INF: i32 = -POS_INF;
     Ex: capturing a pawn with a queen is a "bad" capture
         capturing a queen with a pawn is a "good" capture
 
-    For this reason we give killer moves a -1, or ranked slightly below equal captures
+    For this reason we give killer moves a 25, or ranked slightly between both types of captures
 */
-const KILLER_MOVE_SCORE: i32 = -1;
+const KILLER_MOVE_SCORE: i32 = 25;
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
-pub type DrawTable = HashMap<ZobristKey, u8>;
 
 /*
     Capture extension, only search captures from here on to
@@ -63,16 +62,11 @@ fn quiesce(
     alpha
 }
 
-fn remove_board_from_draw_table(board: &BoardState, draw_table: &mut DrawTable) {
-    if let Some(&val) = draw_table.get(&board.zobrist_key) {
-        draw_table.insert(board.zobrist_key, val - 1);
-    }
-}
-
 /*
     Run a standard alpha beta search to try and find the best move
     Orders moves by piece value to attempt to improve search efficiency
 */
+#[allow(clippy::too_many_arguments)]
 fn alpha_beta_search(
     start: Instant,
     time_to_move_ms: u128,
@@ -93,23 +87,19 @@ fn alpha_beta_search(
 
     search_info.node_searched();
 
-    // check for three fold repetition
-    if let Some(&val) = draw_table.get(&board.zobrist_key) {
-        if val == 2 {
-            return 0; // this position has been seen twice before, so its a draw, return an eval of 0
-        } else {
-            draw_table.insert(board.zobrist_key, val + 1);
-        }
-    } else {
-        draw_table.insert(board.zobrist_key, 1);
+    // check for draw
+    if draw_table.is_threefold_repetition(board) {
+        return 0;
     }
+
+    draw_table.add_board_to_draw_table(board);
 
     if depth == 0 {
         // need to resolve check before we enter quiesce
         if is_check(board, board.to_move) {
             depth += 1;
         } else {
-            remove_board_from_draw_table(board, draw_table);
+            draw_table.remove_board_from_draw_table(board);
             return quiesce(board, alpha, beta, search_info, zobrist_hasher);
         }
     }
@@ -119,7 +109,7 @@ fn alpha_beta_search(
     alpha = max(alpha, -MATE_SCORE + ply_from_root);
     beta = min(beta, MATE_SCORE - ply_from_root);
     if alpha >= beta {
-        remove_board_from_draw_table(board, draw_table);
+        draw_table.remove_board_from_draw_table(board);
         return alpha;
     }
 
@@ -145,7 +135,7 @@ fn alpha_beta_search(
 
         if eval >= beta {
             // null move prune
-            remove_board_from_draw_table(board, draw_table);
+            draw_table.remove_board_from_draw_table(board);
             return beta;
         }
     }
@@ -154,12 +144,12 @@ fn alpha_beta_search(
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
-            remove_board_from_draw_table(board, draw_table);
+            draw_table.remove_board_from_draw_table(board);
             let mate_score = MATE_SCORE - ply_from_root;
             return -mate_score;
         }
         // stalemate
-        remove_board_from_draw_table(board, draw_table);
+        draw_table.remove_board_from_draw_table(board);
         return 0;
     }
 
@@ -171,6 +161,7 @@ fn alpha_beta_search(
         } else {
             for i in 0..KILLER_MOVE_PLY_SIZE {
                 if mov.last_move == search_info.killer_moves[ply_from_root as usize][i] {
+                    // consider killer moves after considering "good" captures
                     mov.order_heuristic = KILLER_MOVE_SCORE;
                     break;
                 }
@@ -202,7 +193,7 @@ fn alpha_beta_search(
 
     if best_score > alpha {
         if best_score >= beta {
-            remove_board_from_draw_table(board, draw_table);
+            draw_table.remove_board_from_draw_table(board);
             return best_score;
         }
         search_info.set_principle_variation();
@@ -251,10 +242,11 @@ fn alpha_beta_search(
 
         if score > best_score {
             if score >= beta {
-                if mov.order_heuristic == i32::MIN {
+                // avoid inserting PV nodes or captures into the killer moves table
+                if mov.order_heuristic == 0 {
                     search_info.insert_killer_move(ply_from_root, mov);
                 }
-                remove_board_from_draw_table(board, draw_table);
+                draw_table.remove_board_from_draw_table(board);
                 return score;
             }
             search_info.set_principle_variation();
@@ -262,7 +254,7 @@ fn alpha_beta_search(
         }
     }
 
-    remove_board_from_draw_table(board, draw_table);
+    draw_table.remove_board_from_draw_table(board);
 
     best_score
 }
@@ -332,6 +324,7 @@ pub fn get_best_move(
         if let Some(b) = &best_move {
             for mov in &mut moves {
                 if mov.last_move == b.last_move {
+                    // found the pv node
                     mov.order_heuristic = POS_INF;
                     break;
                 }
@@ -405,7 +398,7 @@ pub fn play_game_against_self(
     };
 
     let mut board = b.clone();
-    let draw_table: DrawTable = HashMap::new();
+    let draw_table: DrawTable = DrawTable::new();
     show_board(simple_print, &board);
     for _ in 0..max_moves {
         let (tx, rx) = mpsc::channel();

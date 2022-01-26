@@ -1,7 +1,8 @@
 extern crate clap;
 use clap::{App, Arg};
-use std::{time::Instant, cmp::max};
+use std::{cmp::max, time::Instant};
 mod board;
+mod draw_table;
 mod engine;
 mod evaluation;
 mod move_generation;

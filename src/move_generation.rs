@@ -592,8 +592,8 @@ fn generate_moves_for_piece(
         if let Square::Full(target_piece) = target_square {
             new_board.order_heuristic = MVV_LVA[target_piece.index()][piece.index()];
         } else {
-            // by default all moves are given a minimum score
-            new_board.order_heuristic = i32::MIN;
+            // by default all moves are given a neutral score
+            new_board.order_heuristic = 0;
         }
 
         // move the piece, this will take care of any captures as well, excluding en passant
@@ -829,7 +829,7 @@ fn promote_pawn(
         new_board.board[target.0][target.1] = Square::Full(promotion_piece);
         new_board.last_move = Some((start, target));
         new_board.pawn_promotion = Some(promotion_piece);
-        
+
         // promoting to a piece that isn't a queen is rarely a good idea
         new_board.order_heuristic = if kind == Queen {
             QUEEN_PROMOTION_SCORE
