@@ -4,6 +4,7 @@ use crate::draw_table::DrawTable;
 pub use crate::engine::*;
 pub use crate::move_generation::*;
 pub use crate::time_control::*;
+use crate::transposition_table::{self, TranspositionTable};
 pub use crate::utils::*;
 use crate::zobrist::ZobristHasher;
 use log::{error, info};
@@ -37,6 +38,7 @@ pub fn play_game_uci() {
 
     let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
     let mut draw_table = DrawTable::new();
+    let mut tt_table = TranspositionTable::new();
     loop {
         let buffer = read_from_gui();
         let start = Instant::now();
@@ -51,7 +53,13 @@ pub fn play_game_uci() {
                 info!("{}", board.simple_board());
             }
             "go" => {
-                board = find_and_play_best_move(&commands, &mut board, start, &mut draw_table);
+                board = find_and_play_best_move(
+                    &commands,
+                    &mut board,
+                    start,
+                    &mut draw_table,
+                    &mut &mut tt_table,
+                );
             }
             "setoption" => {
                 if commands.contains(&"DebugLogLevel") && commands.contains(&"Info") {
@@ -77,6 +85,7 @@ fn find_and_play_best_move(
     board: &mut BoardState,
     start: Instant,
     draw_table: &mut DrawTable,
+    transposition_table: &mut TranspositionTable,
 ) -> BoardState {
     let time_to_move_ms = parse_go_command(commands).calculate_time_slice(board.to_move);
     let mut best_move = None;
@@ -84,7 +93,17 @@ fn find_and_play_best_move(
     let (tx, rx) = mpsc::channel();
     let clone = board.clone();
     let mut draw_clone = draw_table.clone();
-    thread::spawn(move || get_best_move(&clone, &mut draw_clone, start, time_to_move_ms, &tx));
+    let mut tt_clone = transposition_table.clone();
+    thread::spawn(move || {
+        get_best_move(
+            &clone,
+            &mut draw_clone,
+            &mut tt_clone,
+            start,
+            time_to_move_ms,
+            &tx,
+        )
+    });
     // keep looking until we are out of time
     // also add a guard to ensure we at least get a move from the search thread
     while !out_of_time(start, time_to_move_ms) || best_move.is_none() {

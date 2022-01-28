@@ -7,6 +7,7 @@ mod engine;
 mod evaluation;
 mod move_generation;
 mod search;
+mod transposition_table;
 mod time_control;
 mod uci;
 mod utils;

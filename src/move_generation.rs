@@ -590,6 +590,7 @@ fn generate_moves_for_piece(
 
         let target_square = new_board.board[mov.0][mov.1];
         if let Square::Full(target_piece) = target_square {
+            // the target square has a piece so this is a capture, give it an MMV_LVA score
             new_board.order_heuristic = MVV_LVA[target_piece.index()][piece.index()];
         } else {
             // by default all moves are given a neutral score
@@ -812,7 +813,7 @@ fn generate_castling_moves(
 
     This function assumes that the board state is a valid pawn promotion and does not do additional checks
 */
-const QUEEN_PROMOTION_SCORE: i32 = 800; // queen value - pawn value
+const QUEEN_PROMOTION_SCORE: i32 = 800; // queen value - pawn value, should be tried after PV but before everything else
 const UNDER_PROMOTION_SCORE: i32 = -999999999; // under promotions should be tried last
 fn promote_pawn(
     board: &BoardState,

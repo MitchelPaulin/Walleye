@@ -1,9 +1,12 @@
+use log::info;
+
 pub use crate::board::*;
 pub use crate::board::{PieceColor::*, PieceKind::*};
 use crate::draw_table::DrawTable;
 pub use crate::evaluation::*;
 pub use crate::move_generation::*;
-pub use crate::search::{Search, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
+pub use crate::search::{SearchContext, KILLER_MOVE_PLY_SIZE, MAX_DEPTH};
+use crate::transposition_table::{self, TranspositionTable};
 pub use crate::uci::send_to_gui;
 pub use crate::utils::out_of_time;
 use crate::zobrist::ZobristHasher;
@@ -16,15 +19,10 @@ const MATE_SCORE: i32 = 100000;
 const POS_INF: i32 = 9999999;
 const NEG_INF: i32 = -POS_INF;
 /*
-    We want killer moves to be ordered behind all "good" captures, but still ahead of other moves
-    For our purposes a good capture is capturing any with a piece of lower value
-
-    Ex: capturing a pawn with a queen is a "bad" capture
-        capturing a queen with a pawn is a "good" capture
-
-    For this reason we give killer moves a 25, or ranked slightly between both types of captures
+   For simplicity we consider killer moves after all captures but still before other moves
+   The default score is 0, so we give it a score of 1
 */
-const KILLER_MOVE_SCORE: i32 = 25;
+const KILLER_MOVE_SCORE: i32 = 1;
 
 type BoardSender = std::sync::mpsc::Sender<BoardState>;
 
@@ -36,7 +34,7 @@ fn quiesce(
     board: &BoardState,
     mut alpha: i32,
     beta: i32,
-    search_info: &mut Search,
+    search_info: &mut SearchContext,
     zobrist_hasher: &ZobristHasher,
 ) -> i32 {
     search_info.node_searched();
@@ -75,10 +73,11 @@ fn alpha_beta_search(
     ply_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
-    search_info: &mut Search,
+    search_info: &mut SearchContext,
     allow_null: bool,
     zobrist_hasher: &ZobristHasher,
     draw_table: &mut DrawTable,
+    transposition_table: &mut TranspositionTable,
 ) -> i32 {
     // we are out of time, exit the search
     if out_of_time(start, time_to_move_ms) {
@@ -94,8 +93,9 @@ fn alpha_beta_search(
 
     draw_table.add_board_to_draw_table(board);
 
+    // we have reached a terminal node,
     if depth == 0 {
-        // need to resolve check before we enter quiesce
+        // need to resolve check before we enter quiesce, extend the search by one
         if is_check(board, board.to_move) {
             depth += 1;
         } else {
@@ -131,6 +131,7 @@ fn alpha_beta_search(
             false,
             zobrist_hasher,
             draw_table,
+            transposition_table,
         );
 
         if eval >= beta {
@@ -140,7 +141,10 @@ fn alpha_beta_search(
         }
     }
 
+    // generate the next set of moves
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves, zobrist_hasher);
+
+    // we couldn't find any moves to make, either we are in checkmate or stalemate, determine which
     if moves.is_empty() {
         if is_check(board, board.to_move) {
             // checkmate
@@ -160,14 +164,18 @@ fn alpha_beta_search(
             mov.order_heuristic = POS_INF;
         } else {
             for i in 0..KILLER_MOVE_PLY_SIZE {
-                if mov.last_move == search_info.killer_moves[ply_from_root as usize][i] {
-                    // consider killer moves after considering "good" captures
+                // if this move was found to cause a beta cutoff in a sibling branch, its a forcing move
+                // we should consider it before other moves
+                if mov.zobrist_key == search_info.killer_moves[ply_from_root as usize][i] {
+                    info!("Killer move found {:?}", mov.last_move);
                     mov.order_heuristic = KILLER_MOVE_SCORE;
                     break;
                 }
             }
         }
     }
+
+    // all other moves are already ranked by MVV_LVA, sort moves and check move with highest heuristic first
 
     moves.sort_unstable_by_key(|k| Reverse(k.order_heuristic));
     search_info.insert_into_cur_line(ply_from_root, &moves[0]);
@@ -186,9 +194,10 @@ fn alpha_beta_search(
         -beta,
         -alpha,
         search_info,
-        true,
+        false, // do not allow null moves for the PV node
         zobrist_hasher,
         draw_table,
+        transposition_table,
     );
 
     if best_score > alpha {
@@ -217,6 +226,7 @@ fn alpha_beta_search(
             true,
             zobrist_hasher,
             draw_table,
+            transposition_table,
         );
 
         if score > alpha && score < beta {
@@ -233,6 +243,7 @@ fn alpha_beta_search(
                 true,
                 zobrist_hasher,
                 draw_table,
+                transposition_table,
             );
 
             if score > alpha {
@@ -242,7 +253,7 @@ fn alpha_beta_search(
 
         if score > best_score {
             if score >= beta {
-                // avoid inserting PV nodes or captures into the killer moves table
+                // a move with a score of zero is a quite move
                 if mov.order_heuristic == 0 {
                     search_info.insert_killer_move(ply_from_root, mov);
                 }
@@ -266,6 +277,7 @@ fn alpha_beta_search(
 pub fn get_best_move(
     board: &BoardState,
     draw_table: &mut DrawTable,
+    transposition_table: &mut TranspositionTable,
     start: Instant,
     time_to_move_ms: u128,
     tx: &BoardSender,
@@ -274,7 +286,7 @@ pub fn get_best_move(
     let ply_from_root = 0;
     let mut best_move: Option<BoardState> = None;
 
-    let mut search_info = Search::new_search();
+    let mut search_info = SearchContext::new_search();
     let zobrist_hasher = ZobristHasher::create_zobrist_hasher();
 
     let mut moves = generate_moves(board, MoveGenerationMode::AllMoves, &zobrist_hasher);
@@ -307,6 +319,7 @@ pub fn get_best_move(
                 true,
                 &zobrist_hasher,
                 draw_table,
+                transposition_table,
             );
 
             search_info.insert_into_cur_line(ply_from_root, mov);
@@ -337,7 +350,7 @@ pub fn get_best_move(
 /*
     Send information about the current search status to the GUI
 */
-fn send_search_info(search_info: &Search, depth: u8, eval: i32, start: Instant) {
+fn send_search_info(search_info: &SearchContext, depth: u8, eval: i32, start: Instant) {
     let mut ponder_move = "".to_string();
     for mov in &search_info.pv_moves {
         if let Some(m) = mov {
@@ -399,13 +412,24 @@ pub fn play_game_against_self(
 
     let mut board = b.clone();
     let draw_table: DrawTable = DrawTable::new();
+    let transposition_table = TranspositionTable::new();
     show_board(simple_print, &board);
     for _ in 0..max_moves {
         let (tx, rx) = mpsc::channel();
         let start = Instant::now();
         let clone = board.clone();
         let mut draw_clone = draw_table.clone();
-        thread::spawn(move || get_best_move(&clone, &mut draw_clone, start, time_to_move_ms, &tx));
+        let mut tt_clone = transposition_table.clone();
+        thread::spawn(move || {
+            get_best_move(
+                &clone,
+                &mut draw_clone,
+                &mut tt_clone,
+                start,
+                time_to_move_ms,
+                &tx,
+            )
+        });
         while !out_of_time(start, time_to_move_ms) {
             if let Ok(b) = rx.try_recv() {
                 board = b;
