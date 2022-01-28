@@ -75,11 +75,11 @@ mod tests {
     }
 
     #[test]
-    fn board_removed_from_draw_table() {
+    fn add_board_to_draw_table_test() {
         let board = BoardState::from_fen(DEFAULT_FEN_STRING).unwrap();
         let mut draw_table: DrawTable = DrawTable::new();
         draw_table.table.insert(board.zobrist_key, 2);
-        draw_table.remove_board_from_draw_table(&board);
-        assert_eq!(*draw_table.table.get(&board.zobrist_key).unwrap(), 1);
+        draw_table.add_board_to_draw_table(&board);
+        assert_eq!(*draw_table.table.get(&board.zobrist_key).unwrap(), 3);
     }
 }
