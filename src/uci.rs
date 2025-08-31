@@ -1,8 +1,6 @@
 pub use crate::board::*;
-pub use crate::board::{PieceColor::*, PieceKind::*};
 use crate::draw_table::DrawTable;
 pub use crate::engine::*;
-pub use crate::move_generation::*;
 pub use crate::time_control::*;
 pub use crate::utils::*;
 use crate::zobrist::ZobristHasher;
@@ -180,7 +178,7 @@ fn play_out_position(
 
     if let Some(start_index) = moves_start_index {
         for mov in commands.iter().skip(start_index + 1) {
-            make_move(&mut board, *mov, zobrist_hasher);
+            make_move(&mut board, mov, zobrist_hasher);
             draw_table.add_board_to_draw_table(&board);
         }
     }

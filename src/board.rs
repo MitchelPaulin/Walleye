@@ -348,7 +348,7 @@ impl BoardState {
                     return Err("Too many squares specified for board");
                 }
 
-                if square.is_digit(10) {
+                if square.is_ascii_digit() {
                     let square_skip_count = square.to_digit(10).unwrap() as usize;
                     if square_skip_count + col > BOARD_END {
                         return Err("Could not parse fen string: Index out of bounds");
@@ -402,10 +402,10 @@ impl BoardState {
             white_king_location,
             black_king_location,
             pawn_double_move: en_passant_pos,
-            white_king_side_castle: castling_privileges.find('K') != None,
-            white_queen_side_castle: castling_privileges.find('Q') != None,
-            black_king_side_castle: castling_privileges.find('k') != None,
-            black_queen_side_castle: castling_privileges.find('q') != None,
+            white_king_side_castle: castling_privileges.find('K').is_some(),
+            white_queen_side_castle: castling_privileges.find('Q').is_some(),
+            black_king_side_castle: castling_privileges.find('k').is_some(),
+            black_queen_side_castle: castling_privileges.find('q').is_some(),
             order_heuristic: 0,
             last_move: None,
             pawn_promotion: None,
