@@ -14,6 +14,8 @@ Challenge me on Lichess! https://lichess.org/@/Walleye_Bot
 
 The engine should also work in any chess program that supports UCI, at this time however it has only been tested with [Cute Chess](https://cutechess.com/).
 
+Walleye is deployed on a fairly cheap AWS instance. You can find out more about how Walleye is deployed [here](https://github.com/MitchelPaulin/Walleye-AWS)
+
 ## Example Usage
 
 By default, the engine launches in UCI mode and expects to be loaded into a chess GUI. \
